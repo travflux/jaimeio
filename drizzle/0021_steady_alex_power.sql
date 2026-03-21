@@ -1,0 +1,1 @@
+ALTER TABLE `social_posts` ADD CONSTRAINT `idx_article_platform` UNIQUE(`articleId`,`platform`);

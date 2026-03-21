@@ -1,0 +1,1 @@
+ALTER TABLE `social_posts` MODIFY COLUMN `status` enum('draft','scheduled','posting','posted','failed','cancelled') NOT NULL DEFAULT 'draft';

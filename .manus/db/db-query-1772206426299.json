@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE categories SET slug = 'flipping' WHERE id = 10;\nUPDATE categories SET slug = 'investing' WHERE id = 11;\nUPDATE categories SET slug = 'roi' WHERE id = 12;\nUPDATE categories SET slug = 'agents' WHERE id = 13;\nUPDATE categories SET slug = '9-5' WHERE id = 16;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute UPDATE categories SET slug = 'flipping' WHERE id = 10;\nUPDATE categories SET slug = 'investing' WHERE id = 11;\nUPDATE categories SET slug = 'roi' WHERE id = 12;\nUPDATE categories SET slug = 'agents' WHERE id = 13;\nUPDATE categories SET slug = '9-5' WHERE id = 16;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 105
+}

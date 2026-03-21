@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `score` float;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `scored_at` timestamp;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `score_breakdown` text;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `article_potential` varchar(10);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute ALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `score` float;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `scored_at` timestamp;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `score_breakdown` text;\nALTER TABLE `selector_candidates` ADD COLUMN IF NOT EXISTS `article_potential` varchar(10);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3506
+}

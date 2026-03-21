@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO workflow_settings (`key`, `value`, `category`, `updatedAt`) VALUES ('schedule_run2_minute', '0', 'schedule', NOW()), ('schedule_run3_minute', '0', 'schedule', NOW()) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updatedAt` = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute INSERT INTO workflow_settings (`key`, `value`, `category`, `updatedAt`) VALUES ('schedule_run2_minute', '0', 'schedule', NOW()), ('schedule_run3_minute', '0', 'schedule', NOW()) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updatedAt` = NOW();",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 608
+}

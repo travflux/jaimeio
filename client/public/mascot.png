@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" fill="none">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="58" fill="#F5F0EB" stroke="#2C2C2C" stroke-width="2"/>
+  <!-- Newspaper body -->
+  <rect x="28" y="32" width="64" height="56" rx="4" fill="#fff" stroke="#2C2C2C" stroke-width="2.5"/>
+  <!-- Folded corner -->
+  <path d="M76 32 L92 48 L76 48 Z" fill="#F5F0EB" stroke="#2C2C2C" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Headline bar -->
+  <rect x="34" y="52" width="46" height="6" rx="2" fill="#2C2C2C"/>
+  <!-- Body lines -->
+  <rect x="34" y="63" width="38" height="3" rx="1.5" fill="#999"/>
+  <rect x="34" y="70" width="42" height="3" rx="1.5" fill="#999"/>
+  <rect x="34" y="77" width="30" height="3" rx="1.5" fill="#999"/>
+</svg>

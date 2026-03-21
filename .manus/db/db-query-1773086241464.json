@@ -1,0 +1,20 @@
+{
+  "query": "UPDATE workflow_settings SET `value` = '0.65', `updatedAt` = NOW() WHERE `key` = 'score_high_threshold';\nSELECT `key`, `value`, `updatedAt` FROM workflow_settings WHERE `key` IN ('score_high_threshold', 'score_medium_threshold', 'min_score_to_publish');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute UPDATE workflow_settings SET `value` = '0.65', `updatedAt` = NOW() WHERE `key` = 'score_high_threshold';\nSELECT `key`, `value`, `updatedAt` FROM workflow_settings WHERE `key` IN ('score_high_threshold', 'score_medium_threshold', 'min_score_to_publish');",
+  "rows": [
+    {
+      "key": "score_high_threshold",
+      "value": "0.65",
+      "updatedAt": "2026-03-09 19:57:21"
+    },
+    {
+      "key": "min_score_to_publish",
+      "value": "0.30",
+      "updatedAt": "2026-03-09 18:47:07"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\tupdatedAt\nscore_high_threshold\t0.65\t2026-03-09 19:57:21\nmin_score_to_publish\t0.30\t2026-03-09 18:47:07\n",
+  "stderr": "",
+  "execution_time_ms": 429
+}

@@ -1,0 +1,21 @@
+{
+  "query": "\nCREATE TABLE IF NOT EXISTS image_library (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  cdn_url VARCHAR(2000) NOT NULL,\n  cdn_url_social VARCHAR(2000),\n  cdn_url_thumb VARCHAR(2000),\n  phash VARCHAR(64),\n  source_domain VARCHAR(255) NOT NULL,\n  source_url VARCHAR(2000) NOT NULL,\n  source_page_url VARCHAR(2000),\n  photographer VARCHAR(255),\n  tags JSON NOT NULL DEFAULT ('[]'),\n  entities JSON NOT NULL DEFAULT ('[]'),\n  ai_description TEXT,\n  relevance_score FLOAT,\n  validation_result JSON,\n  times_used INT NOT NULL DEFAULT 0,\n  first_used_article_id INT,\n  last_used_at DATETIME,\n  width INT,\n  height INT,\n  file_size INT,\n  created_at DATETIME NOT NULL DEFAULT NOW(),\n  INDEX idx_il_phash (phash),\n  INDEX idx_il_domain (source_domain),\n  INDEX idx_il_created (created_at)\n);\n\nCREATE TABLE IF NOT EXISTS image_source_domains (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  domain VARCHAR(255) NOT NULL UNIQUE,\n  status ENUM('whitelisted', 'blacklisted', 'unknown', 'pending_review') NOT NULL DEFAULT 'unknown',\n  category VARCHAR(100),\n  license_type VARCHAR(100),\n  notes TEXT,\n  images_sourced INT NOT NULL DEFAULT 0,\n  images_rejected INT NOT NULL DEFAULT 0,\n  last_sourced_at DATETIME,\n  reviewed_at DATETIME,\n  reviewed_by VARCHAR(255),\n  created_at DATETIME NOT NULL DEFAULT NOW(),\n  INDEX idx_isd_status (status),\n  INDEX idx_isd_domain (domain)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute \nCREATE TABLE IF NOT EXISTS image_library (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  cdn_url VARCHAR(2000) NOT NULL,\n  cdn_url_social VARCHAR(2000),\n  cdn_url_thumb VARCHAR(2000),\n  phash VARCHAR(64),\n  source_domain VARCHAR(255) NOT NULL,\n  source_url VARCHAR(2000) NOT NULL,\n  source_page_url VARCHAR(2000),\n  photographer VARCHAR(255),\n  tags JSON NOT NULL DEFAULT ('[]'),\n  entities JSON NOT NULL DEFAULT ('[]'),\n  ai_description TEXT,\n  relevance_score FLOAT,\n  validation_result JSON,\n  times_used INT NOT NULL DEFAULT 0,\n  first_used_article_id INT,\n  last_used_at DATETIME,\n  width INT,\n  height INT,\n  file_size INT,\n  created_at DATETIME NOT NULL DEFAULT NOW(),\n  INDEX idx_il_phash (phash),\n  INDEX idx_il_domain (source_domain),\n  INDEX idx_il_created (created_at)\n);\n\nCREATE TABLE IF NOT EXISTS image_source_domains (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  domain VARCHAR(255) NOT NULL UNIQUE,\n  status ENUM('whitelisted', 'blacklisted', 'unknown', 'pending_review') NOT NULL DEFAULT 'unknown',\n  category VARCHAR(100),\n  license_type VARCHAR(100),\n  notes TEXT,\n  images_sourced INT NOT NULL DEFAULT 0,\n  images_rejected INT NOT NULL DEFAULT 0,\n  last_sourced_at DATETIME,\n  reviewed_at DATETIME,\n  reviewed_by VARCHAR(255),\n  created_at DATETIME NOT NULL DEFAULT NOW(),\n  INDEX idx_isd_status (status),\n  INDEX idx_isd_domain (domain)\n);\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 11 column 35 near \"'[]'),",
+    "  entities JSON NOT NULL DEFAULT ('[]'),",
+    "  ai_description TEXT,",
+    "  relevance_score FLOAT,",
+    "  validation_result JSON,",
+    "  times_used INT NOT NULL DEFAULT 0,",
+    "  first_used_article_id INT,",
+    "  last_used_at DATETIME,",
+    "  width INT,",
+    "  height INT,",
+    "  file_size INT,",
+    "  created_at DATETIME NOT NULL DEFAULT NOW(),",
+    "  INDEX idx_il_phash (phash),",
+    "  INDEX idx_il_domain (source_dom"
+  ]
+}

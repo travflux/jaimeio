@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflow_settings SET value = 'true' WHERE `key` = 'auto_generate_images';\nUPDATE workflow_settings SET value = '' WHERE `key` = 'mascot_image_url';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute UPDATE workflow_settings SET value = 'true' WHERE `key` = 'auto_generate_images';\nUPDATE workflow_settings SET value = '' WHERE `key` = 'mascot_image_url';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 69
+}

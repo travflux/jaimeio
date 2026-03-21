@@ -1,0 +1,29 @@
+{
+  "query": "SELECT article_potential, COUNT(*) as cnt \nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY article_potential;\n\nSELECT COUNT(*) as total_pending FROM selector_candidates WHERE status = 'pending';\nSELECT COUNT(*) as total_articles FROM articles;\nSELECT COUNT(*) as published_today FROM articles \nWHERE DATE(createdAt) = CURDATE() AND status IN ('published','pending_approval');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT article_potential, COUNT(*) as cnt \nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY article_potential;\n\nSELECT COUNT(*) as total_pending FROM selector_candidates WHERE status = 'pending';\nSELECT COUNT(*) as total_articles FROM articles;\nSELECT COUNT(*) as published_today FROM articles \nWHERE DATE(createdAt) = CURDATE() AND status IN ('published','pending_approval');",
+  "rows": [
+    {
+      "article_potential": "NULL",
+      "cnt": "2193"
+    },
+    {
+      "article_potential": "low",
+      "cnt": "1"
+    },
+    {
+      "article_potential": "medium",
+      "cnt": "189"
+    }
+  ],
+  "messages": [
+    "total_pending",
+    "2383",
+    "total_articles",
+    "1952",
+    "published_today",
+    "56"
+  ],
+  "stdout": "article_potential\tcnt\nNULL\t2193\nlow\t1\nmedium\t189\ntotal_pending\n2383\ntotal_articles\n1952\npublished_today\n56\n",
+  "stderr": "",
+  "execution_time_ms": 523
+}

@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO workflow_settings (`key`, `value`, `label`, `description`, `category`, `type`, `createdAt`, `updatedAt`)\nVALUES ('brand_gtag_id', 'AW-17988276150', 'Google Analytics Tag ID', 'v4.7.3: Hambry Google Ads conversion ID.', 'branding', 'string', NOW(), NOW())\nON DUPLICATE KEY UPDATE `value` = 'AW-17988276150', `updatedAt` = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute INSERT INTO workflow_settings (`key`, `value`, `label`, `description`, `category`, `type`, `createdAt`, `updatedAt`)\nVALUES ('brand_gtag_id', 'AW-17988276150', 'Google Analytics Tag ID', 'v4.7.3: Hambry Google Ads conversion ID.', 'branding', 'string', NOW(), NOW())\nON DUPLICATE KEY UPDATE `value` = 'AW-17988276150', `updatedAt` = NOW();",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'createdAt' in 'field list'"
+  ]
+}

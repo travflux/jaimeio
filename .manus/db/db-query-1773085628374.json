@@ -1,0 +1,66 @@
+{
+  "query": "SELECT `key`, `value` FROM workflow_settings \nWHERE `key` IN (\n  'production_loop_enabled','production_mode','production_interval_minutes',\n  'max_daily_articles','max_batch_high','max_batch_medium',\n  'min_score_to_publish','score_high_threshold','score_medium_threshold',\n  'pool_min_size','brand_genre','candidate_expiry_hours',\n  'expiry_breaking_hours','expiry_trending_hours','expiry_evergreen_hours',\n  'score_decay_hours'\n)\nORDER BY `key`;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT `key`, `value` FROM workflow_settings \nWHERE `key` IN (\n  'production_loop_enabled','production_mode','production_interval_minutes',\n  'max_daily_articles','max_batch_high','max_batch_medium',\n  'min_score_to_publish','score_high_threshold','score_medium_threshold',\n  'pool_min_size','brand_genre','candidate_expiry_hours',\n  'expiry_breaking_hours','expiry_trending_hours','expiry_evergreen_hours',\n  'score_decay_hours'\n)\nORDER BY `key`;",
+  "rows": [
+    {
+      "key": "brand_genre",
+      "value": "satire"
+    },
+    {
+      "key": "candidate_expiry_hours",
+      "value": "48"
+    },
+    {
+      "key": "expiry_breaking_hours",
+      "value": "6"
+    },
+    {
+      "key": "expiry_evergreen_hours",
+      "value": "72"
+    },
+    {
+      "key": "expiry_trending_hours",
+      "value": "18"
+    },
+    {
+      "key": "max_batch_high",
+      "value": "25"
+    },
+    {
+      "key": "max_batch_medium",
+      "value": "10"
+    },
+    {
+      "key": "max_daily_articles",
+      "value": "500"
+    },
+    {
+      "key": "min_score_to_publish",
+      "value": "0.30"
+    },
+    {
+      "key": "pool_min_size",
+      "value": "10"
+    },
+    {
+      "key": "production_interval_minutes",
+      "value": "15"
+    },
+    {
+      "key": "production_loop_enabled",
+      "value": "true"
+    },
+    {
+      "key": "production_mode",
+      "value": "hybrid"
+    },
+    {
+      "key": "score_high_threshold",
+      "value": "0.70"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\nbrand_genre\tsatire\ncandidate_expiry_hours\t48\nexpiry_breaking_hours\t6\nexpiry_evergreen_hours\t72\nexpiry_trending_hours\t18\nmax_batch_high\t25\nmax_batch_medium\t10\nmax_daily_articles\t500\nmin_score_to_publish\t0.30\npool_min_size\t10\nproduction_interval_minutes\t15\nproduction_loop_enabled\ttrue\nproduction_mode\thybrid\nscore_high_threshold\t0.70\n",
+  "stderr": "",
+  "execution_time_ms": 352
+}

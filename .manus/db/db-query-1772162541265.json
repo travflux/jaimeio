@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, name, slug FROM categories ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT id, name, slug FROM categories ORDER BY id;",
+  "rows": [
+    {
+      "id": "9",
+      "name": "Foreclosures",
+      "slug": "foreclosures"
+    },
+    {
+      "id": "10",
+      "name": "Flipping",
+      "slug": "flipping"
+    },
+    {
+      "id": "11",
+      "name": "Investing",
+      "slug": "investing"
+    },
+    {
+      "id": "12",
+      "name": "ROI",
+      "slug": "roi"
+    },
+    {
+      "id": "13",
+      "name": "Agents",
+      "slug": "agents"
+    },
+    {
+      "id": "14",
+      "name": "Short Sales",
+      "slug": "short-sales"
+    },
+    {
+      "id": "15",
+      "name": "Side Hustle",
+      "slug": "side-hustle"
+    },
+    {
+      "id": "16",
+      "name": "9-5",
+      "slug": "9-5"
+    },
+    {
+      "id": "17",
+      "name": "Job Seekers",
+      "slug": "job-seekers"
+    },
+    {
+      "id": "18",
+      "name": "Recession-Proof",
+      "slug": "recession-proof"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\n9\tForeclosures\tforeclosures\n10\tFlipping\tflipping\n11\tInvesting\tinvesting\n12\tROI\troi\n13\tAgents\tagents\n14\tShort Sales\tshort-sales\n15\tSide Hustle\tside-hustle\n16\t9-5\t9-5\n17\tJob Seekers\tjob-seekers\n18\tRecession-Proof\trecession-proof\n",
+  "stderr": "",
+  "execution_time_ms": 92
+}

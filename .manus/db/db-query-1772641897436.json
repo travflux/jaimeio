@@ -1,0 +1,30 @@
+{
+  "query": "SELECT * FROM workflow_settings WHERE `key` IN ('site_url', 'brand_description') LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT * FROM workflow_settings WHERE `key` IN ('site_url', 'brand_description') LIMIT 5;",
+  "rows": [
+    {
+      "id": "53",
+      "key": "brand_description",
+      "value": "Real Deals, Real Wins, Proven Across Hundreds of Foreclosure Deals",
+      "label": "Description",
+      "description": "Longer description used in the footer and meta tags.",
+      "category": "branding",
+      "type": "text",
+      "updatedAt": "2026-02-27 02:00:47"
+    },
+    {
+      "id": "42",
+      "key": "site_url",
+      "value": "https://wilderblue-5axjgj23.manus.space",
+      "label": "Site URL",
+      "description": "Your custom domain URL (e.g., https://hambry.com). Used in social media posts and RSS feeds.",
+      "category": "social",
+      "type": "string",
+      "updatedAt": "2026-02-28 17:10:47"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tkey\tvalue\tlabel\tdescription\tcategory\ttype\tupdatedAt\n53\tbrand_description\tReal Deals, Real Wins, Proven Across Hundreds of Foreclosure Deals\tDescription\tLonger description used in the footer and meta tags.\tbranding\ttext\t2026-02-27 02:00:47\n42\tsite_url\thttps://wilderblue-5axjgj23.manus.space\tSite URL\tYour custom domain URL (e.g., https://hambry.com). Used in social media posts and RSS feeds.\tsocial\tstring\t2026-02-28 17:10:47\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

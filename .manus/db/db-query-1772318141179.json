@@ -1,0 +1,130 @@
+{
+  "query": "SELECT id, headline, featuredImage, createdAt \nFROM articles \nORDER BY createdAt DESC \nLIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT id, headline, featuredImage, createdAt \nFROM articles \nORDER BY createdAt DESC \nLIMIT 20;",
+  "rows": [
+    {
+      "id": "150037",
+      "headline": "Single-Family Rentals: Your Golden Ticket to Inflation-Proof Serenity (or Delusion)",
+      "featuredImage": "",
+      "createdAt": "2026-02-28 19:06:02"
+    },
+    {
+      "id": "150035",
+      "headline": "Distressed Assets: The Next 'Can't Miss' Opportunity (According to Your Inbox)",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:06:01"
+    },
+    {
+      "id": "150036",
+      "headline": "Miracle Man Chris: From Zero to $3M in Flips (Just Add Our Secret Sauce!)",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:06:01"
+    },
+    {
+      "id": "150034",
+      "headline": "Bird-Dogging: The Secret Handshake to Your First Million (or Just a Really Good Pair of Walking Shoes)",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150032",
+      "headline": "Podcast Guru Unveils Shocking 'Secret' to Real Estate Success: Listening to Podcasts!",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150033",
+      "headline": "Foreclosurepalooza 2026: Your Golden Ticket to Distressed Dominance!",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150029",
+      "headline": "Mortgage Rates Plummet to 'Bargain' 5.78%: Is Your Wallet Ready for This 'Unprecedented' Opportunity?",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150031",
+      "headline": "The Future of Fortune: Your $27 Ticket to Tomorrow's Distressed Deals, Today!",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150030",
+      "headline": "Future-Proof Your Portfolio: 2026's 'Groundbreaking' Real Estate Wisdom (Already Here!)",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150028",
+      "headline": "Texas Turnkey: Your Golden Ticket to Out-of-State Overleveraging (2026 Edition)",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:05:58"
+    },
+    {
+      "id": "150027",
+      "headline": "BREAKING: Housing Market Recovery Guaranteed by 2026… if the Stars Align and Rates Plunge!",
+      "featuredImage": "NULL",
+      "createdAt": "2026-02-28 19:05:58"
+    },
+    {
+      "id": "150021",
+      "headline": "Mortgage Rates Plunge to 'Affordable' 5.99%: Is This the Bottom or Just a Pothole on the Way Down?",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150026",
+      "headline": "2026: The Year Your Crystal Ball Finally Pays Off (Maybe)",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150025",
+      "headline": "Mortgage Rates Plummet to 'Almost Affordable' Levels: Is Your Wallet Ready for This 'Opportunity'?",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150024",
+      "headline": "Mortgage Rates Inch Up: Is Your Refinance Dream Still Alive, Or Just a Faint Whisper?",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150020",
+      "headline": "2026 Refinance Boom: Prepare Your Loan Docs (Eventually, Maybe, If the Stars Align)",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150023",
+      "headline": "Mortgage Rate Mirage: Homeowners Discover 'Savings' While Savvy Investors Feast on the Foreclosure Buffet",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150022",
+      "headline": "Unlock the 4.5% Mortgage Unicorn: Your 2026 Crystal Ball Strategy (Spoiler: It's Not What You Think)",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150019",
+      "headline": "Construction Slowdown? More Like Opportunity Acceleration!",
+      "featuredImage": "",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150017",
+      "headline": "Big Tech's 'Clear Cooperation' Coup: Is Your MLS About to Get 'Disrupted'?",
+      "featuredImage": "/wb-logo.png",
+      "createdAt": "2026-02-28 18:03:52"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\theadline\tfeaturedImage\tcreatedAt\n150037\tSingle-Family Rentals: Your Golden Ticket to Inflation-Proof Serenity (or Delusion)\t\t2026-02-28 19:06:02\n150035\tDistressed Assets: The Next 'Can't Miss' Opportunity (According to Your Inbox)\tNULL\t2026-02-28 19:06:01\n150036\tMiracle Man Chris: From Zero to $3M in Flips (Just Add Our Secret Sauce!)\tNULL\t2026-02-28 19:06:01\n150034\tBird-Dogging: The Secret Handshake to Your First Million (or Just a Really Good Pair of Walking Shoes)\tNULL\t2026-02-28 19:06:00\n150032\tPodcast Guru Unveils Shocking 'Secret' to Real Estate Success: Listening to Podcasts!\tNULL\t2026-02-28 19:06:00\n150033\tForeclosurepalooza 2026: Your Golden Ticket to Distressed Dominance!\tNULL\t2026-02-28 19:06:00\n150029\tMortgage Rates Plummet to 'Bargain' 5.78%: Is Your Wallet Ready for This 'Unprecedented' Opportunity?\tNULL\t2026-02-28 19:05:59\n150031\tThe Future of Fortune: Your $27 Ticket to Tomorrow's Distressed Deals, Today!\tNULL\t2026-02-28 19:05:59\n150030\tFuture-Proof Your Portfolio: 2026's 'Groundbreaking' Real Estate Wisdom (Already Here!)\tNULL\t2026-02-28 19:05:59\n150028\tTexas Turnkey: Your Golden Ticket to Out-of-State Overleveraging (2026 Edition)\tNULL\t2026-02-28 19:05:58\n150027\tBREAKING: Housing Market Recovery Guaranteed by 2026… if the Stars Align and Rates Plunge!\tNULL\t2026-02-28 19:05:58\n150021\tMortgage Rates Plunge to 'Affordable' 5.99%: Is This the Bottom or Just a Pothole on the Way Down?\t/wb-logo.png\t2026-02-28 18:03:53\n150026\t2026: The Year Your Crystal Ball Finally Pays Off (Maybe)\t/wb-logo.png\t2026-02-28 18:03:53\n150025\tMortgage Rates Plummet to 'Almost Affordable' Levels: Is Your Wallet Ready for This 'Opportunity'?\t/wb-logo.png\t2026-02-28 18:03:53\n150024\tMortgage Rates Inch Up: Is Your Refinance Dream Still Alive, Or Just a Faint Whisper?\t/wb-logo.png\t2026-02-28 18:03:53\n150020\t2026 Refinance Boom: Prepare Your Loan Docs (Eventually, Maybe, If the Stars Align)\t/wb-logo.png\t2026-02-28 18:03:53\n150023\tMortgage Rate Mirage: Homeowners Discover 'Savings' While Savvy Investors Feast on the Foreclosure Buffet\t/wb-logo.png\t2026-02-28 18:03:53\n150022\tUnlock the 4.5% Mortgage Unicorn: Your 2026 Crystal Ball Strategy (Spoiler: It's Not What You Think)\t/wb-logo.png\t2026-02-28 18:03:53\n150019\tConstruction Slowdown? More Like Opportunity Acceleration!\t\t2026-02-28 18:03:53\n150017\tBig Tech's 'Clear Cooperation' Coup: Is Your MLS About to Get 'Disrupted'?\t/wb-logo.png\t2026-02-28 18:03:52\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

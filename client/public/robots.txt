@@ -1,0 +1,7 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/briefing-room-m4x1q
+Disallow: /api/briefing-room-zx7q9
+
+Sitemap: https://hambry.com/api/sitemap.xml

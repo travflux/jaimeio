@@ -1,0 +1,148 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "affiliate_clicks"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "article_tags"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "articles"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "blocked_sources"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "categories"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "ceo_directives"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "client_deployments"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "content_calendar"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "covered_topics"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "crossword_solves"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "crosswords"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "daily_analytics"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "distribution_queue"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "horoscopes"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "image_licenses"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "js_page_views"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "known_account_scores"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "licenses"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "mad_lib_completions"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "mad_libs"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "merch_leads"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "merch_products"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "newsletter_send_history"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "newsletter_subscribers"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "page_views"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "platform_credentials"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "rebalance_logs"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "reddit_subreddit_map"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "rss_feed_weights"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "search_analytics"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "search_engine_performance"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "selector_candidates"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "setup_checklist"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "sms_subscribers"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "social_posts"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "tags"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "trivia_quiz_solves"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "trivia_quizzes"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "users"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "word_scramble_solves"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "word_scrambles"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "workflow_batches"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "workflow_settings"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "x_replies"
+    },
+    {
+      "Tables_in_4wsqNcW8uBjUqkvadz54Yt": "x_standalone_tweets"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_4wsqNcW8uBjUqkvadz54Yt\n__drizzle_migrations\naffiliate_clicks\narticle_tags\narticles\nblocked_sources\ncategories\nceo_directives\nclient_deployments\ncontent_calendar\ncovered_topics\ncrossword_solves\ncrosswords\ndaily_analytics\ndistribution_queue\nhoroscopes\nimage_licenses\njs_page_views\nknown_account_scores\nlicenses\nmad_lib_completions\nmad_libs\nmerch_leads\nmerch_products\nnewsletter_send_history\nnewsletter_subscribers\npage_views\nplatform_credentials\nrebalance_logs\nreddit_subreddit_map\nrss_feed_weights\nsearch_analytics\nsearch_engine_performance\nselector_candidates\nsetup_checklist\nsms_subscribers\nsocial_posts\ntags\ntrivia_quiz_solves\ntrivia_quizzes\nusers\nword_scramble_solves\nword_scrambles\nworkflow_batches\nworkflow_settings\nx_replies\nx_standalone_tweets\n",
+  "stderr": "",
+  "execution_time_ms": 365
+}

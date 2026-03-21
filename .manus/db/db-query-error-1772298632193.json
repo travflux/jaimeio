@@ -1,0 +1,8 @@
+{
+  "query": "SELECT setting_key, setting_value FROM workflow_settings WHERE setting_key IN ('site_url', 'brand_og_image', 'brand_mascot_url') LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT setting_key, setting_value FROM workflow_settings WHERE setting_key IN ('site_url', 'brand_og_image', 'brand_mascot_url') LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'setting_key' in 'where clause'"
+  ]
+}

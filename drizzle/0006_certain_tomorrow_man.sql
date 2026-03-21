@@ -1,0 +1,1 @@
+ALTER TABLE `mad_lib_completions` ADD `imageUrl` text;

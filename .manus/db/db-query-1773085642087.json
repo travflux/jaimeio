@@ -1,0 +1,22 @@
+{
+  "query": "SELECT COALESCE(article_potential, 'unscored') as tier, COUNT(*) as cnt \nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY article_potential\nORDER BY cnt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT COALESCE(article_potential, 'unscored') as tier, COUNT(*) as cnt \nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY article_potential\nORDER BY cnt DESC;",
+  "rows": [
+    {
+      "tier": "unscored",
+      "cnt": "2193"
+    },
+    {
+      "tier": "medium",
+      "cnt": "189"
+    },
+    {
+      "tier": "low",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "tier\tcnt\nunscored\t2193\nmedium\t189\nlow\t1\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

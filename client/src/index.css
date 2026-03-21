@@ -1,0 +1,802 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   HAMBRY DESIGN SYSTEM — STYLE VARIABLES
+   ==========================================================================
+   All key design tokens are organized below for easy customization.
+   Change values here to update the entire site's look and feel.
+   ========================================================================== */
+
+:root {
+
+  /* -----------------------------------------------------------------------
+     1. BRAND COLORS
+     The primary accent color used for links, highlights, and CTAs.
+     Change --primary to rebrand the entire site in one step.
+     Format: OKLCH (lightness  chroma  hue)
+     ----------------------------------------------------------------------- */
+  --primary:                    oklch(0.20 0.04 270);    /* Dark navy #1a1a2e    */
+  --primary-foreground:         oklch(0.99 0 0);         /* White text on primary */
+  --accent-brand:               oklch(0.72 0.12 85);     /* Gold accent #c9a84c  */
+
+  /* -----------------------------------------------------------------------
+     2. BACKGROUND & TEXT
+     The foundation colors for the page surface and body copy.
+     ----------------------------------------------------------------------- */
+  --background:                 oklch(0.99 0 0);         /* Clean white #fafafa  */
+  --foreground:                 oklch(0.20 0.02 270);    /* Dark navy text       */
+
+  /* -----------------------------------------------------------------------
+     3. SURFACE COLORS (Cards, Popovers, Dialogs)
+     Used for elevated UI elements that sit above the background.
+     ----------------------------------------------------------------------- */
+  --card:                       oklch(1 0 0);            /* Pure white cards     */
+  --card-foreground:            oklch(0.13 0.005 260);   /* Card text            */
+  --popover:                    oklch(1 0 0);            /* Dropdown/popover bg  */
+  --popover-foreground:         oklch(0.13 0.005 260);   /* Popover text         */
+
+  /* -----------------------------------------------------------------------
+     4. SECONDARY & MUTED TONES
+     Subtle backgrounds for tags, badges, and de-emphasized content.
+     ----------------------------------------------------------------------- */
+  --secondary:                  oklch(0.965 0.002 260);  /* Light gray surface   */
+  --secondary-foreground:       oklch(0.30 0.01 260);    /* Text on secondary    */
+  --muted:                      oklch(0.955 0.002 260);  /* Muted background     */
+  --muted-foreground:           oklch(0.52 0.01 260);    /* De-emphasized text   */
+  --accent:                     oklch(0.96 0.002 260);   /* Accent surface       */
+  --accent-foreground:          oklch(0.20 0.005 260);   /* Text on accent       */
+
+  /* -----------------------------------------------------------------------
+     5. SEMANTIC COLORS
+     Destructive (errors, delete actions) and focus ring.
+     ----------------------------------------------------------------------- */
+  --destructive:                oklch(0.55 0.22 27);     /* Error / danger red   */
+  --destructive-foreground:     oklch(0.99 0 0);         /* White on destructive */
+  --ring:                       oklch(0.72 0.12 85);     /* Gold focus ring      */
+
+  /* -----------------------------------------------------------------------
+     6. BORDERS & INPUTS
+     Divider lines, input field borders, and separators.
+     ----------------------------------------------------------------------- */
+  --border:                     oklch(0.92 0.003 260);   /* Subtle gray border   */
+  --input:                      oklch(0.92 0.003 260);   /* Input field border   */
+
+  /* -----------------------------------------------------------------------
+     7. CHART / DATA VISUALIZATION PALETTE
+     Five-color palette for charts and graphs.
+     ----------------------------------------------------------------------- */
+  --chart-1:                    oklch(0.20 0.04 270);    /* Navy (matches primary)*/
+  --chart-2:                    oklch(0.72 0.12 85);     /* Gold (matches accent)*/
+  --chart-3:                    oklch(0.55 0.12 160);    /* Green                */
+  --chart-4:                    oklch(0.65 0.12 80);     /* Yellow               */
+  --chart-5:                    oklch(0.55 0.12 300);    /* Purple               */
+
+  /* -----------------------------------------------------------------------
+     8. SIDEBAR (Admin Dashboard)
+     Colors for the admin sidebar navigation.
+     ----------------------------------------------------------------------- */
+  --sidebar:                    oklch(0.975 0.001 260);
+  --sidebar-foreground:         oklch(0.20 0.005 260);
+  --sidebar-primary:            oklch(0.20 0.04 270);    /* Navy sidebar accent  */
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent:             oklch(0.96 0.002 260);
+  --sidebar-accent-foreground:  oklch(0.20 0.005 260);
+  --sidebar-border:             oklch(0.93 0.002 260);
+  --sidebar-ring:               oklch(0.72 0.12 85);     /* Gold sidebar ring    */
+
+  /* -----------------------------------------------------------------------
+     9. BORDER RADIUS
+     Controls the roundness of buttons, cards, inputs, etc.
+     Increase for softer/rounder UI, decrease for sharper edges.
+     ----------------------------------------------------------------------- */
+  --radius:                     0.5rem;                  /* 8px — modern rounded */
+
+  /* -----------------------------------------------------------------------
+     10. TYPOGRAPHY
+     Font families for headlines and body text.
+     Change these to swap the entire typographic feel.
+     ----------------------------------------------------------------------- */
+  --font-headline:              'Inter', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:                  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* -----------------------------------------------------------------------
+     11. ARTICLE BODY TYPOGRAPHY
+     Fine-tune the reading experience for article content.
+     ----------------------------------------------------------------------- */
+  --article-font-size:          1.05rem;                 /* ~17px body text      */
+  --article-line-height:        1.75;                    /* Tighter line spacing  */
+  --article-paragraph-spacing:  1.1rem;                  /* Space between <p>    */
+
+  /* Section spacing — consistent vertical rhythm */
+  --section-gap-sm: 1.5rem;    /* 24px — between tightly related sections */
+  --section-gap-md: 2.5rem;    /* 40px — standard section spacing */
+  --section-gap-lg: 3.5rem;    /* 56px — major section breaks */
+  --article-text-color:         oklch(0.25 0.005 260);   /* Slightly softer black*/
+  --article-heading-spacing-top: 2.5rem;                 /* Space above <h2>     */
+  --article-blockquote-color:   oklch(0.40 0.01 260);   /* Muted quote text     */
+  --article-blockquote-border:  oklch(0.72 0.12 85);    /* Gold accent line     */
+
+  /* -----------------------------------------------------------------------
+     12. LAYOUT
+     Container widths and padding. Controls overall page margins.
+     ----------------------------------------------------------------------- */
+  --container-padding-sm:       1.25rem;                 /* Mobile padding       */
+  --container-padding-md:       2rem;                    /* Tablet padding       */
+  --container-padding-lg:       2.5rem;                  /* Desktop padding      */
+  --container-max-width:        1200px;                  /* Max content width    */
+
+  /* -----------------------------------------------------------------------
+     13. TRANSITIONS
+     Global animation timing for interactive elements.
+     ----------------------------------------------------------------------- */
+  --transition-fast:            0.2s ease;               /* Buttons, links       */
+  --transition-image:           0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);  /* Image hover */
+
+  /* -----------------------------------------------------------------------
+     14. TICKER / BREAKING NEWS
+     Speed of the scrolling breaking news banner.
+     ----------------------------------------------------------------------- */
+  --ticker-speed:               35s;                     /* Full scroll duration  */
+
+  /* -----------------------------------------------------------------------
+     15. SCROLLBAR
+     Custom scrollbar colors. Set --scrollbar-thumb to match your brand.
+     ----------------------------------------------------------------------- */
+  --scrollbar-thumb:            oklch(0.20 0.04 270);    /* Navy                 */
+  --scrollbar-thumb-hover:      oklch(0.30 0.04 270);    /* Darker navy on hover */
+  --scrollbar-track:            oklch(0.95 0.002 260);   /* Light gray track     */
+  --scrollbar-width:            10px;                    /* Scrollbar width      */
+}
+
+
+/* ==========================================================================
+   TAILWIND THEME BRIDGE
+   Maps CSS variables to Tailwind's @theme system.
+   You should NOT need to edit this section.
+   ========================================================================== */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-headline: var(--font-headline);
+  --font-body: var(--font-body);
+}
+
+
+/* ==========================================================================
+   BASE STYLES
+   Global resets and defaults applied to all elements.
+   ========================================================================== */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+  a, button {
+    transition: color var(--transition-fast), background-color var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+  }
+  img {
+    transition: transform var(--transition-image), opacity 0.3s ease;
+  }
+
+  /* Custom scrollbar — branded red */
+  ::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  /* Firefox scrollbar */
+  html {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+  }
+}
+
+
+/* ==========================================================================
+   COMPONENT STYLES
+   Layout primitives and reusable component overrides.
+   ========================================================================== */
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--container-padding-sm);
+    padding-right: var(--container-padding-sm);
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: var(--container-padding-md);
+      padding-right: var(--container-padding-md);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: var(--container-padding-lg);
+      padding-right: var(--container-padding-lg);
+      max-width: var(--container-max-width);
+    }
+  }
+}
+
+
+/* ==========================================================================
+   TYPOGRAPHY
+   Headline font class and article body reading styles.
+   ========================================================================== */
+
+.font-headline {
+  font-family: var(--font-headline);
+}
+
+.article-body p {
+  margin-bottom: var(--article-paragraph-spacing);
+  line-height: var(--article-line-height);
+  font-size: var(--article-font-size);
+  color: var(--article-text-color);
+  letter-spacing: -0.003em;
+}
+.article-body h2 {
+  font-family: var(--font-headline);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: var(--article-heading-spacing-top);
+  margin-bottom: 1rem;
+  letter-spacing: -0.01em;
+}
+.article-body blockquote {
+  border-left: 3px solid var(--article-blockquote-border);
+  padding-left: 1.25rem;
+  font-style: italic;
+  margin: 2rem 0;
+  color: var(--article-blockquote-color);
+}
+
+
+/* ==========================================================================
+   ANIMATIONS
+   Breaking news ticker and other keyframe animations.
+   ========================================================================== */
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.ticker-animate {
+  animation: ticker var(--ticker-speed) linear infinite;
+}
+
+/* ==========================================================================
+   SCROLL-TRIGGERED ANIMATIONS
+   Elements with these classes animate in when they enter the viewport.
+   ========================================================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.45 0.16 25 / 0.3); }
+  50% { box-shadow: 0 0 0 8px oklch(0.45 0.16 25 / 0); }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animate-in classes — applied by IntersectionObserver */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Safety net: force visibility after 3s even if IntersectionObserver doesn't fire.
+   Prevents invisible content on mobile where tall sections may never reach 10% threshold. */
+@keyframes forceVisible {
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-on-scroll {
+  animation: forceVisible 0.6s cubic-bezier(0.16, 1, 0.3, 1) 3s forwards;
+}
+.animate-on-scroll.is-visible {
+  animation: none; /* Cancel the fallback once observer fires */
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: forceVisible 0.5s cubic-bezier(0.16, 1, 0.3, 1) 3s forwards;
+}
+.stagger-children.is-visible > * { animation: none; }
+.stagger-children.is-visible > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(2) { transition-delay: 80ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(3) { transition-delay: 160ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(4) { transition-delay: 240ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(5) { transition-delay: 320ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(6) { transition-delay: 400ms; opacity: 1; transform: translateY(0); }
+.stagger-children.is-visible > *:nth-child(n+7) { transition-delay: 480ms; opacity: 1; transform: translateY(0); }
+
+
+/* ==========================================================================
+   READING PROGRESS BAR
+   Fixed bar at the top of the page showing scroll progress.
+   ========================================================================== */
+
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), oklch(0.55 0.20 25));
+  z-index: 9999;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px oklch(0.45 0.16 25 / 0.4);
+}
+
+
+/* ==========================================================================
+   BACK TO TOP BUTTON
+   ========================================================================== */
+
+.back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px oklch(0.45 0.16 25 / 0.3);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.2s ease;
+  z-index: 50;
+  cursor: pointer;
+  border: none;
+}
+.back-to-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.back-to-top:hover {
+  background: oklch(0.38 0.18 25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px oklch(0.45 0.16 25 / 0.4);
+}
+
+
+/* ==========================================================================
+   ENHANCED CARD HOVER EFFECTS
+   ========================================================================== */
+
+.card-hover {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.08), 0 2px 8px oklch(0 0 0 / 0.04);
+}
+.card-hover:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.05);
+}
+
+/* Newspaper-style section dividers */
+.section-rule {
+  height: 1px;
+  background: var(--foreground);
+  opacity: 0.12;
+  margin: 0;
+}
+.section-rule-heavy {
+  height: 2px;
+  background: var(--foreground);
+  opacity: 0.15;
+  margin: 0;
+}
+
+/* Standardized metadata text */
+.meta-text {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+
+/* ==========================================================================
+   SECTION HEADER ACCENT
+   ========================================================================== */
+
+.section-header-accent {
+  position: relative;
+  display: inline-block;
+}
+.section-header-accent::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), oklch(0.55 0.20 25));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.section-header-accent:hover::after {
+  width: 60px;
+}
+
+
+/* ==========================================================================
+   BREAKING NEWS TICKER ENHANCEMENT
+   ========================================================================== */
+
+.breaking-badge {
+  position: relative;
+  overflow: hidden;
+}
+.breaking-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.1), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+
+/* ==========================================================================
+   NEWSLETTER CTA GLOW
+   ========================================================================== */
+
+.newsletter-cta-input:focus {
+  box-shadow: 0 0 0 3px oklch(0.45 0.16 25 / 0.25), 0 0 20px oklch(0.45 0.16 25 / 0.1);
+}
+
+.newsletter-cta-btn {
+  position: relative;
+  overflow: hidden;
+}
+.newsletter-cta-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+.newsletter-cta-btn:hover::before {
+  transform: translateX(100%);
+}
+
+
+/* ==========================================================================
+   ARTICLE BODY ENHANCEMENTS
+   ========================================================================== */
+
+.article-body > p:first-of-type::first-letter {
+  font-family: var(--font-headline);
+  font-size: 3.5em;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.08em;
+  margin-top: 0.05em;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.article-body a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: oklch(0.45 0.16 25 / 0.3);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s ease;
+}
+.article-body a:hover {
+  text-decoration-color: var(--primary);
+}
+
+.article-body h2 {
+  position: relative;
+  padding-left: 1rem;
+}
+.article-body h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+.article-body img {
+  border-radius: 0.75rem;
+  margin: 2rem 0;
+}
+
+.article-body ul, .article-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: var(--article-paragraph-spacing);
+  font-size: var(--article-font-size);
+  line-height: var(--article-line-height);
+  color: var(--article-text-color);
+}
+
+.article-body li {
+  margin-bottom: 0.5rem;
+}
+
+.article-body li::marker {
+  color: var(--primary);
+}
+
+
+/* ==========================================================================
+   ENHANCED LINK HOVER EFFECTS
+   ========================================================================== */
+
+.link-underline {
+  position: relative;
+  text-decoration: none;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 1px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+
+/* ==========================================================================
+   CATEGORY BADGE ANIMATIONS
+   ========================================================================== */
+
+.category-badge {
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+.category-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px oklch(0.45 0.16 25 / 0.15);
+}
+
+
+/* ==========================================================================
+   GLASS MORPHISM UTILITY
+   ========================================================================== */
+
+.glass {
+  background: oklch(1 0 0 / 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(1 0 0 / 0.2);
+}
+
+
+/* ==========================================================================
+   GRADIENT TEXT UTILITY
+   ========================================================================== */
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary), oklch(0.55 0.20 25));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+
+/* ==========================================================================
+   PULSE DOT (for live/new indicators)
+   ========================================================================== */
+
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+
+/* ==========================================================================
+   SMOOTH IMAGE LOAD
+   ========================================================================== */
+
+img {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+
+/* ==========================================================================
+   FOCUS VISIBLE RING
+   ========================================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+
+/* ==========================================================================
+   SELECTION HIGHLIGHT
+   ========================================================================== */
+
+::selection {
+  background: oklch(0.45 0.16 25 / 0.15);
+  color: var(--foreground);
+}
+
+/* ==========================================================================
+   REDUCED MOTION (WCAG 2.3.3)
+   ========================================================================== */
+
+/* Respect user motion preferences — disables animations and transitions
+   for users who have enabled "Reduce motion" in their OS settings. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

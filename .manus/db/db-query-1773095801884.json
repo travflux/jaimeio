@@ -1,0 +1,20 @@
+{
+  "query": "SELECT `key`, `value`, `updatedAt` FROM `workflow_settings` WHERE `key` IN ('setup_complete', '_onboarding_completed');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT `key`, `value`, `updatedAt` FROM `workflow_settings` WHERE `key` IN ('setup_complete', '_onboarding_completed');",
+  "rows": [
+    {
+      "key": "setup_complete",
+      "value": "false",
+      "updatedAt": "2026-03-09 22:33:59"
+    },
+    {
+      "key": "_onboarding_completed",
+      "value": "2026-03-09T02:43:44.219Z",
+      "updatedAt": "2026-03-09 02:43:44"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\tupdatedAt\nsetup_complete\tfalse\t2026-03-09 22:33:59\n_onboarding_completed\t2026-03-09T02:43:44.219Z\t2026-03-09 02:43:44\n",
+  "stderr": "",
+  "execution_time_ms": 354
+}

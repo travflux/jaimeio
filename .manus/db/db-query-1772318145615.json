@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, LEFT(headline, 60) as headline, \n  CASE \n    WHEN featuredImage LIKE '%wb-logo%' THEN 'wb-logo (fallback)'\n    WHEN featuredImage LIKE '%cloudfront%' THEN 'cloudfront (generated)'\n    WHEN featuredImage IS NULL THEN 'NULL'\n    ELSE featuredImage\n  END as image_status,\n  createdAt \nFROM articles \nORDER BY createdAt DESC \nLIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT id, LEFT(headline, 60) as headline, \n  CASE \n    WHEN featuredImage LIKE '%wb-logo%' THEN 'wb-logo (fallback)'\n    WHEN featuredImage LIKE '%cloudfront%' THEN 'cloudfront (generated)'\n    WHEN featuredImage IS NULL THEN 'NULL'\n    ELSE featuredImage\n  END as image_status,\n  createdAt \nFROM articles \nORDER BY createdAt DESC \nLIMIT 30;",
+  "rows": [
+    {
+      "id": "150037",
+      "headline": "Single-Family Rentals: Your Golden Ticket to Inflation-Proof",
+      "image_status": "",
+      "createdAt": "2026-02-28 19:06:02"
+    },
+    {
+      "id": "150036",
+      "headline": "Miracle Man Chris: From Zero to $3M in Flips (Just Add Our S",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:06:01"
+    },
+    {
+      "id": "150035",
+      "headline": "Distressed Assets: The Next 'Can't Miss' Opportunity (Accord",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:06:01"
+    },
+    {
+      "id": "150032",
+      "headline": "Podcast Guru Unveils Shocking 'Secret' to Real Estate Succes",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150033",
+      "headline": "Foreclosurepalooza 2026: Your Golden Ticket to Distressed Do",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150034",
+      "headline": "Bird-Dogging: The Secret Handshake to Your First Million (or",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:06:00"
+    },
+    {
+      "id": "150031",
+      "headline": "The Future of Fortune: Your $27 Ticket to Tomorrow's Distres",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150029",
+      "headline": "Mortgage Rates Plummet to 'Bargain' 5.78%: Is Your Wallet Re",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150030",
+      "headline": "Future-Proof Your Portfolio: 2026's 'Groundbreaking' Real Es",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:05:59"
+    },
+    {
+      "id": "150027",
+      "headline": "BREAKING: Housing Market Recovery Guaranteed by 2026… if the",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:05:58"
+    },
+    {
+      "id": "150028",
+      "headline": "Texas Turnkey: Your Golden Ticket to Out-of-State Overlevera",
+      "image_status": "NULL",
+      "createdAt": "2026-02-28 19:05:58"
+    },
+    {
+      "id": "150026",
+      "headline": "2026: The Year Your Crystal Ball Finally Pays Off (Maybe)",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150021",
+      "headline": "Mortgage Rates Plunge to 'Affordable' 5.99%: Is This the Bot",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150019",
+      "headline": "Construction Slowdown? More Like Opportunity Acceleration!",
+      "image_status": "",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150025",
+      "headline": "Mortgage Rates Plummet to 'Almost Affordable' Levels: Is You",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150023",
+      "headline": "Mortgage Rate Mirage: Homeowners Discover 'Savings' While Sa",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150024",
+      "headline": "Mortgage Rates Inch Up: Is Your Refinance Dream Still Alive,",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150022",
+      "headline": "Unlock the 4.5% Mortgage Unicorn: Your 2026 Crystal Ball Str",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150020",
+      "headline": "2026 Refinance Boom: Prepare Your Loan Docs (Eventually, May",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:53"
+    },
+    {
+      "id": "150013",
+      "headline": "AI Promises to 'Optimize Synergy' Between Lenders, Agents, a",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "150015",
+      "headline": "Sotheby's Canada: Leadership Shuffle or Pre-emptive Strike A",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "150016",
+      "headline": "Massachusetts Legislators Tackle 'Unconscious Bias' with Man",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "150017",
+      "headline": "Big Tech's 'Clear Cooperation' Coup: Is Your MLS About to Ge",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "150014",
+      "headline": "Brokerage Titan 'Ascends to Higher Plane' After Merging with",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "150018",
+      "headline": "2026 Housing Market: 'Affordability' Redefined as 'Opportuni",
+      "image_status": "wb-logo (fallback)",
+      "createdAt": "2026-02-28 18:03:52"
+    },
+    {
+      "id": "60019",
+      "headline": "Navigating Disruption: How AI's Influence in Hiring Mirrors ",
+      "image_status": "cloudfront (generated)",
+      "createdAt": "2026-02-27 17:11:11"
+    },
+    {
+      "id": "60020",
+      "headline": "Seize the Opportunity: Distressed Real Estate as Your Next C",
+      "image_status": "cloudfront (generated)",
+      "createdAt": "2026-02-27 17:11:11"
+    },
+    {
+      "id": "60018",
+      "headline": "Seize the Opportunity: Interviewing for Success in Distresse",
+      "image_status": "cloudfront (generated)",
+      "createdAt": "2026-02-27 17:11:09"
+    },
+    {
+      "id": "60017",
+      "headline": "Unlock Opportunity: The Untapped Potential of Distressed Rea",
+      "image_status": "cloudfront (generated)",
+      "createdAt": "2026-02-27 17:11:08"
+    },
+    {
+      "id": "60016",
+      "headline": "Boston's Resilient Market: A Prime Opportunity for Strategic",
+      "image_status": "cloudfront (generated)",
+      "createdAt": "2026-02-27 17:11:07"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\theadline\timage_status\tcreatedAt\n150037\tSingle-Family Rentals: Your Golden Ticket to Inflation-Proof\t\t2026-02-28 19:06:02\n150036\tMiracle Man Chris: From Zero to $3M in Flips (Just Add Our S\tNULL\t2026-02-28 19:06:01\n150035\tDistressed Assets: The Next 'Can't Miss' Opportunity (Accord\tNULL\t2026-02-28 19:06:01\n150032\tPodcast Guru Unveils Shocking 'Secret' to Real Estate Succes\tNULL\t2026-02-28 19:06:00\n150033\tForeclosurepalooza 2026: Your Golden Ticket to Distressed Do\tNULL\t2026-02-28 19:06:00\n150034\tBird-Dogging: The Secret Handshake to Your First Million (or\tNULL\t2026-02-28 19:06:00\n150031\tThe Future of Fortune: Your $27 Ticket to Tomorrow's Distres\tNULL\t2026-02-28 19:05:59\n150029\tMortgage Rates Plummet to 'Bargain' 5.78%: Is Your Wallet Re\tNULL\t2026-02-28 19:05:59\n150030\tFuture-Proof Your Portfolio: 2026's 'Groundbreaking' Real Es\tNULL\t2026-02-28 19:05:59\n150027\tBREAKING: Housing Market Recovery Guaranteed by 2026… if the\tNULL\t2026-02-28 19:05:58\n150028\tTexas Turnkey: Your Golden Ticket to Out-of-State Overlevera\tNULL\t2026-02-28 19:05:58\n150026\t2026: The Year Your Crystal Ball Finally Pays Off (Maybe)\twb-logo (fallback)\t2026-02-28 18:03:53\n150021\tMortgage Rates Plunge to 'Affordable' 5.99%: Is This the Bot\twb-logo (fallback)\t2026-02-28 18:03:53\n150019\tConstruction Slowdown? More Like Opportunity Acceleration!\t\t2026-02-28 18:03:53\n150025\tMortgage Rates Plummet to 'Almost Affordable' Levels: Is You\twb-logo (fallback)\t2026-02-28 18:03:53\n150023\tMortgage Rate Mirage: Homeowners Discover 'Savings' While Sa\twb-logo (fallback)\t2026-02-28 18:03:53\n150024\tMortgage Rates Inch Up: Is Your Refinance Dream Still Alive,\twb-logo (fallback)\t2026-02-28 18:03:53\n150022\tUnlock the 4.5% Mortgage Unicorn: Your 2026 Crystal Ball Str\twb-logo (fallback)\t2026-02-28 18:03:53\n150020\t2026 Refinance Boom: Prepare Your Loan Docs (Eventually, May\twb-logo (fallback)\t2026-02-28 18:03:53\n150013\tAI Promises to 'Optimize Synergy' Between Lenders, Agents, a\twb-logo (fallback)\t2026-02-28 18:03:52\n150015\tSotheby's Canada: Leadership Shuffle or Pre-emptive Strike A\twb-logo (fallback)\t2026-02-28 18:03:52\n150016\tMassachusetts Legislators Tackle 'Unconscious Bias' with Man\twb-logo (fallback)\t2026-02-28 18:03:52\n150017\tBig Tech's 'Clear Cooperation' Coup: Is Your MLS About to Ge\twb-logo (fallback)\t2026-02-28 18:03:52\n150014\tBrokerage Titan 'Ascends to Higher Plane' After Merging with\twb-logo (fallback)\t2026-02-28 18:03:52\n150018\t2026 Housing Market: 'Affordability' Redefined as 'Opportuni\twb-logo (fallback)\t2026-02-28 18:03:52\n60019\tNavigating Disruption: How AI's Influence in Hiring Mirrors \tcloudfront (generated)\t2026-02-27 17:11:11\n60020\tSeize the Opportunity: Distressed Real Estate as Your Next C\tcloudfront (generated)\t2026-02-27 17:11:11\n60018\tSeize the Opportunity: Interviewing for Success in Distresse\tcloudfront (generated)\t2026-02-27 17:11:09\n60017\tUnlock Opportunity: The Untapped Potential of Distressed Rea\tcloudfront (generated)\t2026-02-27 17:11:08\n60016\tBoston's Resilient Market: A Prime Opportunity for Strategic\tcloudfront (generated)\t2026-02-27 17:11:07\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

@@ -1,0 +1,50 @@
+{
+  "query": "SELECT hash, created_at FROM __drizzle_migrations ORDER BY created_at ASC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT hash, created_at FROM __drizzle_migrations ORDER BY created_at ASC;",
+  "rows": [
+    {
+      "hash": "814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b",
+      "created_at": "1772152360754"
+    },
+    {
+      "hash": "4bc01291e081f02f2c44be6a2658a16ae55e355f2dfb594cf121d05c97d70057",
+      "created_at": "1772152541646"
+    },
+    {
+      "hash": "5e0a002d2d035f8050fcb08d5d4e9a86849749317af53072db1dd583255a9f32",
+      "created_at": "1772207046387"
+    },
+    {
+      "hash": "b1e7b87c5c825a3bc79728d96f6822b047ecf33ef81f674da8c2cf9a642f1713",
+      "created_at": "1772211942204"
+    },
+    {
+      "hash": "d8dbf8c423bbfd8ccd9ed9002caf158863c31867b5138834f578d9ad4da9a053",
+      "created_at": "1772214478455"
+    },
+    {
+      "hash": "8d3fd5513389dc83b9bfa36973d1230f78392bbcb5261fc6aa021f289c0fcd64",
+      "created_at": "1772217269980"
+    },
+    {
+      "hash": "9218e268feec381c37535a03de48426b65cfe4e51c1e7c4bea8037a7c66bffa7",
+      "created_at": "1772245068081"
+    },
+    {
+      "hash": "eaa3ee6784b3dff60c7c758cecd9a77a64996770b425be6c26e9f954e1aa1e3c",
+      "created_at": "1772245870866"
+    },
+    {
+      "hash": "c0000423890027ea865e3eec01097d747b020a534b7ebf3d9bc336b723aabc00",
+      "created_at": "1772495645064"
+    },
+    {
+      "hash": "c0000423890027ea865e3eec01097d747b020a534b7ebf3d9bc336b723aabc00",
+      "created_at": "1772496155679"
+    }
+  ],
+  "messages": [],
+  "stdout": "hash\tcreated_at\n814a08e40d7fc2bcfd458759d18319198ca8ae394f2fa15617a78678e9c9c93b\t1772152360754\n4bc01291e081f02f2c44be6a2658a16ae55e355f2dfb594cf121d05c97d70057\t1772152541646\n5e0a002d2d035f8050fcb08d5d4e9a86849749317af53072db1dd583255a9f32\t1772207046387\nb1e7b87c5c825a3bc79728d96f6822b047ecf33ef81f674da8c2cf9a642f1713\t1772211942204\nd8dbf8c423bbfd8ccd9ed9002caf158863c31867b5138834f578d9ad4da9a053\t1772214478455\n8d3fd5513389dc83b9bfa36973d1230f78392bbcb5261fc6aa021f289c0fcd64\t1772217269980\n9218e268feec381c37535a03de48426b65cfe4e51c1e7c4bea8037a7c66bffa7\t1772245068081\neaa3ee6784b3dff60c7c758cecd9a77a64996770b425be6c26e9f954e1aa1e3c\t1772245870866\nc0000423890027ea865e3eec01097d747b020a534b7ebf3d9bc336b723aabc00\t1772495645064\nc0000423890027ea865e3eec01097d747b020a534b7ebf3d9bc336b723aabc00\t1772496155679\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

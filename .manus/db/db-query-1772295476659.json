@@ -1,0 +1,22 @@
+{
+  "query": "SELECT slug, status FROM articles WHERE status = 'published' LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT slug, status FROM articles WHERE status = 'published' LIMIT 3;",
+  "rows": [
+    {
+      "slug": "unlock-new-horizons-coming-soon-listings-present-strategic-advantage-for-savvy-p-1772161902102-0",
+      "status": "published"
+    },
+    {
+      "slug": "strategic-shift-how-exps-texas-move-illuminates-opportunity-1772161907597-1",
+      "status": "published"
+    },
+    {
+      "slug": "navigating-opportunity-why-this-is-real-estates-moment-for-strategic-growth-1772161912871-2",
+      "status": "published"
+    }
+  ],
+  "messages": [],
+  "stdout": "slug\tstatus\nunlock-new-horizons-coming-soon-listings-present-strategic-advantage-for-savvy-p-1772161902102-0\tpublished\nstrategic-shift-how-exps-texas-move-illuminates-opportunity-1772161907597-1\tpublished\nnavigating-opportunity-why-this-is-real-estates-moment-for-strategic-growth-1772161912871-2\tpublished\n",
+  "stderr": "",
+  "execution_time_ms": 93
+}

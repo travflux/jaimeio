@@ -1,0 +1,14 @@
+{
+  "query": "SELECT `key`, `value` FROM workflow_settings WHERE `key` = 'site_url' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT `key`, `value` FROM workflow_settings WHERE `key` = 'site_url' LIMIT 1;",
+  "rows": [
+    {
+      "key": "site_url",
+      "value": "https://hambry.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\nsite_url\thttps://hambry.com\n",
+  "stderr": "",
+  "execution_time_ms": 361
+}

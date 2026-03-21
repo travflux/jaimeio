@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO workflow_settings (`key`, `value`, `label`, `description`, `category`, `type`)\nVALUES ('site_url', 'https://joinwilderblueprint.vip', 'Site URL', 'The canonical URL of the site, used for redirects and SEO', 'branding', 'text')\nON DUPLICATE KEY UPDATE `value` = 'https://joinwilderblueprint.vip';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute INSERT INTO workflow_settings (`key`, `value`, `label`, `description`, `category`, `type`)\nVALUES ('site_url', 'https://joinwilderblueprint.vip', 'Site URL', 'The canonical URL of the site, used for redirects and SEO', 'branding', 'text')\nON DUPLICATE KEY UPDATE `value` = 'https://joinwilderblueprint.vip';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 89
+}

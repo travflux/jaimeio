@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, openId, name, email, role, loginMethod FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute SELECT id, openId, name, email, role, loginMethod FROM users;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "D7Up5Znmqu2SaSgdJJYUz3",
+      "name": "Jon Clark",
+      "email": "jon.clark@hambry.com",
+      "role": "user",
+      "loginMethod": "google"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tloginMethod\n1\tD7Up5Znmqu2SaSgdJJYUz3\tJon Clark\tjon.clark@hambry.com\tuser\tgoogle\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

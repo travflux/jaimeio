@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `social_posts` ADD CONSTRAINT `idx_article_platform` UNIQUE(`articleId`,`platform`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute ALTER TABLE `social_posts` ADD CONSTRAINT `idx_article_platform` UNIQUE(`articleId`,`platform`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 513
+}

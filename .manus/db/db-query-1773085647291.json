@@ -1,0 +1,25 @@
+{
+  "query": "SELECT \n  CASE WHEN score IS NULL THEN 'unscored' ELSE COALESCE(article_potential, 'unscored') END as tier,\n  COUNT(*) as cnt,\n  ROUND(AVG(score), 2) as avg_score\nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY tier\nORDER BY cnt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT \n  CASE WHEN score IS NULL THEN 'unscored' ELSE COALESCE(article_potential, 'unscored') END as tier,\n  COUNT(*) as cnt,\n  ROUND(AVG(score), 2) as avg_score\nFROM selector_candidates \nWHERE status = 'pending'\nGROUP BY tier\nORDER BY cnt DESC;",
+  "rows": [
+    {
+      "tier": "unscored",
+      "cnt": "2193",
+      "avg_score": "NULL"
+    },
+    {
+      "tier": "medium",
+      "cnt": "189",
+      "avg_score": "0.6"
+    },
+    {
+      "tier": "low",
+      "cnt": "1",
+      "avg_score": "0.35"
+    }
+  ],
+  "messages": [],
+  "stdout": "tier\tcnt\tavg_score\nunscored\t2193\tNULL\nmedium\t189\t0.6\nlow\t1\t0.35\n",
+  "stderr": "",
+  "execution_time_ms": 472
+}

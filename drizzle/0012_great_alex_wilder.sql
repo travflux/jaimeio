@@ -1,0 +1,20 @@
+CREATE TABLE `x_replies` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`tweetId` varchar(64) NOT NULL,
+	`tweetText` text NOT NULL,
+	`tweetAuthor` varchar(100) NOT NULL,
+	`tweetAuthorHandle` varchar(100) NOT NULL,
+	`tweetLikes` int DEFAULT 0,
+	`tweetRetweets` int DEFAULT 0,
+	`keyword` varchar(200),
+	`articleId` int,
+	`articleSlug` varchar(600),
+	`articleHeadline` varchar(500),
+	`replyContent` text,
+	`status` enum('pending','approved','posted','failed','skipped') NOT NULL DEFAULT 'pending',
+	`postedTweetId` varchar(64),
+	`errorMessage` text,
+	`postedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `x_replies_id` PRIMARY KEY(`id`)
+);

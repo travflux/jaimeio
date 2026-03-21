@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflow_settings SET value = 'https://wilderblue-5axjgj23.manus.space' WHERE `key` = 'site_url';\nUPDATE workflow_settings SET value = 'https://wilderblue-5axjgj23.manus.space/wb-logo.png' WHERE `key` = 'brand_og_image';\nUPDATE workflow_settings SET value = '/wb-logo.png' WHERE `key` = 'brand_mascot_url';\nUPDATE workflow_settings SET value = 'Wilder Blueprint' WHERE `key` = 'brand_mascot_name';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute UPDATE workflow_settings SET value = 'https://wilderblue-5axjgj23.manus.space' WHERE `key` = 'site_url';\nUPDATE workflow_settings SET value = 'https://wilderblue-5axjgj23.manus.space/wb-logo.png' WHERE `key` = 'brand_og_image';\nUPDATE workflow_settings SET value = '/wb-logo.png' WHERE `key` = 'brand_mascot_url';\nUPDATE workflow_settings SET value = 'Wilder Blueprint' WHERE `key` = 'brand_mascot_name';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 104
+}

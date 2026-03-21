@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflow_settings SET `value` = 'https://joinwilderblueprint.vip' WHERE `key` = 'site_url';\nUPDATE workflow_settings SET `value` = 'Actionable real estate investing education for foreclosures, distressed properties, and high-return deals. Built by investors, for investors.' WHERE `key` = 'brand_description';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute UPDATE workflow_settings SET `value` = 'https://joinwilderblueprint.vip' WHERE `key` = 'site_url';\nUPDATE workflow_settings SET `value` = 'Actionable real estate investing education for foreclosures, distressed properties, and high-return deals. Built by investors, for investors.' WHERE `key` = 'brand_description';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 454
+}

@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO workflow_settings (`key`, `value`, `description`, `updatedAt`)\nVALUES ('brand_genre', 'satire', 'Genre for editorial potential scoring (e.g. satire, real estate, tech)', NOW())\nON DUPLICATE KEY UPDATE `value` = 'satire', `updatedAt` = NOW();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute INSERT INTO workflow_settings (`key`, `value`, `description`, `updatedAt`)\nVALUES ('brand_genre', 'satire', 'Genre for editorial potential scoring (e.g. satire, real estate, tech)', NOW())\nON DUPLICATE KEY UPDATE `value` = 'satire', `updatedAt` = NOW();",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 427
+}

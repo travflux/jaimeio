@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE workflow_settings SET value = '' WHERE `key` = 'brand_site_name' AND value = 'Hambry'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user mfUemcUDe4dZgvy.root --database 5aXJgJ23doBv7KCYS3YtvX --execute UPDATE workflow_settings SET value = '' WHERE `key` = 'brand_site_name' AND value = 'Hambry'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 364
+}

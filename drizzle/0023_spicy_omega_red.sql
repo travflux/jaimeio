@@ -1,0 +1,1 @@
+ALTER TABLE `affiliate_clicks` ADD `clickType` varchar(50) DEFAULT 'amazon' NOT NULL;

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT `key`, `value`, `description`, `updatedAt` FROM workflow_settings WHERE `key` = 'brand_genre';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2wfbAGRs7AVLkN4.90cd9747513f --database 4wsqNcW8uBjUqkvadz54Yt --execute SELECT `key`, `value`, `description`, `updatedAt` FROM workflow_settings WHERE `key` = 'brand_genre';",
+  "rows": [
+    {
+      "key": "brand_genre",
+      "value": "satire",
+      "description": "Primary content genre (e.g., satire, news, tech, entertainment).",
+      "updatedAt": "2026-03-09 19:28:13"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\tdescription\tupdatedAt\nbrand_genre\tsatire\tPrimary content genre (e.g., satire, news, tech, entertainment).\t2026-03-09 19:28:13\n",
+  "stderr": "",
+  "execution_time_ms": 375
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `merch_products` MODIFY COLUMN `productType` enum('mug','shirt','poster','case','canvas','tote','hoodie','mousepad','candle','cards','digital') NOT NULL;
