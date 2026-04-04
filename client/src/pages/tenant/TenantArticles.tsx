@@ -2,12 +2,17 @@ import React, { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 function ReviewPanel({ article, categories, onClose, onAction }: { article: any; categories: any[]; onClose: () => void; onAction: () => void }) {
   const approveMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const rejectMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const updateMut = trpc.articles.update.useMutation();
+  const distributeMut = trpc.distribution.distributeArticle.useMutation({
+    onSuccess: (r: any) => toast.success("Queued to " + r.platformCount + " platform(s)"),
+    onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
+  });
   const updateImageMut = trpc.articles.updateImage.useMutation();
   const [localArticle, setLocalArticle] = useState(article);
   const geoRefetchQuery = trpc.geo.getArticleGeo.useQuery({ articleId: article.id }, { enabled: false });
@@ -182,14 +187,23 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
 
         {/* Footer */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8, flexShrink: 0 }}>
-          <button onClick={() => approveMut.mutate({ id: article.id, status: "published" })} disabled={approveMut.isPending}
-            style={{ flex: 1, height: 44, background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            {approveMut.isPending ? "Publishing..." : "Approve & Publish"}
-          </button>
-          <button onClick={() => rejectMut.mutate({ id: article.id, status: "rejected" })} disabled={rejectMut.isPending}
-            style={{ width: 90, height: 44, background: "#fff", color: "#ef4444", border: "1px solid #ef4444", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-            Reject
-          </button>
+          {article.status === "published" ? (
+            <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
+              style={{ flex: 1, height: 44, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {distributeMut.isPending ? <><Loader2 size={16} className="animate-spin" /> Distributing...</> : <><Share2 size={16} /> Distribute to Social</>}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => approveMut.mutate({ id: article.id, status: "published" })} disabled={approveMut.isPending}
+                style={{ flex: 1, height: 44, background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                {approveMut.isPending ? "Publishing..." : "Approve & Publish"}
+              </button>
+              <button onClick={() => rejectMut.mutate({ id: article.id, status: "rejected" })} disabled={rejectMut.isPending}
+                style={{ width: 90, height: 44, background: "#fff", color: "#ef4444", border: "1px solid #ef4444", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Reject
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>

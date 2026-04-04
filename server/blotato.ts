@@ -375,3 +375,122 @@ export async function syncSlotsToBlotato(
 
   console.log("[Blotato] Synced " + blotatoSlots.length + " slots for licenseId " + licenseId);
 }
+
+// ─── Article Distribution ─────────────────────────────────────────────────────
+
+function buildPostContent(
+  article: { headline: string; subheadline?: string | null; featuredImage?: string | null },
+  articleUrl: string,
+  platform: string
+): BlotatoPostContent {
+  const mediaUrls = article.featuredImage ? [article.featuredImage] : [];
+  switch (platform) {
+    case "twitter":
+    case "x":
+      return { text: article.headline + "\n\n" + articleUrl, mediaUrls, platform: "twitter" };
+    case "instagram":
+      return { text: article.headline + "\n\n" + (article.subheadline || "") + "\n\nRead more at the link in bio.\n\n" + articleUrl, mediaUrls, platform: "instagram" };
+    case "linkedin":
+      return { text: article.headline + "\n\n" + (article.subheadline || "") + "\n\n" + articleUrl, mediaUrls, platform: "linkedin" };
+    case "facebook":
+      return { text: article.headline + "\n\n" + (article.subheadline || ""), mediaUrls, platform: "facebook" };
+    case "threads":
+      return { text: article.headline + "\n\n" + articleUrl, mediaUrls, platform: "threads" };
+    case "bluesky":
+      return { text: article.headline + "\n\n" + articleUrl, mediaUrls, platform: "bluesky" };
+    default:
+      return { text: article.headline + "\n\n" + articleUrl, mediaUrls, platform };
+  }
+}
+
+function buildPostTarget(account: { platform: string; id: string; pageId?: string }): BlotatoTarget {
+  switch (account.platform) {
+    case "facebook":
+      return { targetType: "facebook", pageId: account.pageId };
+    case "linkedin":
+      return { targetType: "linkedin", ...(account.pageId && { pageId: account.pageId }) };
+    case "tiktok":
+      return { targetType: "tiktok", privacyLevel: "PUBLIC_TO_EVERYONE", disabledComments: false, disabledDuet: false, disabledStitch: false, isBrandedContent: false, isYourBrand: true, isAiGenerated: true };
+    default:
+      return { targetType: account.platform };
+  }
+}
+
+export async function queueArticleToBlotato(
+  licenseId: number,
+  article: { id: number; headline: string; subheadline?: string | null; slug: string; featuredImage?: string | null },
+  siteUrl: string
+): Promise<number> {
+  const { getLicenseSetting, getBlotatoAccountsFromSettings } = await import("./db");
+  const ls = await getLicenseSetting(licenseId, "blotato_api_key");
+  const apiKey = ls?.value || null;
+  if (!apiKey) {
+    console.log("[Blotato] No API key for licenseId " + licenseId + " — skipping distribution");
+    return 0;
+  }
+
+  const accounts = await getBlotatoAccountsFromSettings(licenseId);
+  if (accounts.length === 0) {
+    console.log("[Blotato] No accounts for licenseId " + licenseId + " — skipping distribution");
+    return 0;
+  }
+
+  // Determine enabled platforms from license_settings toggles
+  const enabledPlatforms: string[] = [];
+  const platformKeys = ["x", "instagram", "linkedin", "facebook", "threads", "bluesky", "tiktok"];
+  for (const p of platformKeys) {
+    const setting = await getLicenseSetting(licenseId, "blotato_" + p + "_enabled");
+    if (setting?.value === "true") enabledPlatforms.push(p);
+  }
+  // Also accept "twitter" if "x" is enabled
+  if (enabledPlatforms.includes("x")) enabledPlatforms.push("twitter");
+
+  const articleUrl = siteUrl.replace(/\/$/, "") + "/article/" + article.slug;
+  let queued = 0;
+
+  for (const account of accounts) {
+    if (!enabledPlatforms.includes(account.platform)) continue;
+
+    try {
+      const postContent = buildPostContent(article, articleUrl, account.platform);
+      const target = buildPostTarget(account);
+      let result;
+      try {
+        result = await submitBlotatoPost(apiKey, { accountId: account.id, content: postContent, target }, { useNextFreeSlot: true });
+      } catch (slotErr: any) {
+        if (slotErr?.message?.includes("No available slot")) {
+          result = await submitBlotatoPost(apiKey, { accountId: account.id, content: postContent, target });
+          console.log("[Blotato] No slots — posting immediately for " + account.platform);
+        } else {
+          throw slotErr;
+        }
+      }
+      console.log("[Blotato] Queued " + account.platform + " post for article " + article.id + ": " + result.postSubmissionId);
+
+      // Record in distribution_queue
+      try {
+        const { getDb } = await import("./db");
+        const { distributionQueue } = await import("../drizzle/schema");
+        const db = await getDb();
+        if (db) {
+          await db.insert(distributionQueue).values({
+            articleId: article.id,
+            platform: account.platform,
+            status: "sending",
+            content: postContent.text,
+            platformPostId: result.postSubmissionId,
+            triggeredBy: "auto",
+            imageUrl: article.featuredImage || undefined,
+          });
+        }
+      } catch (e) {
+        console.error("[Blotato] Failed to record queue entry:", e);
+      }
+
+      queued++;
+    } catch (err) {
+      console.error("[Blotato] Failed to queue " + account.platform + " for article " + article.id + ":", err);
+    }
+  }
+  return queued;
+}

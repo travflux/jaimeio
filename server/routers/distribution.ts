@@ -326,4 +326,34 @@ export const distributionRouter = router({
     return { success: true };
   }),
 
+  // Manually distribute a published article to Blotato
+  distributeArticle: tenantOrAdminProcedure
+    .input(z.object({ articleId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      const article = await db.getArticleById(input.articleId);
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+      if (article.licenseId && article.licenseId !== ctx.licenseId) throw new TRPCError({ code: "FORBIDDEN" });
+
+      // Resolve site URL
+      const siteUrlSetting = await db.getLicenseSetting(ctx.licenseId, "site_url");
+      let siteUrl = siteUrlSetting?.value || "";
+      if (!siteUrl) {
+        const { getLicenseById } = await import("../auth/licenseAuth");
+        const license = await getLicenseById(ctx.licenseId);
+        siteUrl = license?.subdomain ? "https://" + license.subdomain + ".getjaime.io" : "https://app.getjaime.io";
+      }
+
+      const { queueArticleToBlotato } = await import("../blotato");
+      const queued = await queueArticleToBlotato(ctx.licenseId, {
+        id: article.id,
+        headline: article.headline,
+        subheadline: article.subheadline,
+        slug: article.slug,
+        featuredImage: article.featuredImage,
+      }, siteUrl);
+
+      return { success: true, platformCount: queued };
+    }),
+
 });
