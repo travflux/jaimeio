@@ -6,7 +6,7 @@
  *   - auto_approve_after_hours (number, default 4)
  *   - auto_publish_approved (boolean) — if true, approved articles are also published immediately
  *
- * Publish gate: articles without a featured image (and no mascot fallback) are
+ * Publish gate: articles without a featured image are
  * approved but NOT auto-published. They stay in "approved" until an image is added.
  */
 

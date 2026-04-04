@@ -274,15 +274,9 @@ export function registerSeoRoutes(app: Express) {
       if (database) {
         const [cat] = await database.select().from(categoriesTable).where(eq(categoriesTable.slug, categorySlug)).limit(1);
         if (!cat) {
-          const notFoundTags = buildDefaultMetaTags({
-            pageTitle: "Category Not Found",
-            description: "This category does not exist.",
-            siteUrl: branding.siteUrl,
-            ogImage: branding.ogImage,
-            pagePath: `/category/${categorySlug}`,
-          });
-          res.status(404).set({ "Content-Type": "text/html" }).end(injectMetaTags(getHtmlTemplate(), notFoundTags));
-          return;
+          // Category not in global table — may be a license-level category
+          // Pass through to SPA which handles per-license categories
+          return next();
         }
       }
 
@@ -304,7 +298,7 @@ export function registerSeoRoutes(app: Express) {
       ]);
 
       const crawlLinks = buildCategoryCrawlLinks(categoryArticles, branding.siteUrl);
-      let html = injectMetaTags(getHtmlTemplate(), metaTags);
+      let html = await getHtmlWithBrand(req.hostname || req.headers.host?.split(":")[0] || "", metaTags);
       if (crawlLinks) html = html.replace("</body>", `${crawlLinks}\n</body>`);
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     } catch (e) {
@@ -415,11 +409,23 @@ export function registerSeoRoutes(app: Express) {
       });
 
       const crawlLinks = buildCrawlLinks(recentArticles, branding.siteUrl);
-      let html = injectMetaTags(getHtmlTemplate(), metaTags);
+      let html = await getHtmlWithBrand(req.hostname || req.headers.host?.split(":")[0] || "", metaTags);
       if (crawlLinks) html = html.replace("</body>", `${crawlLinks}\n</body>`);
       res.status(200).set({ "Content-Type": "text/html" }).end(html);
     } catch (e) {
       next(e);
     }
   });
+}
+
+// ─── Brand-aware HTML template (appended for SSR brand injection) ─────────
+import { getBrandSsrData as _getBrandSsrData, injectBrandTheme as _injectBrandTheme } from './publicPageSsr';
+
+export async function getHtmlWithBrand(hostname: string, metaTags: string): Promise<string> {
+  let html = injectMetaTags(getHtmlTemplate(), metaTags);
+  try {
+    const brandData = await _getBrandSsrData(hostname);
+    html = _injectBrandTheme(html, brandData);
+  } catch { /* non-blocking */ }
+  return html;
 }

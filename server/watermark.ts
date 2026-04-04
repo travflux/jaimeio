@@ -3,39 +3,7 @@ import path from "path";
 import fs from "fs";
 import { getInterBoldBase64 } from "./fontLoader";
 
-// CDN URL for mascot image
-const MASCOT_CDN_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663360362586/rGPYEnmcoEhqiUIQ.png";
 
-// Cache buffers in memory so we only download once per server lifetime
-let cachedMascotBuffer: Buffer | null = null;
-
-async function getMascotBuffer(): Promise<Buffer | null> {
-  if (cachedMascotBuffer) return cachedMascotBuffer;
-
-  try {
-    const localPath = path.join(process.cwd(), "client/public/mascot.png");
-    if (fs.existsSync(localPath)) {
-      cachedMascotBuffer = fs.readFileSync(localPath);
-      console.log("[Watermark] Loaded mascot from local file");
-      return cachedMascotBuffer;
-    }
-  } catch {
-    // ignore local file errors
-  }
-
-  try {
-    const resp = await fetch(MASCOT_CDN_URL);
-    if (resp.ok) {
-      cachedMascotBuffer = Buffer.from(await resp.arrayBuffer());
-      console.log("[Watermark] Loaded mascot from CDN");
-      return cachedMascotBuffer;
-    }
-  } catch (err) {
-    console.warn("[Watermark] Could not load mascot image:", err);
-  }
-
-  return null;
-}
 
 export interface WatermarkOptions {
   text?: string;
@@ -43,8 +11,6 @@ export interface WatermarkOptions {
   fontSize?: number;
   textColor?: string;
   bgOpacity?: number;
-  showMascot?: boolean;
-  mascotSize?: number; // percentage of image height (5-30)
 }
 
 export async function addWatermark(
@@ -57,8 +23,6 @@ export async function addWatermark(
     fontSize = 16,
     textColor = "255,255,255",
     bgOpacity = 60,
-    showMascot = true,
-    mascotSize = 12,
   } = options;
 
   try {
@@ -75,25 +39,6 @@ export async function addWatermark(
     const margin = Math.round(20 * scaleFactor);
 
     const composites: sharp.OverlayOptions[] = [];
-
-    // Add mascot watermark (bottom-left)
-    if (showMascot) {
-      const mascotBuffer = await getMascotBuffer();
-      if (mascotBuffer) {
-        const mascotHeight = Math.round((height * mascotSize) / 100);
-        const mascotImage = sharp(mascotBuffer).resize(
-          Math.round((mascotHeight * 3) / 4),
-          mascotHeight,
-          { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }
-        );
-
-        composites.push({
-          input: await mascotImage.toBuffer(),
-          top: height - mascotHeight - padding - margin,
-          left: margin + padding,
-        });
-      }
-    }
 
     // Add text watermark (bottom-right) using SVG
     const textHeight = Math.round(scaledFontSize * 1.8);
@@ -147,8 +92,7 @@ export async function getWatermarkSettings(): Promise<WatermarkOptions> {
   const fontSize = parseInt((await getSetting("watermark_font_size"))?.value || "16", 10);
   const textColor = (await getSetting("watermark_text_color"))?.value || "255,255,255";
   const bgOpacity = parseInt((await getSetting("watermark_bg_opacity"))?.value || "60", 10);
-  const showMascot = ((await getSetting("watermark_show_mascot"))?.value || "true") === "true";
-  const mascotSize = parseInt((await getSetting("watermark_mascot_size"))?.value || "12", 10);
+
   
   return {
     text,
@@ -156,8 +100,6 @@ export async function getWatermarkSettings(): Promise<WatermarkOptions> {
     fontSize,
     textColor,
     bgOpacity,
-    showMascot,
-    mascotSize,
   };
 }
 

@@ -67,8 +67,8 @@ async function handleStripeEvent(event: any): Promise<void> {
 
   switch (type) {
     case "checkout.session.completed": {
-      const sessionId = obj.metadata?.hambry_session_id as string | undefined;
-      const visitorId = obj.metadata?.hambry_visitor_id as string | undefined;
+      const sessionId = obj.metadata?.jaimeio_session_id as string | undefined;
+      const visitorId = obj.metadata?.jaimeio_visitor_id as string | undefined;
       const amountCents = obj.amount_total ?? 0;
       const currency = obj.currency ?? "usd";
 
@@ -101,8 +101,8 @@ async function handleStripeEvent(event: any): Promise<void> {
       const customerId = obj.customer as string | undefined;
       const amountCents = obj.amount_paid ?? 0;
       const currency = obj.currency ?? "usd";
-      const sessionId = obj.metadata?.hambry_session_id as string | undefined;
-      const visitorId = obj.metadata?.hambry_visitor_id as string | undefined;
+      const sessionId = obj.metadata?.jaimeio_session_id as string | undefined;
+      const visitorId = obj.metadata?.jaimeio_visitor_id as string | undefined;
 
       await insertRevenueEvent({
         stripeEventId: event.id,
@@ -120,8 +120,8 @@ async function handleStripeEvent(event: any): Promise<void> {
     case "payment_intent.succeeded": {
       const amountCents = obj.amount ?? 0;
       const currency = obj.currency ?? "usd";
-      const sessionId = obj.metadata?.hambry_session_id as string | undefined;
-      const visitorId = obj.metadata?.hambry_visitor_id as string | undefined;
+      const sessionId = obj.metadata?.jaimeio_session_id as string | undefined;
+      const visitorId = obj.metadata?.jaimeio_visitor_id as string | undefined;
 
       await insertRevenueEvent({
         stripeEventId: event.id,

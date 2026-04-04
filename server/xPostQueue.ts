@@ -190,7 +190,7 @@ async function processNextPost(): Promise<{
     //   1. OG tags are set client-side by React — Twitter's crawler can't execute JS.
     //   2. Twitter's crawler fetches the homepage OG image (generic website screenshot).
     // Rule: use the article's featuredImage when available; otherwise use the branded
-    // fallback mascot image. This ensures every post shows the correct image.
+    // fallback image. This ensures every post shows the correct image.
     const FALLBACK_IMAGE_URL = "/og-image.jpg";
     let imageUrl: string | undefined;
     try {
@@ -207,7 +207,7 @@ async function processNextPost(): Promise<{
           console.log(`[X Queue] Will post with article featured image: ${imageUrl}`);
         } else {
           imageUrl = FALLBACK_IMAGE_URL;
-          console.log(`[X Queue] No featured image — using branded fallback mascot image`);
+          console.log(`[X Queue] No featured image — using branded fallback image`);
         }
       } else {
         console.log(`[X Queue] Images disabled by x_include_image setting`);

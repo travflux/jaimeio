@@ -12,7 +12,7 @@ import { getDb } from "./db";
 import { searchEnginePerformance } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
-// Use GSC_SITE_IDENTIFIER env var if set (e.g., "sc-domain:hambry.com" for domain properties).
+// Use GSC_SITE_IDENTIFIER env var if set (e.g., "sc-domain:getjaime.io" for domain properties).
 // Falls back to building from SITE_URL with trailing slash for URL-prefix properties.
 // White-label compatible — each deployment sets its own GSC_SITE_IDENTIFIER or SITE_URL.
 const GSC_SITE_URL = process.env.GSC_SITE_IDENTIFIER

@@ -1,7 +1,7 @@
 /**
  * Network Report API — v4.7.0
  *
- * Cross-site analytics and control endpoint for the Satire Engine network.
+ * Cross-site analytics and control endpoint for the JAIME.IO network.
  * Designed for the CEO (or a central hub) to pull metrics from any deployment
  * and optionally push settings or trigger operations.
  *

@@ -126,8 +126,8 @@ const PLATFORM_FORMS: PlatformFormDef[] = [
     label: "X / Twitter",
     dailyLimit: "15–20 article posts + 5–10 standalone takes per day",
     profileFields: [
-      { key: "brand_twitter_handle", label: "Handle", placeholder: "@hambry_com", helpText: "Your X/Twitter handle (e.g., @hambry_com)" },
-      { key: "brand_twitter_url", label: "Profile URL", placeholder: "https://x.com/hambry_com", helpText: "Full URL to your X/Twitter profile" },
+      { key: "brand_twitter_handle", label: "Handle", placeholder: "@getjaimeio", helpText: "Your X/Twitter handle (e.g., @getjaimeio)" },
+      { key: "brand_twitter_url", label: "Profile URL", placeholder: "https://x.com/getjaimeio", helpText: "Full URL to your X/Twitter profile" },
     ],
     fields: [
       { key: "apiKey", label: "API Key (Consumer Key)", placeholder: "xxxxxxxxxxxxxxxxxxxxxxxx", helpText: "developer.twitter.com → Your App → Keys and Tokens → Consumer Keys" },
@@ -187,7 +187,7 @@ const PLATFORM_FORMS: PlatformFormDef[] = [
       { key: "brand_bluesky_url", label: "Profile URL", placeholder: "https://bsky.app/profile/yourname.bsky.social", helpText: "Full URL to your Bluesky profile" },
     ],
     fields: [
-      { key: "identifier", label: "Handle", placeholder: "yourname.bsky.social", helpText: "Your Bluesky handle (e.g., hambry.bsky.social)" },
+      { key: "identifier", label: "Handle", placeholder: "yourname.bsky.social", helpText: "Your Bluesky handle (e.g., jaimeio.bsky.social)" },
       { key: "password", label: "App Password", type: "password", placeholder: "xxxx-xxxx-xxxx-xxxx", helpText: "bsky.app → Settings → Privacy and Security → App Passwords → Add App Password" },
     ],
     helpUrl: "https://bsky.app/settings/app-passwords",
@@ -464,6 +464,69 @@ function BrandScreen({
   const [showContacts, setShowContacts] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
 
+  // Custom domain state
+  const [customDomain, setCustomDomain] = useState("");
+  const [domainStatus, setDomainStatus] = useState<"idle" | "pending" | "active" | "failed">("idle");
+  const [domainVerifying, setDomainVerifying] = useState(false);
+  const [domainError, setDomainError] = useState("");
+
+  // Custom domain TRPC
+  const domainRegisterMutation = trpc.domains.register.useMutation();
+  const domainVerifyMutation = trpc.domains.verify.useMutation();
+  const domainsQuery = trpc.domains.list.useQuery();
+
+  // Load existing custom domain on mount
+  useEffect(() => {
+    if (domainsQuery.data && domainsQuery.data.length > 0) {
+      const d = domainsQuery.data[0] as any;
+      setCustomDomain(d.customDomain || "");
+      setDomainStatus(d.sslStatus === "active" ? "active" : d.sslStatus === "failed" ? "failed" : "pending");
+    }
+  }, [domainsQuery.data]);
+
+  const handleVerifyDomain = async () => {
+    if (!customDomain.trim()) return;
+    setDomainVerifying(true);
+    setDomainError("");
+    try {
+      const result = await domainVerifyMutation.mutateAsync({ domain: customDomain.trim() });
+      if (result.verified) {
+        setDomainStatus("active");
+        toast.success("Domain verified successfully!");
+      } else {
+        setDomainStatus("failed");
+        setDomainError(result.error || "Verification failed");
+        toast.error(result.error || "DNS verification failed");
+      }
+      domainsQuery.refetch();
+    } catch (err: any) {
+      setDomainError(err.message);
+      toast.error("Verification failed");
+    } finally {
+      setDomainVerifying(false);
+    }
+  };
+
+  const handleSaveCustomDomain = async () => {
+    if (!customDomain.trim()) return;
+    try {
+      const existing = domainsQuery.data?.find((d: any) => d.customDomain === customDomain.trim().toLowerCase());
+      if (existing) return;
+      await domainRegisterMutation.mutateAsync({
+        clientId: settings["brand_site_name"]?.toLowerCase().replace(/\s+/g, "-") || "default",
+        domain: customDomain.trim(),
+        publicationName: settings["brand_site_name"] || "Publication",
+      });
+      setDomainStatus("pending");
+      domainsQuery.refetch();
+      toast.success("Custom domain registered!");
+    } catch (err: any) {
+      if (!err.message?.includes("already registered")) {
+        toast.error(err.message);
+      }
+    }
+  };
+
   // Treat placeholder defaults as "not configured"
   const brandStatus = (key: string, required = true): StatusDot => {
     const v = settings[key];
@@ -494,7 +557,7 @@ function BrandScreen({
           <Input value={settings["brand_site_name"] ?? ""} onChange={e => set("brand_site_name", e.target.value)} placeholder="e.g., The Daily Lampoon" className="h-9" />
         </FieldRow>
         <FieldRow label="Tagline" helpText="Short phrase below your site name in the masthead." status={brandStatus("brand_tagline")}>
-          <Input value={settings["brand_tagline"] ?? ""} onChange={e => set("brand_tagline", e.target.value)} placeholder="e.g., The News, Remastered" className="h-9" />
+          <Input value={settings["brand_tagline"] ?? ""} onChange={e => set("brand_tagline", e.target.value)} placeholder="e.g., AI-Powered Content, Automated" className="h-9" />
         </FieldRow>
         <FieldRow label="Site Description" helpText="Used in the footer, About page, and search engine meta tags. 1-2 sentences." status={brandStatus("brand_description")}>
           <Textarea value={settings["brand_description"] ?? ""} onChange={e => set("brand_description", e.target.value)} placeholder="A news publication covering politics, tech, and culture." rows={3} className="resize-y text-sm" />
@@ -505,8 +568,72 @@ function BrandScreen({
         <FieldRow label="Website URL" helpText="Full address including https://. Used in social links, sitemaps, and SEO." status={brandStatus("site_url")}>
           <Input type="url" value={settings["site_url"] ?? ""} onChange={e => set("site_url", e.target.value)} placeholder="https://yoursite.com" className="h-9 font-mono text-xs" />
         </FieldRow>
-        <FieldRow label="Editorial Team Name" helpText="Author name on articles and in schema.org markup. E.g., 'Hambry Editorial Team'." status={brandStatus("brand_editorial_team", false)}>
-          <Input value={settings["brand_editorial_team"] ?? ""} onChange={e => set("brand_editorial_team", e.target.value)} placeholder="e.g., Hambry Editorial Team" className="h-9" />
+
+        {/* Custom Domain */}
+        <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Custom Domain</p>
+              <p className="text-xs text-muted-foreground">Leave blank if you are using a getjaime.io subdomain</p>
+            </div>
+            {domainStatus === "active" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <CheckCircle2 className="w-3 h-3" /> Active
+              </span>
+            )}
+            {domainStatus === "pending" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                <Circle className="w-3 h-3" /> Pending
+              </span>
+            )}
+            {domainStatus === "failed" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                <XCircle className="w-3 h-3" /> Failed
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={customDomain}
+              onChange={e => setCustomDomain(e.target.value)}
+              placeholder="news.theirclient.com"
+              className="h-9 font-mono text-xs flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleVerifyDomain}
+              disabled={!customDomain.trim() || domainVerifying}
+              className="shrink-0"
+            >
+              {domainVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+              Verify DNS
+            </Button>
+            {customDomain.trim() && domainStatus === "idle" && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveCustomDomain}
+                disabled={domainRegisterMutation.isPending}
+                className="shrink-0"
+              >
+                {domainRegisterMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                Save
+              </Button>
+            )}
+          </div>
+          {domainError && <p className="text-xs text-destructive">{domainError}</p>}
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-xs text-blue-700 dark:text-blue-300">
+            <Globe className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              Point your domain to us by adding a <strong>CNAME</strong> record in your DNS settings:
+              <code className="block mt-1 px-2 py-1 bg-white dark:bg-slate-900 rounded border font-mono text-xs">publications.getjaime.io</code>
+            </div>
+          </div>
+        </div>
+        <FieldRow label="Editorial Team Name" helpText="Author name on articles and in schema.org markup. E.g., 'JAIME.IO Editorial Team'." status={brandStatus("brand_editorial_team", false)}>
+          <Input value={settings["brand_editorial_team"] ?? ""} onChange={e => set("brand_editorial_team", e.target.value)} placeholder="e.g., JAIME.IO Editorial Team" className="h-9" />
         </FieldRow>
       </div>
 
@@ -539,15 +666,6 @@ function BrandScreen({
             <ImgPreview url={settings["brand_favicon_url"]} />
           </div>
         </FieldRow>
-        <FieldRow label="Mascot Image" helpText="Used on 404 page, loading states, and footer." status={brandStatus("brand_mascot_url", false)}>
-          <div className="flex gap-2 items-center">
-            <Input value={settings["brand_mascot_url"] ?? ""} onChange={e => set("brand_mascot_url", e.target.value)} placeholder="/mascot.png" className="h-9 font-mono text-xs" />
-            <ImgPreview url={settings["brand_mascot_url"]} />
-          </div>
-        </FieldRow>
-        <FieldRow label="Mascot Name" helpText="Name for alt text and easter eggs." status={brandStatus("brand_mascot_name", false)}>
-          <Input value={settings["brand_mascot_name"] ?? ""} onChange={e => set("brand_mascot_name", e.target.value)} placeholder="e.g., Hammy" className="h-9" />
-        </FieldRow>
       </div>
 
       <Separator />
@@ -571,7 +689,7 @@ function BrandScreen({
           </Select>
         </FieldRow>
         {(settings["loading_style"] ?? "spinner") === "logo" && (
-          <FieldRow label="Loading Logo URL" helpText="URL to your logo or mascot image. Falls back to spinner if empty." status={brandStatus("loading_logo_url", false)}>
+          <FieldRow label="Loading Logo URL" helpText="URL to your logo image. Falls back to spinner if empty." status={brandStatus("loading_logo_url", false)}>
             <div className="flex gap-2 items-center">
               <Input value={settings["loading_logo_url"] ?? ""} onChange={e => set("loading_logo_url", e.target.value)} placeholder="https://yoursite.com/logo.png" className="h-9 font-mono text-xs" />
               <ImgPreview url={settings["loading_logo_url"]} />
@@ -579,7 +697,7 @@ function BrandScreen({
           </FieldRow>
         )}
         <FieldRow label="Loading Text" helpText="Optional text below the animation (e.g., your site name). Leave blank for no text." status={brandStatus("loading_text", false)}>
-          <Input value={settings["loading_text"] ?? ""} onChange={e => set("loading_text", e.target.value)} placeholder="e.g., Hambry News" className="h-9" />
+          <Input value={settings["loading_text"] ?? ""} onChange={e => set("loading_text", e.target.value)} placeholder="e.g., JAIME.IO" className="h-9" />
         </FieldRow>
         {/* Live preview */}
         <div className="rounded-lg border bg-muted/30 p-4">
@@ -861,7 +979,7 @@ function BrandScreen({
         {showLegal && (
           <div className="space-y-3 pl-1">
             <FieldRow label="Company / Legal Name" helpText="Legal entity name in Terms of Service, Privacy Policy, and footer copyright." status={brandStatus("brand_company_name", false)}>
-              <Input value={settings["brand_company_name"] ?? ""} onChange={e => set("brand_company_name", e.target.value)} placeholder="e.g., Hambry Media LLC" className="h-9" />
+              <Input value={settings["brand_company_name"] ?? ""} onChange={e => set("brand_company_name", e.target.value)} placeholder="e.g., JANICCO" className="h-9" />
             </FieldRow>
             <FieldRow label="Founded Year" helpText="Footer copyright year: © 2026 Company Name." status={fieldStatus("brand_founded_year", false)}>
               <Input type="number" min={1900} max={2100} value={settings["brand_founded_year"] ?? ""} onChange={e => set("brand_founded_year", e.target.value)} placeholder="2026" className="h-9" />
@@ -1321,7 +1439,7 @@ function ContentEngineScreen({settings, set, isOn, toggle, fieldStatus,
 
       {/* 2. Target Word Count + 3. Articles Per Batch */}
       <div className="grid grid-cols-2 gap-4">
-        <FieldRow label="Target Word Count" helpText="Target article length in words. The AI aims for this count. Recommended: 200–400 for satirical news." status={fieldStatus("target_article_length", false)}>
+        <FieldRow label="Target Word Count" helpText="Target article length in words. The AI aims for this count. Recommended: 200–400 for professional content." status={fieldStatus("target_article_length", false)}>
           <Input
             type="number"
             value={settings["target_article_length"] ?? "300"}
@@ -1751,7 +1869,6 @@ export default function AdminSetup() {
   const [saving, setSaving] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
-
   // Data queries
   const { data: xEnvStatus } = trpc.distribution.getXEnvStatus.useQuery(undefined, { enabled: view === "wizard" });
   const xEnvConfigured = xEnvStatus?.configured ?? false;
@@ -1818,6 +1935,7 @@ export default function AdminSetup() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings["schedule_runs_per_day"]]);
 
+
   const set = (key: string, value: string) => setSettings(prev => ({ ...prev, [key]: value }));
   const toggle = (key: string) => setSettings(prev => ({ ...prev, [key]: prev[key] === "true" ? "false" : "true" }));
   const isOn = (key: string, defaultVal = "false") => (settings[key] ?? defaultVal) === "true";
@@ -1836,7 +1954,7 @@ export default function AdminSetup() {
           "brand_site_name", "brand_tagline", "brand_description", "brand_genre", "site_url",
           "brand_editorial_team",
           "brand_color_primary", "brand_color_secondary",
-          "brand_logo_url", "brand_favicon_url", "brand_mascot_url", "brand_mascot_name",
+          "brand_logo_url", "brand_favicon_url", 
           "powered_by_url",
           "loading_style", "loading_logo_url", "loading_text",
           "brand_gtag_id",
@@ -1857,7 +1975,7 @@ export default function AdminSetup() {
           "image_provider_custom_api_key", "brand_og_image",
           "watermark_enabled", "watermark_text", "watermark_position",
           "watermark_font_size", "watermark_text_color", "watermark_bg_opacity",
-          "watermark_show_mascot", "watermark_mascot_size",
+          
           "real_image_sourcing_enabled", "real_image_fallback", "real_image_relevance_threshold",
           "real_image_flickr_api_key", "real_image_unsplash_access_key",
           "real_image_pexels_api_key", "real_image_pixabay_api_key",
@@ -2345,7 +2463,7 @@ export default function AdminSetup() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium flex items-center gap-2"><Droplets className="w-4 h-4" /> Image Watermark</p>
-                        <p className="text-xs text-muted-foreground">Brand every generated image with your site URL and/or mascot</p>
+                        <p className="text-xs text-muted-foreground">Brand every generated image with your site URL</p>
                       </div>
                       <Switch checked={isOn("watermark_enabled")} onCheckedChange={() => toggle("watermark_enabled")} />
                     </div>
@@ -2355,17 +2473,11 @@ export default function AdminSetup() {
                           <Input
                             value={settings["watermark_text"] ?? (settings["site_url"] ?? "")}
                             onChange={e => set("watermark_text", e.target.value)}
-                            placeholder={settings["site_url"] ?? "hambry.com"}
+                            placeholder={settings["site_url"] ?? "getjaime.io"}
                             className="h-9"
                           />
                         </FieldRow>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 relative">
-                            <Label className="text-xs font-medium">Show Mascot</Label>
-                            <HelpTip text="Include mascot image in watermark overlay." />
-                          </div>
-                          <Switch checked={isOn("watermark_show_mascot", "true")} onCheckedChange={() => toggle("watermark_show_mascot")} />
-                        </div>
+
                         <FieldRow label="Watermark Position" status={fieldStatus("watermark_position", false)}>
                           <Select value={settings["watermark_position"] ?? "bottom-right"} onValueChange={v => set("watermark_position", v)}>
                             <SelectTrigger className="w-full h-9"><SelectValue /></SelectTrigger>
@@ -2376,14 +2488,6 @@ export default function AdminSetup() {
                               <SelectItem value="top-left">Top Left</SelectItem>
                             </SelectContent>
                           </Select>
-                        </FieldRow>
-                        <FieldRow label={`Mascot Size: ${settings["watermark_mascot_size"] ?? "12"}%`} helpText="Mascot size as % of image height (5-30)" status={fieldStatus("watermark_mascot_size", false)}>
-                          <Slider
-                            min={5} max={30} step={1}
-                            value={[parseInt(settings["watermark_mascot_size"] ?? "12", 10)]}
-                            onValueChange={([v]) => set("watermark_mascot_size", String(v))}
-                            className="mt-1"
-                          />
                         </FieldRow>
                         <FieldRow label={`Background Opacity: ${settings["watermark_bg_opacity"] ?? "60"}%`} helpText="Opacity of watermark background (0-100)" status={fieldStatus("watermark_bg_opacity", false)}>
                           <Slider
@@ -2411,7 +2515,7 @@ export default function AdminSetup() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium flex items-center gap-2"><ExternalLink className="w-4 h-4" /> Real Image Sourcing</p>
-                        <p className="text-xs text-muted-foreground">Search Flickr CC, Wikimedia, Unsplash, Pexels, Pixabay for real licensed photos before using AI generation. Hambry: OFF. Enable for deployments that need real photography (e.g., sports, racing).</p>
+                        <p className="text-xs text-muted-foreground">Search Flickr CC, Wikimedia, Unsplash, Pexels, Pixabay for real licensed photos before using AI generation. Default: OFF. Enable for deployments that need real photography (e.g., sports, racing).</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${isOn("real_image_sourcing_enabled") ? "text-green-600" : "text-muted-foreground"}`}>
@@ -2603,7 +2707,7 @@ export default function AdminSetup() {
                         <p className="text-sm font-medium flex items-center gap-2">
                           <span>🥚</span> Easter Egg Features
                         </p>
-                        <p className="text-xs text-muted-foreground">Mascot idle pop-up, Konami code panel, favicon swap on article pages, and click surprises. Delightful but optional.</p>
+                        <p className="text-xs text-muted-foreground">Fun interactive easter eggs. Delightful but optional.</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${isOn("easter_eggs_enabled") ? "text-green-600" : "text-muted-foreground"}`}>
@@ -2614,7 +2718,7 @@ export default function AdminSetup() {
                     </div>
                     {isOn("easter_eggs_enabled") && (
                       <div className="px-4 pb-4 pt-1 space-y-1 border-t">
-                        <p className="text-xs text-muted-foreground">Active: mascot idle pop-up (3 min), Konami code panel (↑↑↓↓←→←→BA), favicon swap on article pages (45 sec), mascot click surprises at 5 and 10 clicks.</p>
+                        <p className="text-xs text-muted-foreground">Active: Konami code panel (↑↑↓↓←→←→BA), favicon swap on article pages (45 sec).</p>
                       </div>
                     )}
                   </div>

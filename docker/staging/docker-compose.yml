@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: /var/www/jaimeio
+      dockerfile: Dockerfile
+    container_name: jaimeio-staging
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=staging
+    volumes:
+      - staging-data:/app/data
+    networks:
+      - jaimeio-staging
+
+volumes:
+  staging-data:
+
+networks:
+  jaimeio-staging:
+    driver: bridge

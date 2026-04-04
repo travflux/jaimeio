@@ -1,10 +1,10 @@
 /**
- * Branding Asset Upload — Express route for uploading logo/mascot/sponsor images to S3.
+ * Branding Asset Upload — Express route for uploading logo/sponsor images to S3.
  *
  * POST /api/branding/upload
  *   - Requires admin authentication (session cookie)
  *   - Accepts multipart/form-data with a single "file" field
- *   - Query param: type=logo|mascot|og_image|sponsor_bar|article_sponsor
+ *   - Query param: type=logo|og_image|sponsor_bar|article_sponsor
  *   - Returns { url: string } — the public S3 URL
  */
 
@@ -14,7 +14,7 @@ import crypto from "crypto";
 import { storagePut } from "./storage";
 import { sdk } from "./_core/sdk";
 
-const ALLOWED_TYPES = ["logo", "mascot", "og_image", "sponsor_bar", "article_sponsor"] as const;
+const ALLOWED_TYPES = ["logo", "og_image", "sponsor_bar", "article_sponsor"] as const;
 
 // Accept images up to 5MB
 const upload = multer({

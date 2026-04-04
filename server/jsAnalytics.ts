@@ -9,7 +9,7 @@
  * - Daily rollup into daily_analytics table
  * - Query helpers for the CEO Dashboard §3
  *
- * White-label compatible: no Hambry-specific logic.
+ * White-label compatible: no deployment-specific logic.
  */
 
 import { getDb, getSetting } from "./db";

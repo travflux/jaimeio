@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: /var/www/jaimeio
+      dockerfile: Dockerfile
+    container_name: jaimeio-production
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - production-data:/app/data
+    networks:
+      - jaimeio-prod
+
+volumes:
+  production-data:
+
+networks:
+  jaimeio-prod:
+    driver: bridge

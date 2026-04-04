@@ -311,7 +311,7 @@ export default function ArticlePage() {
             )}
           </header>
 
-          {/* Featured image — show mascot placeholder when no image */}
+          {/* Featured image — show logo placeholder when no image */}
           <figure className="mb-10 -mx-4 sm:mx-0">
             {article.featuredImage ? (
               <img
@@ -323,7 +323,7 @@ export default function ArticlePage() {
                   const img = e.currentTarget as HTMLImageElement;
                   if (!img.dataset.fallback) {
                     img.dataset.fallback = "1";
-                    img.src = branding.mascotUrl || "/mascot.png";
+                    img.src = branding.logoUrl || "/logo.svg";
                     img.className = "w-full sm:rounded-sm shadow-lg object-contain bg-muted/40 max-h-64";
                   }
                 }}
@@ -331,8 +331,8 @@ export default function ArticlePage() {
             ) : (
               <div className="w-full sm:rounded-sm bg-muted/40 flex items-center justify-center py-12">
                 <img
-                  src={branding.mascotUrl || "/mascot.png"}
-                  alt={branding.mascotName || branding.siteName}
+                  src={branding.logoUrl || "/logo.svg"}
+                  alt={branding.siteName}
                   className="h-32 w-auto object-contain opacity-30"
                 />
               </div>

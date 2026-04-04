@@ -198,7 +198,7 @@ async function downloadAndMeasure(imageUrl: string): Promise<DownloadResult | nu
   try {
     const res = await fetch(imageUrl, {
       signal: AbortSignal.timeout(15000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; HambryBot/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; JaimeBot/1.0)" },
     });
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";

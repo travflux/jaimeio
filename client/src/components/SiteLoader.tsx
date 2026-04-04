@@ -1,7 +1,7 @@
 /**
  * SiteLoader — v4.7.2 white-label configurable loading screen.
  *
- * Replaces HambryLoader. Reads loading_style, loading_logo_url, and loading_text
+ * Replaces legacy loader. Reads loading_style, loading_logo_url, and loading_text
  * from branding settings so each deployment can have its own loading experience.
  *
  * Modes:
@@ -89,10 +89,4 @@ export function SiteInlineLoader({ className = "" }: { className?: string }) {
   );
 }
 
-// ─── Backward-compatible re-exports ─────────────────────────────────────────
-// These aliases allow existing pages to import from SiteLoader without changes.
-// The old HambryLoader.tsx file has been removed; all imports should point here.
-export const HambryLoader = SiteLoader;
-export const HambryInlineLoader = SiteInlineLoader;
-export const MascotLoader = SiteLoader;
-export const MascotInlineLoader = SiteInlineLoader;
+

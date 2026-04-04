@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+import { getBrandSsrData, injectBrandTheme } from "../publicPageSsr";
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -33,14 +34,22 @@ export async function setupVite(app: Express, server: Server) {
         "index.html"
       );
 
-      // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       let page = await vite.transformIndexHtml(url, template);
-      // Block admin routes from search engine indexing
+
+      // Inject brand CSS variables for tenant subdomains
+      if (!isAdminRoute) {
+        try {
+          const hostname = req.hostname || req.headers.host?.split(":")[0] || "";
+          const brandData = await getBrandSsrData(hostname);
+          page = injectBrandTheme(page, brandData);
+        } catch { /* non-blocking */ }
+      }
+
       if (isAdminRoute) {
         page = page.replace(
           /(<meta\s+charset=[^>]+>)/i,
@@ -70,24 +79,51 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Brand theme injection middleware — runs BEFORE express.static
+  // so we can intercept HTML page requests and inject CSS vars
+  app.use(async (req, res, next) => {
+    // Only intercept HTML page requests (not assets like .js, .css, images)
+    const ext = path.extname(req.path);
+    if (ext && ext !== ".html") {
+      return next();
+    }
 
-  // fall through to index.html if the file doesn't exist
-  // Read and serve the file as text so we can ensure the full SEO title is preserved
-  // (the edge layer replaces <title> with VITE_APP_TITLE which strips spaces)
-  app.use("*", (req, res) => {
-    const indexPath = path.resolve(distPath, "index.html");
-    // Block admin routes from search engine indexing
+    // Only intercept navigation requests (not API calls)
+    if (req.path.startsWith("/api/") || req.path.startsWith("/trpc/")) {
+      return next();
+    }
+
     const isAdminRoute = req.originalUrl.startsWith("/admin") || req.url.startsWith("/admin");
+    const indexPath = path.resolve(distPath, "index.html");
+
+    // Only serve index.html for paths that don't map to real files
+    // (except root "/" which always needs index.html)
+    if (req.path !== "/" && req.path !== "") {
+      const filePath = path.resolve(distPath, req.path.replace(/^\//, ""));
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        return next(); // Let express.static handle real files
+      }
+    }
+
     try {
       let html = fs.readFileSync(indexPath, "utf-8");
-      // Ensure the full SEO title is present regardless of edge layer injection
       html = html.replace(
         /<title>[^<]*<\/title>/i,
         `<title>Loading...</title>`
       );
+
+      // Inject brand CSS variables for tenant subdomains
+      if (!isAdminRoute) {
+        try {
+          const hostname = req.hostname || req.headers.host?.split(":")[0] || "";
+          const brandData = await getBrandSsrData(hostname);
+          html = injectBrandTheme(html, brandData);
+        } catch (e) {
+          console.error("[BrandSSR] Injection error:", e);
+        }
+      }
+
       if (isAdminRoute) {
-        // Inject noindex right after charset meta so it survives any HTML post-processing
         html = html.replace(
           /(<meta\s+charset=[^>]+>)/i,
           `$1\n    <meta name="robots" content="noindex, nofollow">`
@@ -99,10 +135,9 @@ export function serveStatic(app: Express) {
       }
       res.status(200).set(headers).end(html);
     } catch {
-      if (isAdminRoute) {
-        res.setHeader("X-Robots-Tag", "noindex, nofollow");
-      }
-      res.sendFile(indexPath);
+      next(); // Fall through to express.static
     }
   });
+
+  app.use(express.static(distPath));
 }

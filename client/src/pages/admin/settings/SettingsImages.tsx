@@ -361,31 +361,15 @@ export default function SettingsImages() {
                 <textarea value={edits.image_style_keywords || "Bold colors, clean composition, professional editorial aesthetic. No text or words in the image."} onChange={(e) => updateEdit("image_style_keywords", e.target.value)}
                   rows={3} className="w-full px-3 py-2 border rounded-md bg-background resize-none" />
               </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Step 4: Mascot Instruction</label>
-                <p className="text-xs text-muted-foreground mb-2">Appended at the end of the final prompt sent to Gemini.</p>
-                <textarea value={edits.mascot_instruction || "Add the mascot character as a small hidden detail in the background."} onChange={(e) => updateEdit("mascot_instruction", e.target.value)}
-                  rows={2} placeholder="Add the mascot character as a small hidden detail in the background." className="w-full px-3 py-2 border rounded-md bg-background resize-none" />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Mascot Reference Image URL</label>
-                <p className="text-xs text-muted-foreground mb-2">Public URL passed to Gemini as a visual reference alongside the text prompt.</p>
-                <input type="url" value={edits.mascot_image_url || "https://files.manuscdn.com/user_upload_by_module/session_file/310519663360362586/QqUvSoBhAvUReafz.png"} onChange={(e) => updateEdit("mascot_image_url", e.target.value)}
-                  placeholder="https://..." className="w-full px-3 py-2 border rounded-md bg-background" />
-              </div>
               <div className="p-4 bg-muted rounded-md text-sm space-y-3">
                 <p className="font-semibold">Final Prompt Sent to Gemini (live preview):</p>
                 <div className="p-3 bg-background border rounded text-xs font-mono text-muted-foreground break-all">
                   <p>{edits.image_style_prompt || "Professional editorial illustration"}: [AI-generated scene description from Step 1]. {edits.image_style_keywords || "Bold colors, clean composition, professional editorial aesthetic. No text or words in the image."}</p>
-                  <p className="mt-2">{edits.mascot_instruction || "Add the mascot character as a small hidden detail in the background."}</p>
                 </div>
-                <p className="text-xs text-muted-foreground"><strong>+ Mascot Reference Image:</strong></p>
-                <p className="text-xs text-muted-foreground break-all">{edits.mascot_image_url || "https://files.manuscdn.com/user_upload_by_module/session_file/310519663360362586/QqUvSoBhAvUReafz.png"}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Watermark */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Image Watermark</CardTitle>
@@ -401,20 +385,6 @@ export default function SettingsImages() {
               </div>
               {edits.watermark_enabled === "true" && (
                 <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium">Show {branding.mascotName} Mascot</label>
-                      <p className="text-xs text-muted-foreground">Display the {branding.mascotName} mascot in the bottom-left corner of article images.</p>
-                    </div>
-                    <Switch checked={edits.watermark_show_mascot !== "false"} onCheckedChange={(checked) => updateEdit("watermark_show_mascot", checked ? "true" : "false")} />
-                  </div>
-                  {edits.watermark_show_mascot !== "false" && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Mascot Size: {edits.watermark_mascot_size || "12"}% of image height</label>
-                      <Slider value={[parseInt(edits.watermark_mascot_size || "12")]} onValueChange={([val]) => updateEdit("watermark_mascot_size", val.toString())} min={5} max={30} step={1} />
-                      <p className="text-xs text-muted-foreground mt-1.5">Controls how large the {branding.mascotName} mascot appears on watermarked images. Default is 12%.</p>
-                    </div>
-                  )}
                   <div>
                     <label className="text-sm font-medium mb-2 block">Watermark Text</label>
                     <input type="text" value={edits.watermark_text || "example.com"} onChange={(e) => updateEdit("watermark_text", e.target.value)}
@@ -459,17 +429,7 @@ export default function SettingsImages() {
                   <div className="bg-muted/50 p-4 rounded-md border border-border">
                     <p className="text-sm font-medium mb-2">Preview</p>
                     <div className="relative w-full h-48 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-md overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 text-sm">Sample Article Image</div>
-                      {/* Mascot in bottom-left */}
-                      {edits.watermark_show_mascot !== "false" && (
-                        <div className="absolute bottom-2 left-2 px-1.5 py-1 rounded"
-                          style={{
-                            backgroundColor: `rgba(0, 0, 0, ${parseFloat(edits.watermark_bg_opacity || "0.6")})`,
-                          }}>
-                          <img src={branding.mascotUrl} alt={branding.mascotName} className="w-auto object-contain" style={{ height: `${Math.round(192 * (parseInt(edits.watermark_mascot_size || "12") / 100))}px` }} />
-                        </div>
-                      )}
-                      {/* Text URL in bottom-right */}
+                      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 text-sm">Sample Article Image</div>                      {/* Text URL in bottom-right */}
                       <div className="absolute bottom-2 right-2 px-2 py-1 rounded font-medium"
                         style={{
                           backgroundColor: `rgba(0, 0, 0, ${parseFloat(edits.watermark_bg_opacity || "0.6")})`,

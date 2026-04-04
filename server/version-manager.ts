@@ -1,5 +1,5 @@
 /**
- * Satire Engine Version Manager
+ * JAIME.IO Version Manager
  * 
  * Tracks engine versions and manages updates for white-label deployments.
  */
@@ -24,14 +24,14 @@ export interface DeploymentInfo {
   licenseKey?: string;
 }
 
-const CURRENT_VERSION = "4.9.8";
+const CURRENT_VERSION = "5.5.0";
 
 const VERSION_HISTORY: EngineVersion[] = [
   {
     version: "1.0.0",
     releaseDate: new Date("2026-02-19"),
     changelog: [
-      "Initial release of Satire Engine",
+      "Initial release of JAIME.IO Engine",
       "White-label configuration system",
       "Automated content workflow",
       "Multi-provider media generation",
@@ -357,7 +357,21 @@ const VERSION_HISTORY: EngineVersion[] = [
       "Fixes sponsor bar links on white-label deployments with empty or misconfigured sponsor_bar_url",
     ],
     breaking: false,
+  },  {
+    version: "5.0.0",
+    releaseDate: new Date("2026-04-01"),
+    changelog: [
+      "Migrated image and file storage from Manus proxy to AWS S3",
+      "Added staging environment with isolated deploy pipeline",
+      "Added production promotion workflow with version bumping",
+      "Removed Manus-specific storage dependencies",
+      "Confirmed and fixed LLM provider routing",
+      "Added S3 and LLM connection test endpoints",
+      "deploy.sh script with rolling container updates and deploy log",
+    ],
+    breaking: true,
   },
+
   {
     version: "4.9.0",
     releaseDate: new Date("2026-03-10"),
@@ -610,7 +624,7 @@ export function getUpdateInstructions(fromVersion: string, toVersion: string): s
   const hasBreaking = hasBreakingChanges(fromVersion, toVersion);
 
   const instructions: string[] = [
-    "# Satire Engine Update Instructions",
+    "# JAIME.IO Update Instructions",
     "",
     `Updating from v${fromVersion} to v${toVersion}`,
     "",
@@ -689,7 +703,7 @@ export function generateUpdateReport(): string {
   const latest = getLatestVersion();
 
   const lines: string[] = [
-    "# Satire Engine Update Report",
+    "# JAIME.IO Update Report",
     "",
     `Current Version: ${deployment?.engineVersion || "Unknown"}`,
     `Latest Version: ${latest.version}`,

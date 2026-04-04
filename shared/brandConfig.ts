@@ -1,5 +1,5 @@
 /**
- * WHITE_LABEL_CONFIG — Central brand configuration for the Satire Engine.
+ * WHITE_LABEL_CONFIG — Central brand configuration for the JAIME.IO Engine.
  *
  * These are the FALLBACK values used when a setting has not yet been
  * persisted to the database (e.g., on a fresh install before the admin

@@ -390,7 +390,7 @@ const PLATFORM_CONFIGS = [
     icon: BlueskyIcon,
     description: "Posts via AT Protocol. Requires identifier (handle) and app password.",
     fields: [
-      { key: "identifier", label: "Handle (e.g. hambry.bsky.social)", placeholder: "yourhandle.bsky.social" },
+      { key: "identifier", label: "Handle (e.g. jaimeio.bsky.social)", placeholder: "yourhandle.bsky.social" },
       { key: "password", label: "App Password", placeholder: "xxxx-xxxx-xxxx-xxxx", isSecret: true },
     ],
     envBased: false,

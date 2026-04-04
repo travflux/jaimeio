@@ -6,7 +6,7 @@
  *  - "inline"        → full-width block inserted between article sections
  *  - "above-footer"  → full-bleed dark band placed directly above the footer
  *
- * All branding (site name, mascot) is pulled from useBranding so white-label
+ * All branding (site name) is pulled from useBranding so white-label
  * deployments automatically use their own identity. Subscription is wired to
  * trpc.newsletter.subscribe — same endpoint used by the homepage form.
  *
@@ -122,11 +122,11 @@ export default function NewsletterAd({ variant = "inline", className = "" }: New
         <div className="bg-card border border-t-0 border-border px-5 py-5">
           {/* Mascot + headline */}
           <div className="flex items-center gap-3 mb-4">
-            {branding.mascotUrl ? (
+            {branding.logoUrl ? (
               <div className="w-12 h-12 rounded-sm overflow-hidden border border-border shrink-0 bg-muted">
                 <img
-                  src={branding.mascotUrl}
-                  alt={branding.mascotName || siteName}
+                  src={branding.logoUrl}
+                  alt={siteName}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -198,13 +198,13 @@ export default function NewsletterAd({ variant = "inline", className = "" }: New
       <div className={`w-full bg-[#1A1A1A] ${className}`}>
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-10 sm:py-12">
           <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-            {/* Left: mascot + copy */}
+            {/* Left: logo + copy */}
             <div className="flex items-center gap-5 flex-1 min-w-0">
-              {branding.mascotUrl && (
+              {branding.logoUrl && (
                 <div className="w-14 h-14 rounded-sm overflow-hidden border border-white/10 shrink-0 bg-white/5">
                   <img
-                    src={branding.mascotUrl}
-                    alt={branding.mascotName || siteName}
+                    src={branding.logoUrl}
+                    alt={siteName}
                     className="w-full h-full object-cover opacity-90"
                   />
                 </div>
@@ -283,11 +283,11 @@ export default function NewsletterAd({ variant = "inline", className = "" }: New
       <div className="flex flex-col sm:flex-row items-stretch">
         {/* Left dark panel */}
         <div className="bg-[#1A1A1A] sm:w-[180px] shrink-0 flex flex-col items-center justify-center gap-3 px-6 py-5 sm:py-6">
-          {branding.mascotUrl ? (
+          {branding.logoUrl ? (
             <div className="w-14 h-14 rounded-sm overflow-hidden border border-white/10 bg-white/5">
               <img
-                src={branding.mascotUrl}
-                alt={branding.mascotName || siteName}
+                src={branding.logoUrl}
+                alt={siteName}
                 className="w-full h-full object-cover opacity-90"
               />
             </div>

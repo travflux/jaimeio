@@ -18,10 +18,10 @@ import { useEffect } from "react";
 
 function isAdminUser(): boolean {
   try {
-    const raw = localStorage.getItem("manus-runtime-user-info");
+    const raw = localStorage.getItem("admin-user-info");
     if (!raw) return false;
     const user = JSON.parse(raw);
-    return user?.role === "admin" || user?.openId === import.meta.env.VITE_APP_ID;
+    return user?.role === "admin";
   } catch {
     return false;
   }

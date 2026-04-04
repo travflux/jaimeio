@@ -7,7 +7,7 @@
  *  - "banner"        → wide horizontal strip for homepage section breaks
  *  - "above-footer"  → full-bleed dark band placed directly above the footer
  *
- * All branding (handle, URL, site name, mascot) is pulled from useBranding so
+ * All branding (handle, URL, site name) is pulled from useBranding so
  * white-label deployments automatically use their own X account.
  */
 import { useBranding } from "@/hooks/useBranding";
@@ -78,11 +78,11 @@ export default function XFollowAd({ variant = "inline", className = "" }: XFollo
         <div className="bg-card border border-t-0 border-border px-5 py-5">
           {/* Avatar + handle row */}
           <div className="flex items-center gap-3 mb-4">
-            {branding.mascotUrl ? (
+            {branding.logoUrl ? (
               <div className="w-12 h-12 rounded-sm overflow-hidden border border-border/50 shrink-0 bg-muted">
                 <img
-                  src={branding.mascotUrl}
-                  alt={branding.mascotName || siteName}
+                  src={branding.logoUrl}
+                  alt={siteName}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -161,11 +161,11 @@ export default function XFollowAd({ variant = "inline", className = "" }: XFollo
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             {/* Left: headline + subtext */}
             <div className="flex items-center gap-5 min-w-0">
-              {branding.mascotUrl && (
+              {branding.logoUrl && (
                 <div className="w-14 h-14 rounded-sm overflow-hidden border border-white/10 shrink-0 bg-white/5">
                   <img
-                    src={branding.mascotUrl}
-                    alt={branding.mascotName || siteName}
+                    src={branding.logoUrl}
+                    alt={siteName}
                     className="w-full h-full object-cover opacity-90"
                   />
                 </div>
@@ -235,11 +235,11 @@ export default function XFollowAd({ variant = "inline", className = "" }: XFollo
       >
         {/* Left dark panel */}
         <div className="bg-[#1A1A1A] sm:w-[180px] shrink-0 flex flex-col items-center justify-center gap-3 px-6 py-5 sm:py-6">
-          {branding.mascotUrl ? (
+          {branding.logoUrl ? (
             <div className="w-14 h-14 rounded-sm overflow-hidden border border-white/10 bg-white/5">
               <img
-                src={branding.mascotUrl}
-                alt={branding.mascotName || siteName}
+                src={branding.logoUrl}
+                alt={siteName}
                 className="w-full h-full object-cover opacity-90"
               />
             </div>

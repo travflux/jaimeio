@@ -137,7 +137,7 @@ async function sendViaTwilio(to: string, body: string, creds: { accountSid: stri
 export async function testTwilioConnection(testPhone: string): Promise<{ success: boolean; error?: string }> {
   const creds = await getTwilioCredentials();
   if (!creds) return { success: false, error: "Twilio credentials not configured" };
-  return sendViaTwilio(testPhone, `${process.env.VITE_APP_TITLE || "Satire Engine"} SMS test — connection successful.`, creds);
+  return sendViaTwilio(testPhone, `${process.env.VITE_APP_TITLE || "JAIME.IO"} SMS test — connection successful.`, creds);
 }
 
 /**

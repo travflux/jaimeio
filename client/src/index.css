@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
-   HAMBRY DESIGN SYSTEM — STYLE VARIABLES
+   JAIME.IO DESIGN SYSTEM — STYLE VARIABLES
    ==========================================================================
    All key design tokens are organized below for easy customization.
    Change values here to update the entire site's look and feel.
@@ -20,7 +20,7 @@
      ----------------------------------------------------------------------- */
   --primary:                    oklch(0.20 0.04 270);    /* Dark navy #1a1a2e    */
   --primary-foreground:         oklch(0.99 0 0);         /* White text on primary */
-  --accent-brand:               oklch(0.72 0.12 85);     /* Gold accent #c9a84c  */
+  --accent-brand:               oklch(0.74 0.12 175);    /* Teal accent #2dd4bf  */
 
   /* -----------------------------------------------------------------------
      2. BACKGROUND & TEXT
@@ -55,7 +55,7 @@
      ----------------------------------------------------------------------- */
   --destructive:                oklch(0.55 0.22 27);     /* Error / danger red   */
   --destructive-foreground:     oklch(0.99 0 0);         /* White on destructive */
-  --ring:                       oklch(0.72 0.12 85);     /* Gold focus ring      */
+  --ring:                       oklch(0.74 0.12 175);    /* Teal focus ring      */
 
   /* -----------------------------------------------------------------------
      6. BORDERS & INPUTS
@@ -69,7 +69,7 @@
      Five-color palette for charts and graphs.
      ----------------------------------------------------------------------- */
   --chart-1:                    oklch(0.20 0.04 270);    /* Navy (matches primary)*/
-  --chart-2:                    oklch(0.72 0.12 85);     /* Gold (matches accent)*/
+  --chart-2:                    oklch(0.74 0.12 175);    /* Teal (matches accent)*/
   --chart-3:                    oklch(0.55 0.12 160);    /* Green                */
   --chart-4:                    oklch(0.65 0.12 80);     /* Yellow               */
   --chart-5:                    oklch(0.55 0.12 300);    /* Purple               */
@@ -85,7 +85,7 @@
   --sidebar-accent:             oklch(0.96 0.002 260);
   --sidebar-accent-foreground:  oklch(0.20 0.005 260);
   --sidebar-border:             oklch(0.93 0.002 260);
-  --sidebar-ring:               oklch(0.72 0.12 85);     /* Gold sidebar ring    */
+  --sidebar-ring:               oklch(0.74 0.12 175);    /* Teal sidebar ring    */
 
   /* -----------------------------------------------------------------------
      9. BORDER RADIUS
@@ -117,7 +117,7 @@
   --article-text-color:         oklch(0.25 0.005 260);   /* Slightly softer black*/
   --article-heading-spacing-top: 2.5rem;                 /* Space above <h2>     */
   --article-blockquote-color:   oklch(0.40 0.01 260);   /* Muted quote text     */
-  --article-blockquote-border:  oklch(0.72 0.12 85);    /* Gold accent line     */
+  --article-blockquote-border:  oklch(0.74 0.12 175);   /* Teal accent line     */
 
   /* -----------------------------------------------------------------------
      12. LAYOUT

@@ -17,9 +17,9 @@ export const distributionRouter = router({
   // ─── Queue ──────────────────────────────────────────────────────────────────
   queue: adminProcedure
     .input(z.object({ status: z.string().optional(), limit: z.number().optional(), offset: z.number().optional() }).optional())
-    .query(({ input }) => db.getDistributionQueue(input ?? {})),
+    .query(({ input, ctx }) => db.getDistributionQueue({ ...(input ?? {}), licenseId: ctx.licenseId || undefined })),
 
-  queueStats: adminProcedure.query(() => db.getDistributionQueueStats()),
+  queueStats: adminProcedure.query(({ ctx }) => db.getDistributionQueueStats(ctx.licenseId || undefined)),
 
   processQueue: adminProcedure
     .input(z.object({ limit: z.number().optional() }).optional())
@@ -188,4 +188,20 @@ export const distributionRouter = router({
       }
       return { saved: Object.keys(input).length };
     }),
+
+  testBlotato: adminProcedure
+    .input(z.object({ apiKey: z.string() }))
+    .mutation(async ({ input }) => {
+      const { testBlotatoConnection } = await import("../blotato");
+      return testBlotatoConnection(input.apiKey);
+    }),
+
+  getBlotatoStatus: adminProcedure.query(async () => {
+    const key = await db.getSetting("blotato_api_key");
+    return {
+      configured: !!(key?.value),
+      maskedKey: key?.value ? key.value.substring(0, 8) + "..." : null,
+    };
+  }),
+
 });

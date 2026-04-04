@@ -6,7 +6,7 @@ import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 /** Upload a file to the branding upload endpoint */
-async function uploadBrandingAsset(file: File, type: "logo" | "mascot" | "og_image"): Promise<string> {
+async function uploadBrandingAsset(file: File, type: "logo" | "og_image"): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`/api/branding/upload?type=${type}`, {
@@ -70,9 +70,6 @@ export default function SettingsBranding() {
             <div className="p-6">
               {/* Simulated masthead */}
               <div className="text-center space-y-1 pb-4 border-b">
-                {edits.brand_mascot_url && (
-                  <img src={edits.brand_mascot_url} alt={edits.brand_mascot_name || "Mascot"} className="w-16 h-16 mx-auto object-contain mb-2" />
-                )}
                 <h2 className="font-headline text-3xl font-bold" style={{ color: edits.brand_color_primary || "#dc2626" }}>
                   {edits.brand_site_name || "Your Site Name"}
                 </h2>
@@ -110,7 +107,7 @@ export default function SettingsBranding() {
         </Section>
 
         {/* ─── Visual Identity ─── */}
-        <Section icon={<Image className="w-4 h-4" />} title="Visual Identity" description="Logo, mascot, and brand colors.">
+        <Section icon={<Image className="w-4 h-4" />} title="Visual Identity" description="Logo and brand colors.">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Logo" description="Upload or enter URL for your logo (SVG, PNG, JPG, WebP).">
               <ImageUploadField
@@ -121,20 +118,7 @@ export default function SettingsBranding() {
                 previewHeight="h-20"
               />
             </Field>
-            <Field label="Mascot Image" description="Used in footer, 404 page, and loading states.">
-              <ImageUploadField
-                value={edits.brand_mascot_url || ""}
-                onChange={(url) => updateEdit("brand_mascot_url", url)}
-                assetType="mascot"
-                placeholder="/mascot.png"
-                previewHeight="h-20"
-              />
-            </Field>
           </div>
-          <Field label="Mascot Name" description="Name of your mascot character (used in alt text and easter eggs).">
-            <input type="text" value={edits.brand_mascot_name || ""} onChange={(e) => updateEdit("brand_mascot_name", e.target.value)}
-              placeholder="Mascot Name" className="w-full px-3 py-2 border rounded-md bg-background" />
-          </Field>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Primary Color" description="Main brand color for accents and highlights.">
               <div className="flex items-center gap-2">
@@ -275,7 +259,7 @@ function ImageUploadField({
 }: {
   value: string;
   onChange: (url: string) => void;
-  assetType: "logo" | "mascot" | "og_image";
+  assetType: "logo" | "og_image";
   placeholder: string;
   previewHeight?: string;
 }) {

@@ -9,7 +9,7 @@
     <!-- Title and meta tags are intentionally generic here.
          React hydrates within milliseconds and overwrites with correct
          branding values from the database. This prevents white-label
-         deployments from briefly flashing Hambry-specific content. -->
+         deployments from briefly flashing old branding. -->
     <title>Loading...</title>
     <meta name="description" content="" />
     <meta name="keywords" content="" />
@@ -30,14 +30,36 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&display=swap" rel="stylesheet" />
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/api/rss" />
+    <link rel="alternate" type="application/rss+xml" title="JAIME.IO Content Feed" href="/api/rss" />
     <!-- Google Analytics: injected dynamically by React when brand_gtag_id is configured.
          No hardcoded ID here — each deployment uses its own GA property.
          See client/src/hooks/useGtag.ts for the injection logic. -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.ico" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/android-chrome-192x192.png" />
+    <link rel="icon" type="image/png" href="/jaimeio-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/jaimeio-icon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/jaimeio-icon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/jaimeio-icon.png" />
+      <!-- Brand theme defaults — prevents flash of wrong colors -->
+    <style id="brand-defaults">
+      :root {
+        --brand-primary: #0f2d5e;
+        --brand-secondary: #2dd4bf;
+        --brand-background: #faf9f7;
+        --brand-surface: #f3f0ed;
+        --brand-text-primary: #0a0a0a;
+        --brand-text-secondary: #6b7280;
+        --brand-accent: #2dd4bf;
+        --brand-border: #e5e7eb;
+        --brand-nav-bg: #0f2d5e;
+        --brand-nav-text: #ffffff;
+        --brand-footer-bg: #0f2d5e;
+        --brand-footer-text: #ffffff;
+        --brand-button-bg: #0f2d5e;
+        --brand-button-text: #ffffff;
+        --brand-link: #2dd4bf;
+        --brand-font-heading: "Playfair Display", serif;
+        --brand-font-body: "Inter", sans-serif;
+      }
+    </style>
   </head>
 
   <body style="overflow-x:hidden">

@@ -21,6 +21,7 @@ import { extractVideoThumbnail } from "./_core/videoThumbnail";
 import { generateImage } from "./_core/imageGeneration";
 import { shouldAutoRebalance, calculateOptimalWeights, applyRebalance } from "./categoryBalance";
 import { buildImagePrompt } from "./imagePromptBuilder";
+import { processArticlesGeo } from "./geo/geoService";
 import { findRealImage, generateBrandedCard, logImageLicense } from "./sources/real-image-sourcing";
 import { findImageWithCrawler, type CrawlerConfig } from "./sources/googleImageCrawler";
 import { WRITING_STYLES, getRandomStyleFromCategory } from "../shared/writingStyles";
@@ -105,7 +106,7 @@ const DEFAULT_RSS_FEEDS = [
 
 // CATEGORY_KEYWORDS hardcoded map deleted — keywords are DB-only (configurable per deployment).
 // Each category row has a `keywords` column (comma-separated). guessCategory() reads from DB only.
-// White-label clients set their own keywords via the Setup Wizard. No Hambry slugs baked in.
+// White-label clients set their own keywords via the Setup Wizard. No deployment-specific slugs baked in.
 
 // STYLE_PROMPTS removed — now uses WRITING_STYLES from shared/writingStyles.ts (all 30+ styles)
 
@@ -397,7 +398,12 @@ IMPORTANT RULES:
 - NEVER include real people saying things they didn't say. Instead, create obviously fictional characters when quotes are needed.`;
 }
 
-async function generateSatiricalArticle(event: NewsEvent, stylePrompt: string, targetWords: number): Promise<GeneratedArticle> {
+export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: string, targetWords: number, templateSettings?: any): Promise<GeneratedArticle> {
+  // Apply template overrides if provided
+  if (templateSettings?.targetWordCount) targetWords = templateSettings.targetWordCount;
+  if (templateSettings?.tone) stylePrompt = `Write in a ${templateSettings.tone} tone. ${stylePrompt}`;
+  if (templateSettings?.userMessage) stylePrompt = templateSettings.userMessage;
+
   // Check for a full system prompt override stored in the DB (white-label support)
   const overrideSetting = await db.getSetting("article_llm_system_prompt");
   const lengthInstruction = `Target approximately ${targetWords} words for the article body.`;
@@ -637,8 +643,10 @@ Return ONLY the JSON object.`,
 
 // ─── Full Pipeline ──────────────────────────────────────────────────────────
 
-export async function runFullPipeline(batchDate?: string): Promise<WorkflowResult> {
+export async function runFullPipeline(batchDate?: string, licenseId?: number): Promise<WorkflowResult> {
   const date = batchDate || new Date().toISOString().split("T")[0];
+  const tenantId = licenseId || 7; // Default to nikijames for backward compat
+  console.log(`  License ID: ${tenantId}`);
 
   console.log(`\n${"#".repeat(60)}`);
   console.log(`  ${process.env.VITE_APP_TITLE || 'SATIRE ENGINE'} DAILY WORKFLOW (TypeScript)`);
@@ -993,19 +1001,119 @@ export async function runFullPipeline(batchDate?: string): Promise<WorkflowResul
         categoryId,
         sourceEvent: event.title,
         sourceUrl: event.sourceUrl,
+        licenseId: tenantId,
         feedSourceId: event.feedSourceId ?? null,
         candidateId: event.candidateId ?? null,  // v4.0
       });
 
       console.log(`    ✓ "${headline.slice(0, 60)}..."`);
+      // Rate limit protection: wait between article generations
+      if (i < selectedEvents.length - 1) {
+        console.log("    Waiting 30s before next article (rate limit protection)...");
+        await new Promise(r => setTimeout(r, 30000));
+      }
     } catch (err: any) {
+      const isRateLimit = err.message?.includes("429") || err.message?.includes("rate_limit");
       console.log(`    ✗ Error: ${err.message?.slice(0, 100)}`);
+      if (isRateLimit && i < selectedEvents.length - 1) {
+        console.log("    Rate limit hit. Waiting 65s before retry...");
+        await new Promise(r => setTimeout(r, 65000));
+      } else if (i < selectedEvents.length - 1) {
+        await new Promise(r => setTimeout(r, 5000));
+      }
     }
   }
 
   if (generatedArticles.length === 0) {
     console.log("  No articles generated. Stopping.");
     return { status: "warning", message: "No articles generated", eventsGathered: selectedEvents.length, articlesGenerated: 0 };
+  }
+
+  // ── Step 2.5: Template-scheduled article generation ──
+  try {
+    const templateDb = await db.getDb();
+    if (templateDb) {
+      const { sql: tSql, and: tAnd, eq: tEq, desc: tDesc } = await import("drizzle-orm");
+      const [scheduledTemplates] = await templateDb.execute(
+        tSql`SELECT * FROM article_templates WHERE (license_id = ${tenantId} OR licenseId = ${tenantId}) AND is_active = 1 AND schedule_frequency IN ('daily','weekly','biweekly','monthly')`
+      );
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const dayOfMonth = today.getDate();
+      let templateArticlesGenerated = 0;
+
+      if ((scheduledTemplates as any[]).length > 0) {
+        console.log(`\nSTEP 2.5: TEMPLATE-SCHEDULED GENERATION — ${date}`);
+        console.log(`  Found ${(scheduledTemplates as any[]).length} scheduled templates`);
+
+        for (const template of scheduledTemplates as any[]) {
+          let isDueToday = false;
+          if (template.schedule_frequency === "daily") isDueToday = true;
+          else if (template.schedule_frequency === "weekly" || template.schedule_frequency === "biweekly") isDueToday = template.schedule_day_of_week === dayOfWeek;
+          else if (template.schedule_frequency === "monthly") isDueToday = dayOfMonth === 1;
+          if (!isDueToday) continue;
+
+          // Check if already generated today
+          const [existing] = await templateDb.execute(
+            tSql`SELECT COUNT(*) as c FROM articles WHERE template_id = ${template.id} AND (license_id = ${tenantId} OR licenseId = ${tenantId}) AND DATE(createdAt) = CURDATE()`
+          );
+          if ((existing as any[])[0]?.c > 0) {
+            console.log(`  [Template] "${template.name}" already generated today — skipping`);
+            continue;
+          }
+
+          // Get best candidate
+          const [candidates] = await templateDb.execute(
+            tSql`SELECT id, title, summary, source_url FROM selector_candidates WHERE (license_id = ${tenantId} OR license_id IS NULL) AND status = 'pending' ORDER BY score DESC LIMIT 1`
+          );
+          const candidate = (candidates as any[])[0];
+          if (!candidate) {
+            console.log(`  [Template] "${template.name}" — no candidates available`);
+            continue;
+          }
+
+          try {
+            const { applyTemplateSettings } = await import("./templateSettings");
+            const templateSettings = await applyTemplateSettings(template.id);
+            const tWords = templateSettings.targetWordCount || targetWords;
+            const tStyle = templateSettings.userMessage || stylePrompt;
+            const newsEvent = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.source_url || "" };
+            const generated = await generateSatiricalArticle(newsEvent as any, tStyle, tWords, templateSettings);
+
+            const slugify = (await import("slugify")).default;
+            const slug = slugify(generated.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
+            let body = generated.body || "";
+            if (!body.trim().startsWith("<")) body = body.split("\n\n").filter((p: string) => p.trim()).map((p: string) => "<p>" + p.trim() + "</p>").join("");
+
+            generatedArticles.push({
+              headline: generated.headline || "Untitled",
+              subheadline: generated.subheadline || "",
+              body,
+              slug,
+              categoryId: template.category_id || template.categoryId || null,
+              sourceEvent: candidate.title,
+              sourceUrl: candidate.source_url || "",
+              feedSourceId: null,
+              candidateId: candidate.id,
+              licenseId: tenantId,
+              templateId: template.id,
+            } as any);
+
+            await templateDb.execute(tSql`UPDATE selector_candidates SET status = 'selected' WHERE id = ${candidate.id}`);
+            templateArticlesGenerated++;
+            console.log(`  [Template] ✓ Generated "${(generated.headline || "").substring(0, 50)}" from template "${template.name}"`);
+
+            // Rate limit delay
+            await new Promise(r => setTimeout(r, 30000));
+          } catch (err: any) {
+            console.log(`  [Template] ✗ "${template.name}": ${err.message?.substring(0, 80)}`);
+          }
+        }
+        console.log(`  [Template] Step 2.5 complete: ${templateArticlesGenerated} template articles generated`);
+      }
+    }
+  } catch (e: any) {
+    console.log(`  [Template] Step 2.5 error (non-fatal): ${e.message?.substring(0, 80)}`);
   }
 
   // ── Step 3: Import to Database ──
@@ -1322,6 +1430,28 @@ export async function runFullPipeline(batchDate?: string): Promise<WorkflowResul
       }
     } catch (tagStepErr: any) {
       console.log(`  [AutoTag] Step error (non-fatal): ${tagStepErr.message?.slice(0, 80)}`);
+    }
+  }
+
+
+  // ── Step 3.8: GEO Optimization (if enabled) ──
+  const geoEnabled = await getSettingValue("geo_enabled", "false");
+  if (geoEnabled === "true" && importedIds.length > 0) {
+    console.log(`\nSTEP 3.8: GEO OPTIMIZATION — ${date}`);
+    try {
+      const geoSettings = {
+        brand_site_name: await getSettingValue("brand_site_name", ""),
+        brand_site_url: await getSettingValue("brand_site_url", ""),
+        brand_logo_url: await getSettingValue("brand_logo_url", ""),
+        geo_enabled: "true",
+        geo_faq_enabled: await getSettingValue("geo_faq_enabled", "true"),
+        geo_faq_count: await getSettingValue("geo_faq_count", "4"),
+        geo_key_takeaway_label: await getSettingValue("geo_key_takeaway_label", "Key Takeaway"),
+      };
+      const geoResult = await processArticlesGeo(importedIds, geoSettings);
+      console.log(`  [GEO] Processed ${geoResult.processed}/${importedIds.length} articles, avg score: ${geoResult.avgScore}/100${geoResult.errors > 0 ? `, errors: ${geoResult.errors}` : ""}`);
+    } catch (err: any) {
+      console.log(`  [GEO] Step error (non-fatal): ${err.message?.slice(0, 100)}`);
     }
   }
 
