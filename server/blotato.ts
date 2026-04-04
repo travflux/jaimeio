@@ -383,7 +383,7 @@ function buildPostContent(
   articleUrl: string,
   platform: string
 ): BlotatoPostContent {
-  const mediaUrls = article.featuredImage ? [article.featuredImage] : [];
+  const mediaUrls = article.featuredImage && article.includeImage !== false ? [article.featuredImage] : [];
   switch (platform) {
     case "twitter":
     case "x":
@@ -422,6 +422,15 @@ export async function queueArticleToBlotato(
   siteUrl: string
 ): Promise<number> {
   const { getLicenseSetting, getBlotatoAccountsFromSettings } = await import("./db");
+
+  // Check master toggle — skip if auto-distribute is off (unless called manually via distributeArticle)
+  const autoDistSetting = await getLicenseSetting(licenseId, "blotato_auto_distribute");
+  // Default to true if not set (backwards compatible)
+  if (autoDistSetting?.value === "false") {
+    console.log("[Blotato] Auto-distribute disabled for licenseId " + licenseId + " — skipping");
+    return 0;
+  }
+
   const ls = await getLicenseSetting(licenseId, "blotato_api_key");
   const apiKey = ls?.value || null;
   if (!apiKey) {

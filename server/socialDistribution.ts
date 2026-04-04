@@ -1,6 +1,12 @@
 /**
  * Unified Social Distribution Engine
  *
+ * NOTE (Sprint 3.7): Native platform posting (sendToX, sendToFacebook, etc.) is
+ * deprecated. All social distribution now goes through Blotato API via
+ * server/blotato.ts → queueArticleToBlotato(). The processQueue() function and
+ * sendTo* helpers are retained for backwards compatibility with any existing
+ * "pending" rows but should not be used for new posts.
+ *
  * Orchestrates article distribution across X, Reddit, Facebook, Instagram,
  * Bluesky, Threads, and LinkedIn. White-label compatible: all platform
  * credentials are read from the platform_credentials table, not hardcoded.
