@@ -9,6 +9,24 @@ import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
 
+
+function TagBadge({ articleId, tag, label, activeColor, isActive }: { articleId: number; tag: string; label: string; activeColor: string; isActive: boolean }) {
+  const utils = trpc.useUtils();
+  const toggle = trpc.articles.toggleTag.useMutation({
+    onSuccess: () => utils.articles.list.invalidate(),
+  });
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); toggle.mutate({ articleId, tag: tag as any }); }}
+      title={"Click to " + (isActive ? "unmark" : "mark") + " as " + label}
+      className={"inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer transition-colors " + (isActive ? activeColor : "bg-muted text-muted-foreground/50 hover:bg-muted/80")}
+      style={{ fontSize: 10 }}
+    >
+      {label}
+    </button>
+  );
+}
+
 const statusOptions = ["all", "draft", "pending", "approved", "published", "rejected"];
 
 export default function AdminArticles() {
@@ -141,7 +159,12 @@ export default function AdminArticles() {
                   <tr key={a.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="py-3 px-4">
                       <Link href={`/admin/articles/${a.id}`} className="font-medium hover:text-primary line-clamp-1 transition-colors">{a.headline}</Link>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{new Date(a.createdAt).toLocaleDateString()}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <TagBadge articleId={a.id} tag="editors_pick" label="Editor's Pick" activeColor="bg-teal-100 text-teal-700" isActive={(a as any).isEditorsPick} />
+                        <TagBadge articleId={a.id} tag="trending" label="Trending" activeColor="bg-orange-100 text-orange-700" isActive={(a as any).isTrending} />
+                        <TagBadge articleId={a.id} tag="featured" label="Featured" activeColor="bg-purple-100 text-purple-700" isActive={(a as any).isFeatured} />
+                        <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4"><StatusBadge status={a.status} variant="article" /></td>
                     <td className="py-3 px-4 text-xs text-muted-foreground">{a.batchDate || "—"}</td>

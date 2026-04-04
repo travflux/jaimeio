@@ -34,8 +34,8 @@ interface PrintifyOrderEvent {
       total_tax: number;
       currency_code: string;
       metadata?: {
-        hambry_session_id?: string;
-        hambry_visitor_id?: string;
+        jaimeio_session_id?: string;
+        jaimeio_visitor_id?: string;
       };
     };
   };
@@ -61,8 +61,8 @@ async function handlePrintifyEvent(event: PrintifyOrderEvent): Promise<void> {
   // In practice, use total_price - total_shipping - total_tax for net merch revenue
   const netCents = Math.max(0, order.total_price - order.total_shipping - order.total_tax);
 
-  const sessionId = order.metadata?.hambry_session_id ?? null;
-  const visitorId = order.metadata?.hambry_visitor_id ?? null;
+  const sessionId = order.metadata?.jaimeio_session_id ?? null;
+  const visitorId = order.metadata?.jaimeio_visitor_id ?? null;
 
   await insertRevenueEvent({
     stripeEventId: `printify_${order.id}`,

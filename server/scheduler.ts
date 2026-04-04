@@ -1,5 +1,5 @@
 /**
- * Workflow Scheduler — runs inside the Satire Engine server process.
+ * Workflow Scheduler — runs inside the JAIME.IO Engine server process.
  * 
  * Reads schedule settings from the database and uses node-cron to
  * trigger the TypeScript workflow engine at the configured times and days.
@@ -44,6 +44,10 @@ let scheduledTasks: ScheduledTask[] = [];
 let lastRunResult: { time: string; status: string; message: string } | null = null;
 let nextRunTime: string | null = null;
 let isRunning = false;
+
+// Per-tenant scheduler state
+const tenantTasks = new Map<number, Array<{ task: any; cronExpr: string }>>();
+const tenantRunning = new Map<number, boolean>();
 
 // ─── Persisted last-run helpers ──────────────────────────────────────────────
 
@@ -201,7 +205,7 @@ async function runWorkflow(): Promise<{ status: string; message: string }> {
       return result;
     }
 
-    const workflowResult = await runFullPipeline();
+    const workflowResult = await runFullPipeline(undefined, 7); // TODO: per-tenant scheduling
 
     const result = {
       status: workflowResult.status === "success" ? "success" : "warning",
@@ -305,6 +309,67 @@ async function checkMissedRun(
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
+/** Reload schedule for a specific tenant from their license_settings */
+export async function reloadTenantSchedule(licenseId: number) {
+  // Stop existing tasks for this tenant
+  const existing = tenantTasks.get(licenseId);
+  if (existing) {
+    for (const t of existing) t.task.stop();
+    tenantTasks.delete(licenseId);
+  }
+  
+  // Read tenant schedule from license_settings
+  const { getLicenseSetting } = await import("./db");
+  const get = async (key: string, def: string) => {
+    const s = await getLicenseSetting(licenseId, key);
+    return s?.value || def;
+  };
+  
+  const enabled = await get("workflow_enabled", "false");
+  if (enabled !== "true") {
+    console.log(`[Scheduler] Tenant ${licenseId}: workflow disabled, no tasks`);
+    return;
+  }
+  
+  const hour1 = parseInt(await get("schedule_hour", "7"));
+  const minute1 = parseInt(await get("schedule_minute", "0"));
+  const days = await get("schedule_days", "mon,tue,wed,thu,fri,sat,sun");
+  const timezone = await get("schedule_timezone", "America/Los_Angeles");
+  const runsPerDay = Math.min(4, Math.max(1, parseInt(await get("schedule_runs_per_day", "2"))));
+  
+  const runs = [{ hour: hour1, minute: minute1 }];
+  if (runsPerDay >= 2) runs.push({ hour: parseInt(await get("schedule_run2_hour", "14")), minute: parseInt(await get("schedule_run2_minute", "0")) });
+  if (runsPerDay >= 3) runs.push({ hour: parseInt(await get("schedule_run3_hour", "20")), minute: parseInt(await get("schedule_run3_minute", "0")) });
+  
+  const tasks: Array<{ task: any; cronExpr: string }> = [];
+  for (const run of runs) {
+    const cronExpr = buildCronExpression(run.hour, run.minute, days);
+    if (!cron.validate(cronExpr)) continue;
+    const task = cron.schedule(cronExpr, () => {
+      if (tenantRunning.get(licenseId)) return;
+      tenantRunning.set(licenseId, true);
+      console.log(`[Scheduler] Tenant ${licenseId}: cron triggered at ${new Date().toISOString()}`);
+      runFullPipeline(undefined, licenseId)
+        .then(r => console.log(`[Scheduler] Tenant ${licenseId}: ${r.status}`))
+        .catch(e => console.error(`[Scheduler] Tenant ${licenseId}: error:`, e.message))
+        .finally(() => tenantRunning.set(licenseId, false));
+    }, { timezone });
+    tasks.push({ task, cronExpr });
+  }
+  
+  tenantTasks.set(licenseId, tasks);
+  console.log(`[Scheduler] Tenant ${licenseId}: ${tasks.length} tasks scheduled (${timezone})`);
+}
+
+/** Get status of all tenant schedulers */
+export function getAllTenantSchedulerStatus(): Array<{ licenseId: number; taskCount: number; isRunning: boolean }> {
+  const result: Array<{ licenseId: number; taskCount: number; isRunning: boolean }> = [];
+  for (const [lid, tasks] of tenantTasks.entries()) {
+    result.push({ licenseId: lid, taskCount: tasks.length, isRunning: tenantRunning.get(lid) || false });
+  }
+  return result;
+}
+
 export async function initScheduler() {
   try {
     // Initialize Amazon settings on startup
@@ -394,6 +459,22 @@ export async function initScheduler() {
 
     await checkMissedRun(runs.map(r => ({ hour: r.hour, minute: r.minute })), days, timezone);
 
+    // Also initialize per-tenant schedules
+    try {
+      const dbConn = await db.getDb();
+      if (dbConn) {
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const [licenses] = await dbConn.execute(sqlFn`SELECT id, subdomain FROM licenses WHERE status = 'active'`);
+        for (const lic of licenses as any[]) {
+          try { await reloadTenantSchedule(lic.id); } catch (e: any) {
+            console.log(`[Scheduler] Skip tenant ${lic.id} (${lic.subdomain}): ${e.message?.substring(0, 50)}`);
+          }
+        }
+      }
+    } catch (e: any) {
+      console.log("[Scheduler] Per-tenant init skipped:", e.message?.substring(0, 80));
+    }
+
   } catch (error) {
     console.error("[Scheduler] Failed to initialize:", error);
   }
@@ -461,7 +542,7 @@ export function getSchedulerStatus() {
   };
 }
 
-export async function triggerWorkflowNow() {
+export async function triggerWorkflowNow(licenseId?: number) {
   return runWorkflow();
 }
 

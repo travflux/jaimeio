@@ -1,660 +1,373 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Key, Server, Edit, Trash2, Eye, Copy, Check } from "lucide-react";
+import {
+  Plus, Key, Users, Building2, CheckCircle2, AlertCircle, Clock, XCircle,
+  Trash2, Edit, RefreshCw, ChevronDown,
+} from "lucide-react";
+import { toast } from "sonner";
 
+const tierColors: Record<string, string> = {
+  starter: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  professional: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+  enterprise: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+};
 
-export default function AdminLicenses() {
+const statusIcons: Record<string, any> = {
+  active: <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />,
+  expired: <Clock className="w-3.5 h-3.5 text-yellow-600" />,
+  suspended: <AlertCircle className="w-3.5 h-3.5 text-red-600" />,
+  cancelled: <XCircle className="w-3.5 h-3.5 text-gray-500" />,
+};
+
+function CreateLicenseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({
+    clientName: "",
+    email: "",
+    domain: "",
+    subdomain: "",
+    tier: "professional" as "starter" | "professional" | "enterprise",
+    maxUsers: 10,
+    notes: "",
+  });
+  const [error, setError] = useState("");
+
+  const createMutation = trpc.licenseManagement.create.useMutation({
+    onSuccess: (data) => {
+      toast.success(`License created! Key: ${data.licenseKey}`);
+      onCreated();
+      onClose();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
   return (
-    <AdminLayout>
-      <LicensesContent />
-    </AdminLayout>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className="w-full max-w-lg mx-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="w-5 h-5" /> Create License
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError("");
+              createMutation.mutate(form);
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="text-sm font-medium block mb-1">Client Name</label>
+                <input
+                  value={form.clientName}
+                  onChange={(e) => set("clientName", e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+                  placeholder="Acme Corp"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+                  placeholder="admin@acme.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Domain</label>
+                <input
+                  value={form.domain}
+                  onChange={(e) => set("domain", e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+                  placeholder="news.acme.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Subdomain</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    value={form.subdomain}
+                    onChange={(e) => set("subdomain", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    className="flex-1 px-3 py-2 border rounded-md bg-background text-sm font-mono"
+                    placeholder="acme"
+                    required
+                  />
+                  <span className="text-xs text-muted-foreground">.getjaime.io</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Tier</label>
+                <select
+                  value={form.tier}
+                  onChange={(e) => set("tier", e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+                >
+                  <option value="starter">Starter</option>
+                  <option value="professional">Professional</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Max Users</label>
+                <input
+                  type="number"
+                  value={form.maxUsers}
+                  onChange={(e) => set("maxUsers", parseInt(e.target.value) || 5)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+                  min={1}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium block mb-1">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm h-20 resize-none"
+                  placeholder="Internal notes about this license..."
+                />
+              </div>
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex gap-2 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Creating..." : "Create License"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function LicensesContent() {
-  const utils = trpc.useUtils();
-  
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showViewDialog, setShowViewDialog] = useState(false);
-  const [selectedLicense, setSelectedLicense] = useState<any>(null);
-  const [copiedKey, setCopiedKey] = useState(false);
-  
-  // Form state
-  const [clientName, setClientName] = useState("");
-  const [email, setEmail] = useState("");
-  const [domain, setDomain] = useState("");
-  const [tier, setTier] = useState<"starter" | "professional" | "enterprise">("professional");
-  const [validityMonths, setValidityMonths] = useState<number | undefined>(12);
-  const [generatedKey, setGeneratedKey] = useState("");
-  
-  // Queries
-  const { data: licenses = [], isLoading } = trpc.licenses.list.useQuery();
-  const { data: deployments = [] } = trpc.deployments.list.useQuery();
-  
-  // Mutations
-  const generateKey = trpc.licenses.generateKey.useMutation({
-    onSuccess: (data) => {
-      utils.licenses.list.invalidate();
-      setGeneratedKey(data.key);
-      alert("License created successfully");
-    },
-  });
-  
-  const updateLicense = trpc.licenses.update.useMutation({
+function LicenseUsersPanel({ licenseId }: { licenseId: number }) {
+  const usersQuery = trpc.userManagement.listByLicense.useQuery({ licenseId });
+  const users = usersQuery.data ?? [];
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [newUser, setNewUser] = useState({ email: "", name: "", password: "", role: "editor" as const });
+
+  const createMutation = trpc.userManagement.create.useMutation({
     onSuccess: () => {
-      utils.licenses.list.invalidate();
-      alert("License updated successfully");
-      setShowEditDialog(false);
+      toast.success("User created");
+      usersQuery.refetch();
+      setShowCreate(false);
+      setNewUser({ email: "", name: "", password: "", role: "editor" });
     },
+    onError: (err) => toast.error(err.message),
   });
-  
-  const deleteLicense = trpc.licenses.delete.useMutation({
-    onSuccess: () => {
-      utils.licenses.list.invalidate();
-      alert("License deleted successfully");
-    },
+
+  const deleteMutation = trpc.userManagement.delete.useMutation({
+    onSuccess: () => { toast.success("User deleted"); usersQuery.refetch(); },
   });
-  
-  const resetForm = () => {
-    setClientName("");
-    setEmail("");
-    setDomain("");
-    setTier("professional");
-    setValidityMonths(12);
-    setGeneratedKey("");
-  };
-  
-  const handleGenerateLicense = () => {
-    generateKey.mutate({
-      clientName,
-      email,
-      domain,
-      tier,
-      validityMonths,
-    });
-  };
-  
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
-    // Copied
-  };
-  
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      active: "default",
-      expired: "secondary",
-      suspended: "destructive",
-      cancelled: "outline",
-    };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
-  };
-  
-  const getTierBadge = (tier: string) => {
-    const colors: Record<string, string> = {
-      starter: "bg-blue-100 text-blue-800",
-      professional: "bg-purple-100 text-purple-800",
-      enterprise: "bg-amber-100 text-amber-800",
-    };
-    return <Badge className={colors[tier] || ""}>{tier}</Badge>;
-  };
-  
-  const getDeploymentsForLicense = (licenseId: number) => {
-    return deployments.filter(d => d.licenseId === licenseId);
-  };
-  
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">License Management</h1>
-        <p className="text-muted-foreground">
-          Manage white-label licenses and track client deployments
-        </p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium flex items-center gap-1.5">
+          <Users className="w-4 h-4" /> Users ({users.length})
+        </h3>
+        <Button size="sm" variant="outline" onClick={() => setShowCreate(!showCreate)}>
+          <Plus className="w-3 h-3 mr-1" /> Add User
+        </Button>
       </div>
-      
-      <Tabs defaultValue="licenses" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="licenses">Licenses</TabsTrigger>
-          <TabsTrigger value="deployments">Deployments</TabsTrigger>
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="licenses" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-semibold">Active Licenses</h2>
-              <p className="text-sm text-muted-foreground">
-                {licenses.length} total licenses
-              </p>
-            </div>
-            <Button onClick={() => setShowGenerateDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Generate License
+
+      {showCreate && (
+        <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              value={newUser.name}
+              onChange={(e) => setNewUser(p => ({ ...p, name: e.target.value }))}
+              className="px-2 py-1.5 border rounded text-sm bg-background"
+              placeholder="Name"
+            />
+            <input
+              type="email"
+              value={newUser.email}
+              onChange={(e) => setNewUser(p => ({ ...p, email: e.target.value }))}
+              className="px-2 py-1.5 border rounded text-sm bg-background"
+              placeholder="Email"
+            />
+            <input
+              type="password"
+              value={newUser.password}
+              onChange={(e) => setNewUser(p => ({ ...p, password: e.target.value }))}
+              className="px-2 py-1.5 border rounded text-sm bg-background"
+              placeholder="Password (min 8 chars)"
+            />
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser(p => ({ ...p, role: e.target.value as any }))}
+              className="px-2 py-1.5 border rounded text-sm bg-background"
+            >
+              <option value="owner">Owner</option>
+              <option value="admin">Admin</option>
+              <option value="editor">Editor</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              disabled={createMutation.isPending}
+              onClick={() => createMutation.mutate({ licenseId, ...newUser })}
+            >
+              {createMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </div>
-          
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Tier</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Issued</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Deployments</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : licenses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No licenses yet. Generate your first license to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    licenses.map((license: any) => (
-                      <TableRow key={license.id}>
-                        <TableCell className="font-medium">{license.clientName}</TableCell>
-                        <TableCell>{license.domain}</TableCell>
-                        <TableCell>{getTierBadge(license.tier)}</TableCell>
-                        <TableCell>{getStatusBadge(license.status)}</TableCell>
-                        <TableCell>
-                          {new Date(license.issuedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {license.expiresAt
-                            ? new Date(license.expiresAt).toLocaleDateString()
-                            : "Never"}
-                        </TableCell>
-                        <TableCell>
-                          {getDeploymentsForLicense(license.id).length}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedLicense(license);
-                                setShowViewDialog(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedLicense(license);
-                                setShowEditDialog(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm("Delete this license?")) {
-                                  deleteLicense.mutate({ id: license.id });
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="deployments" className="space-y-4">
-          <h2 className="text-2xl font-semibold">Client Deployments</h2>
-          
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>URL</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Articles</TableHead>
-                    <TableHead>Last Check-in</TableHead>
-                    <TableHead>Deployed</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {deployments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No deployments tracked yet.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    deployments.map((deployment: any) => {
-                      const license = licenses.find((l: any) => l.id === deployment.licenseId);
-                      return (
-                        <TableRow key={deployment.id}>
-                          <TableCell className="font-medium">
-                            {license?.clientName || "Unknown"}
-                          </TableCell>
-                          <TableCell>
-                            {deployment.deploymentUrl ? (
-                              <a
-                                href={deployment.deploymentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
-                              >
-                                {deployment.deploymentUrl}
-                              </a>
-                            ) : (
-                              "—"
-                            )}
-                          </TableCell>
-                          <TableCell>{deployment.engineVersion}</TableCell>
-                          <TableCell>{getStatusBadge(deployment.status)}</TableCell>
-                          <TableCell>{deployment.articlesGenerated}</TableCell>
-                          <TableCell>
-                            {deployment.lastCheckIn
-                              ? new Date(deployment.lastCheckIn).toLocaleString()
-                              : "Never"}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(deployment.deployedAt).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="stats" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Licenses</CardTitle>
-                <CardDescription>All time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{licenses.length}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Licenses</CardTitle>
-                <CardDescription>Currently active</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
-                  {licenses.filter((l: any) => l.status === "active").length}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Deployments</CardTitle>
-                <CardDescription>All clients</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{deployments.length}</div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>License Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {["starter", "professional", "enterprise"].map((tier) => {
-                  const count = licenses.filter((l: any) => l.tier === tier).length;
-                  const percentage = licenses.length > 0 ? (count / licenses.length) * 100 : 0;
-                  return (
-                    <div key={tier} className="flex items-center gap-4">
-                      <div className="w-32">{getTierBadge(tier)}</div>
-                      <div className="flex-1 bg-secondary rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <div className="w-16 text-right text-sm text-muted-foreground">
-                        {count} ({percentage.toFixed(0)}%)
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      {/* Generate License Dialog */}
-      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Generate New License</DialogTitle>
-            <DialogDescription>
-              Create a new license key for a client deployment
-            </DialogDescription>
-          </DialogHeader>
-          
-          {generatedKey ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm font-medium text-green-900 mb-2">
-                  ✓ License generated successfully!
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 p-2 bg-white border rounded text-xs break-all">
-                    {generatedKey}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => copyToClipboard(generatedKey)}
-                  >
-                    {copiedKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                <p className="font-medium mb-2">Next steps:</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Copy the license key above</li>
-                  <li>Send it to the client securely</li>
-                  <li>Client runs deployment setup with this key</li>
-                </ol>
-              </div>
-              
-              <DialogFooter>
-                <Button onClick={() => {
-                  setShowGenerateDialog(false);
-                  resetForm();
-                }}>
-                  Done
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Client Name</Label>
-                  <Input
-                    id="clientName"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="TechSatire Inc"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@techsatire.com"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="domain">Domain</Label>
-                  <Input
-                    id="domain"
-                    value={domain}
-                    onChange={(e) => setDomain(e.target.value)}
-                    placeholder="techsatire.com"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="tier">License Tier</Label>
-                  <Select value={tier} onValueChange={(v: any) => setTier(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="starter">Starter</SelectItem>
-                      <SelectItem value="professional">Professional</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="validity">Validity (months)</Label>
-                  <Input
-                    id="validity"
-                    type="number"
-                    value={validityMonths || ""}
-                    onChange={(e) => setValidityMonths(e.target.value ? parseInt(e.target.value) : undefined)}
-                    placeholder="12 (leave empty for lifetime)"
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleGenerateLicense}
-                  disabled={!clientName || !email || !domain}
-                >
-                  <Key className="mr-2 h-4 w-4" />
-                  Generate License
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* View License Dialog */}
-      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>License Details</DialogTitle>
-          </DialogHeader>
-          
-          {selectedLicense && (
-            <div className="space-y-4">
+        </div>
+      )}
+
+      {users.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">No users yet</p>
+      ) : (
+        <div className="space-y-1">
+          {users.map((u: any) => (
+            <div key={u.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 text-sm">
               <div>
-                <Label>License Key</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="flex-1 p-2 bg-secondary rounded text-xs break-all">
-                    {selectedLicense.licenseKey}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => copyToClipboard(selectedLicense.licenseKey)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
+                <span className="font-medium">{u.name}</span>
+                <span className="text-muted-foreground ml-2">{u.email}</span>
               </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Client Name</Label>
-                  <p className="mt-1">{selectedLicense.clientName}</p>
-                </div>
-                
-                <div>
-                  <Label>Email</Label>
-                  <p className="mt-1">{selectedLicense.email}</p>
-                </div>
-                
-                <div>
-                  <Label>Domain</Label>
-                  <p className="mt-1">{selectedLicense.domain}</p>
-                </div>
-                
-                <div>
-                  <Label>Tier</Label>
-                  <p className="mt-1">{getTierBadge(selectedLicense.tier)}</p>
-                </div>
-                
-                <div>
-                  <Label>Status</Label>
-                  <p className="mt-1">{getStatusBadge(selectedLicense.status)}</p>
-                </div>
-                
-                <div>
-                  <Label>Issued</Label>
-                  <p className="mt-1">
-                    {new Date(selectedLicense.issuedAt).toLocaleDateString()}
-                  </p>
-                </div>
-                
-                <div>
-                  <Label>Expires</Label>
-                  <p className="mt-1">
-                    {selectedLicense.expiresAt
-                      ? new Date(selectedLicense.expiresAt).toLocaleDateString()
-                      : "Never"}
-                  </p>
-                </div>
-              </div>
-              
-              {selectedLicense.notes && (
-                <div>
-                  <Label>Notes</Label>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {selectedLicense.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Edit License Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit License</DialogTitle>
-          </DialogHeader>
-          
-          {selectedLicense && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editStatus">Status</Label>
-                <Select
-                  value={selectedLicense.status}
-                  onValueChange={(v) =>
-                    setSelectedLicense({ ...selectedLicense, status: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="editNotes">Notes</Label>
-                <Textarea
-                  id="editNotes"
-                  value={selectedLicense.notes || ""}
-                  onChange={(e) =>
-                    setSelectedLicense({ ...selectedLicense, notes: e.target.value })
-                  }
-                  placeholder="Add notes about this license..."
-                />
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-                  Cancel
-                </Button>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">{u.role}</Badge>
+                {!u.isActive && <Badge variant="destructive" className="text-xs">Inactive</Badge>}
                 <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive h-7 w-7 p-0"
                   onClick={() => {
-                    updateLicense.mutate({
-                      id: selectedLicense.id,
-                      status: selectedLicense.status,
-                      notes: selectedLicense.notes,
-                    });
+                    if (confirm(`Delete user ${u.email}?`)) deleteMutation.mutate({ id: u.id });
                   }}
                 >
-                  Save Changes
+                  <Trash2 className="w-3 h-3" />
                 </Button>
-              </DialogFooter>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminLicenses() {
+  const [showCreate, setShowCreate] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const utils = trpc.useUtils();
+  const licensesQuery = trpc.licenseManagement.list.useQuery();
+  const licenses = licensesQuery.data ?? [];
+
+  const deleteMutation = trpc.licenseManagement.delete.useMutation({
+    onSuccess: () => { toast.success("License cancelled"); utils.licenseManagement.list.invalidate(); },
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-headline">Licenses</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage client licenses and users
+          </p>
+        </div>
+        <Button onClick={() => setShowCreate(true)} size="sm">
+          <Plus className="w-4 h-4 mr-1" /> Create License
+        </Button>
+      </div>
+
+      {showCreate && (
+        <CreateLicenseModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => utils.licenseManagement.list.invalidate()}
+        />
+      )}
+
+      <Card>
+        <CardContent className="p-0">
+          {licenses.length === 0 ? (
+            <div className="flex flex-col items-center py-12 text-muted-foreground">
+              <Key className="w-10 h-10 mb-3 opacity-40" />
+              <p className="font-medium">No licenses</p>
+              <p className="text-sm">Click "Create License" to add your first client.</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {licenses.map((l: any) => (
+                <div key={l.id}>
+                  <div
+                    className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 cursor-pointer"
+                    onClick={() => setExpandedId(expandedId === l.id ? null : l.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">{l.clientName}</span>
+                        <span className="text-xs text-muted-foreground ml-2 font-mono">
+                          {l.subdomain ? `${l.subdomain}.getjaime.io` : l.domain}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className={tierColors[l.tier] || ""}>{l.tier}</Badge>
+                      <div className="flex items-center gap-1">{statusIcons[l.status]}<span className="text-xs capitalize">{l.status}</span></div>
+                      <span className="text-xs text-muted-foreground">{l.userCount} users</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${expandedId === l.id ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                  {expandedId === l.id && (
+                    <div className="px-4 pb-4 border-t bg-muted/10">
+                      <div className="grid grid-cols-3 gap-4 py-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground text-xs block">License Key</span>
+                          <span className="font-mono text-xs">{l.licenseKey}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Email</span>
+                          <span className="text-xs">{l.email}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Max Users</span>
+                          <span className="text-xs">{l.maxUsers}</span>
+                        </div>
+                      </div>
+                      <LicenseUsersPanel licenseId={l.id} />
+                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => {
+                            if (confirm(`Cancel license for ${l.clientName}?`)) {
+                              deleteMutation.mutate({ id: l.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Cancel License
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

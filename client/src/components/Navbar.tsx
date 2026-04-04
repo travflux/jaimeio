@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useBranding, BrandingConfig } from "@/hooks/useBranding";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Search, Menu, X, Command } from "lucide-react";
+import { Search, Menu, X, Command, ShoppingBag, } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 
 /** Resolve the effective masthead background color */
 export function mastheadBgStyle(b: BrandingConfig): string {
-  return b.mastheadBgColor || b.colorPrimary || "#dc2626";
+  return b.mastheadBgColor || b.colorPrimary || "#0f2d5e";
 }
 
 /** Resolve the effective date bar background color */
@@ -158,6 +158,7 @@ export function Masthead({ branding, scrolled, preview = false }: MastheadProps)
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const { branding } = useBranding();
+  const showShop = !!(branding as any).printifyEnabled || !!(branding as any).shopExternalUrl;
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -202,16 +203,6 @@ export default function Navbar() {
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </span>
             <div className="flex items-center gap-5 text-[12px] font-medium tracking-wide">
-              {isAuthenticated ? (
-                <>
-                  {user?.role === "admin" && (
-                    <Link href="/admin" className="hover:text-white hover:opacity-80 transition-all duration-300 uppercase">Admin</Link>
-                  )}
-                  <span className="hidden sm:inline">{user?.name || "Account"}</span>
-                </>
-              ) : (
-                <a href={getLoginUrl()} className="hover:text-white hover:opacity-80 transition-all duration-300 uppercase">Sign In</a>
-              )}
             </div>
           </div>
         </div>
@@ -225,16 +216,6 @@ export default function Navbar() {
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </span>
             <div className="flex items-center gap-5 text-[12px] font-medium tracking-wide" style={{ color: branding.mastheadTextColor || "#ffffff" }}>
-              {isAuthenticated ? (
-                <>
-                  {user?.role === "admin" && (
-                    <Link href="/admin" className="hover:opacity-80 transition-all duration-300 uppercase">Admin</Link>
-                  )}
-                  <span className="hidden sm:inline opacity-70">{user?.name || "Account"}</span>
-                </>
-              ) : (
-                <a href={getLoginUrl()} className="hover:opacity-80 transition-all duration-300 uppercase">Sign In</a>
-              )}
             </div>
           </div>
         </div>
@@ -242,11 +223,14 @@ export default function Navbar() {
 
       {/* Masthead */}
       <div
-        className={`container ${scrolled ? "py-2 sm:py-3" : paddingClass(branding.mastheadPadding)} transition-all duration-500 ${branding.mastheadLayout === "center" ? "text-center" : "text-left"}`}
+        className="w-full"
         style={{
           backgroundColor: mastheadBgStyle(branding),
           ...(branding.mastheadBorderBottom ? { borderBottom: `1px solid ${branding.mastheadBorderColor || "rgba(255,255,255,0.2)"}` } : {}),
         }}
+      >
+      <div
+        className={`container ${scrolled ? "py-2 sm:py-3" : paddingClass(branding.mastheadPadding)} transition-all duration-500 ${branding.mastheadLayout === "center" ? "text-center" : "text-left"}`}
       >
         <Link href="/">
           {branding.mastheadLayout === "logo-only" && branding.logoUrl && branding.logoUrl !== "/logo.svg" ? (
@@ -292,6 +276,7 @@ export default function Navbar() {
             </div>
           )}
         </Link>
+      </div>
       </div>
 
       {/* Category nav */}

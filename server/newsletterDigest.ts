@@ -48,7 +48,7 @@ async function getBrandConfig() {
   ]);
   return {
     siteName: siteName?.value || process.env.VITE_APP_TITLE || "",
-    tagline: tagline?.value || "The News, Remastered.",
+    tagline: tagline?.value || "AI-Powered Content, Automated",
     siteUrl: siteUrl?.value || process.env.SITE_URL || "",
     address: address?.value || process.env.NEWSLETTER_ADDRESS || "",
     fromEmail: fromEmail?.value || process.env.NEWSLETTER_FROM_EMAIL || "",
@@ -98,7 +98,43 @@ async function getWeeklyTopArticles(): Promise<DigestArticle[]> {
 
 // ─── HTML email template ──────────────────────────────────────────────────────
 
-function buildDigestHtml(brand: Awaited<ReturnType<typeof getBrandConfig>>, arts: DigestArticle[], unsubscribeUrl: string): string {
+function buildDigestHtml(brand: Awaited<ReturnType<typeof getBrandConfig>>, arts: DigestArticle[], unsubscribeUrl: string, selectedTemplate?: string): string {
+  // Try to load a custom template
+  const validTemplates = ["editorial", "modern", "magazine", "minimal", "bold", "corporate"];
+  const templateName = validTemplates.includes(selectedTemplate || "") ? selectedTemplate! : "";
+  
+  if (templateName) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const templatePath = path.resolve(__dirname, "../templates/newsletter", templateName + ".html");
+      let html = fs.readFileSync(templatePath, "utf-8");
+      
+      // Build articles HTML
+      const articlesHtml = arts.map((a, i) => {
+        const url = brand.siteUrl + "/article/" + a.slug + "?utm_source=newsletter&utm_medium=email";
+        const img = a.featuredImage ? "<img src=\"" + a.featuredImage + "\" alt=\"\" style=\"width:100%;max-height:160px;object-fit:cover;border-radius:4px;margin-bottom:8px;\">" : "";
+        return "<div style=\"margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e5e5e5;\">" + img + "<a href=\"" + url + "\" style=\"color:#111;text-decoration:none;font-size:17px;font-weight:700;line-height:1.3;\">" + a.headline + "</a>" + (a.subheadline ? "<p style=\"margin:4px 0 0;color:#666;font-size:14px;\">" + a.subheadline + "</p>" : "") + "</div>";
+      }).join("");
+      
+      html = html
+        .replace(/{{SITE_NAME}}/g, brand.siteName)
+        .replace(/{{SITE_URL}}/g, brand.siteUrl)
+        .replace(/{{LOGO_URL}}/g, brand.ogImage || "")
+        .replace(/{{HEADLINE}}/g, brand.siteName + " Weekly Digest")
+        .replace(/{{UNSUBSCRIBE_URL}}/g, unsubscribeUrl)
+        .replace(/{{SPONSOR_BLOCK}}/g, "")
+        .replace(/{{AD_ZONE}}/g, "")
+        .replace(/{{ARTICLES_LOOP}}/g, articlesHtml)
+        .replace(/{{ARTICLES}}/g, articlesHtml);
+      
+      return html;
+    } catch (e) {
+      console.log("[Newsletter] Template " + templateName + " not found, using default");
+    }
+  }
+  
+  // Fall through to original hardcoded template
   const articleRows = arts.map((a, i) => {
     const url = `${brand.siteUrl}/article/${a.slug}?utm_source=newsletter&utm_medium=email&utm_campaign=weekly-digest`;
     const img = a.featuredImage
@@ -283,7 +319,7 @@ export async function sendWeeklyDigest(opts?: { dryRun?: boolean; triggeredBy?: 
         from: `${brand.fromName} <${brand.fromEmail}>`,
         to: email,
         subject,
-        html: buildDigestHtml(brand, topArticles, unsubUrl),
+        html: buildDigestHtml(brand, topArticles, unsubUrl, (await db.getSetting("newsletter_template"))?.value),
         text: buildDigestText(brand, topArticles, unsubUrl),
       });
       sent++;

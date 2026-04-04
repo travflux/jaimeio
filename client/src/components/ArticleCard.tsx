@@ -37,8 +37,8 @@ export default function ArticleCard({ article, variant = "standard", categoryNam
           ) : (
             <div className="aspect-[16/9] rounded-sm mb-3 sm:mb-5 flex items-center justify-center relative overflow-hidden bg-muted/60">
               <img
-                src={branding.mascotUrl}
-                alt={branding.mascotName}
+                src={branding.logoUrl}
+                alt={branding.siteName}
                 className="w-1/4 h-auto opacity-25 group-hover:opacity-40 transition-opacity duration-500"
                 loading="lazy"
               />
@@ -117,8 +117,8 @@ export default function ArticleCard({ article, variant = "standard", categoryNam
             ) : (
               <div className="aspect-[4/3] rounded-sm bg-muted/60 flex items-center justify-center overflow-hidden">
                 <img
-                  src={branding.mascotUrl}
-                  alt={branding.mascotName}
+                  src={branding.logoUrl}
+                  alt={branding.siteName}
                   className="w-2/3 h-auto opacity-25 group-hover:opacity-40 transition-opacity duration-500"
                   loading="lazy"
                 />
@@ -164,8 +164,8 @@ export default function ArticleCard({ article, variant = "standard", categoryNam
         ) : (
           <div className="aspect-[16/10] rounded-sm mb-2.5 sm:mb-3 flex items-center justify-center relative overflow-hidden bg-muted/60">
             <img
-              src={branding.mascotUrl}
-              alt={branding.mascotName}
+              src={branding.logoUrl}
+              alt={branding.siteName}
               className="w-1/3 h-auto opacity-30 group-hover:opacity-50 transition-opacity duration-500"
               loading="lazy"
             />

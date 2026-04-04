@@ -266,7 +266,9 @@ const normalizeResponseFormat = ({
   };
 };
 
-export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+const _wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function _invokeLLMOnce(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
   const {
@@ -281,7 +283,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: params.model || "gemini-2.5-flash",
+    model: params.model || "claude-sonnet-4-20250514",
     messages: messages.map(normalizeMessage),
   };
 
@@ -298,9 +300,6 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
-  }
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -330,4 +329,26 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   return (await response.json()) as InvokeResult;
+}
+
+
+/** Rate-limit-aware wrapper around _invokeLLMOnce with exponential backoff. */
+export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await _invokeLLMOnce(params);
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      const isRateLimit = msg.includes("429") || msg.includes("rate_limit") || msg.includes("529");
+      if (isRateLimit && attempt < maxRetries) {
+        const waitMs = attempt * 60000;
+        console.log("[LLM] Rate limit (attempt " + attempt + "/" + maxRetries + "). Waiting " + (waitMs / 1000) + "s...");
+        await _wait(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("invokeLLM: max retries exhausted");
 }

@@ -3,9 +3,6 @@
  * 
  * This file contains all white-label configuration for the content engine.
  * Customize these values for each client deployment.
- * 
- * IMPORTANT CUSTOMIZATIONS:
- * - description: Custom footer tagline (updated 2026-02-20) - do not change without explicit approval
  */
 
 export interface SiteConfig {
@@ -21,10 +18,10 @@ export interface SiteConfig {
   };
   
   colors: {
-    primary: string;      // Main brand color
-    secondary: string;    // Accent color
-    background: string;   // Page background
-    text: string;         // Main text color
+    primary: string;
+    secondary: string;
+    background: string;
+    text: string;
   };
   
   // Contact & Social
@@ -37,16 +34,16 @@ export interface SiteConfig {
   
   // Content Settings
   content: {
-    genre: string;        // e.g., "satire", "news", "tech", "entertainment"
-    tone: string;         // e.g., "satirical", "professional", "casual"
+    genre: string;
+    tone: string;
     defaultCategories: string[];
   };
   
   // SEO & Meta
   seo: {
     keywords: string[];
-    ogImage: string;      // Default Open Graph image
-    twitterCard: string;  // Default Twitter card type
+    ogImage: string;
+    twitterCard: string;
   };
   
   // Legal
@@ -58,76 +55,61 @@ export interface SiteConfig {
   };
 }
 
-// ─── Default Configuration (White-Label Defaults) ───────────────────────
-
 export const defaultSiteConfig: SiteConfig = {
-  siteName: "Your Publication Name",
-  tagline: "Your Tagline Here",
-  description: "Delivering top-shelf satirical journalism since reality jumped the shark",
+  siteName: "JAIME.IO",
+  tagline: "AI-Powered Content, Automated",
+  description: "The AI content engine that writes, publishes, and distributes for you",
   
   logo: {
     url: "/logo.svg",
-    alt: "Site Logo"
+    alt: "JAIME.IO"
   },
   
   colors: {
-    primary: "#dc2626",      // Red
-    secondary: "#1e40af",    // Blue
+    primary: "#0f2d5e",
+    secondary: "#1e40af",
     background: "#ffffff",
     text: "#0a0a0a"
   },
   
   contact: {
-    email: "contact@example.com",
-    twitter: "@yourbrand",
+    email: "hello@getjaime.io",
+    twitter: "@getjaimeio",
   },
   
   content: {
-    genre: "satire",
-    tone: "satirical",
+    genre: "news",
+    tone: "professional",
     defaultCategories: [
-      "Politics",
       "Business",
       "Technology",
-      "Science",
+      "Marketing",
+      "Finance",
+      "Health",
+      "Lifestyle",
+      "Politics",
       "Entertainment",
       "Sports",
-      "World",
-      "Lifestyle",
-      "Opinion",
-      "Art"
+      "World"
     ]
   },
   
   seo: {
-    keywords: ["satire", "news", "comedy", "current events", "politics"],
+    keywords: ["AI content", "content automation", "SEO", "content marketing", "AI writing"],
     ogImage: "/og-image.jpg",
     twitterCard: "summary_large_image"
   },
   
   legal: {
-    companyName: "Your Company Name",
+    companyName: "JANICCO",
     foundedYear: 2026,
   }
 };
 
-// ─── Load Configuration ───────────────────────────────────
-
-/**
- * Get site configuration
- * 
- * In production, this could load from environment variables,
- * a database, or a separate config file per deployment.
- */
 export function getSiteConfig(): SiteConfig {
-  // For now, return default config
-  // In white-label deployments, this would load from env or database
   return defaultSiteConfig;
 }
 
-/**
- * Get a specific config value with type safety
- */
 export function getConfigValue<K extends keyof SiteConfig>(key: K): SiteConfig[K] {
   return getSiteConfig()[key];
 }

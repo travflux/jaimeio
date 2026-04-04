@@ -59,7 +59,7 @@ export async function getXCredentials(): Promise<XCredentials | null> {
       }
     }
   } catch { /* fall through to env vars */ }
-  // Env var fallback (Hambry production + backwards compat)
+  // Env var fallback (JAIME.IO production + backwards compat)
   const apiKey = process.env.X_API_KEY;
   const apiSecret = process.env.X_API_SECRET;
   const accessToken = process.env.X_ACCESS_TOKEN;

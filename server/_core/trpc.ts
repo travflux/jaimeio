@@ -27,6 +27,15 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+/** Accepts either super admin or tenant user auth. Always preserves ctx.licenseId. */
+const requireAnyAuth = t.middleware(async opts => {
+  const { ctx, next } = opts;
+  if (ctx.user) return next({ ctx: { ...ctx, user: ctx.user, licenseId: ctx.licenseId } });
+  if (ctx.tenantUser) return next({ ctx: { ...ctx, user: { id: ctx.tenantUser.id, role: "admin", name: ctx.tenantUser.name, email: ctx.tenantUser.email } as any, licenseId: ctx.tenantUser.licenseId || ctx.licenseId } });
+  throw new TRPCError({ code: "UNAUTHORIZED", message: "Please login" });
+});
+export const tenantOrAdminProcedure = t.procedure.use(requireAnyAuth);
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

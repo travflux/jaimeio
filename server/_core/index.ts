@@ -153,27 +153,52 @@ async function startServer() {
   // /api/sitemap.xml bypasses the edge layer and returns real XML with /article/:slug URLs.
   const ROBOTS_TXT = `User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/briefing-room-m4x1q\n\nSitemap: ${siteUrl}/content-sitemap.xml\nSitemap: ${siteUrl}/news-sitemap.xml\n`;
 
-  app.get("/api/robots.txt", (_req, res) => {
-    res
-      .set("Content-Type", "text/plain")
-      .set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-      .set("Pragma", "no-cache")
-      .set("Surrogate-Control", "no-store")
-      .set("CDN-Cache-Control", "no-store")
-      .set("Cloudflare-CDN-Cache-Control", "no-store")
-      .set("Expires", "0")
-      .send(ROBOTS_TXT);
+  // Dynamic per-tenant robots.txt
+  app.get("/robots.txt", async (req, res) => {
+    try {
+      const hostname = req.hostname || "";
+      const subdomain = hostname.split(".")[0];
+      if (subdomain && subdomain !== "app" && subdomain !== "www" && subdomain !== "localhost") {
+        const { getLicenseBySubdomain, getLicenseSetting } = await import("../db");
+        const license = await getLicenseBySubdomain(subdomain);
+        if (license) {
+          const modeSetting = await getLicenseSetting(license.id, "robots_txt_mode");
+          const customSetting = await getLicenseSetting(license.id, "robots_txt_custom");
+          const mode = modeSetting?.value || "allow";
+          let content: string;
+          if (mode === "block") content = "User-agent: *\nDisallow: /";
+          else if (mode === "custom" && customSetting?.value) content = customSetting.value;
+          else content = "User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: https://" + hostname + "/content-sitemap.xml";
+          return res.type("text/plain").set("Cache-Control", "public, max-age=3600").send(content);
+        }
+      }
+      res.type("text/plain").set("Cache-Control", "public, max-age=3600").send(ROBOTS_TXT);
+    } catch {
+      res.type("text/plain").send(ROBOTS_TXT);
+    }
   });
-  app.get("/robots.txt", (_req, res) => {
-    res
-      .set("Content-Type", "text/plain")
-      .set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-      .set("Pragma", "no-cache")
-      .set("Surrogate-Control", "no-store")
-      .set("CDN-Cache-Control", "no-store")
-      .set("Cloudflare-CDN-Cache-Control", "no-store")
-      .set("Expires", "0")
-      .send(ROBOTS_TXT);
+  app.get("/api/robots.txt", (_req, res) => {
+    res.type("text/plain").send(ROBOTS_TXT);
+  });
+
+  // IndexNow key file verification
+  app.get("/:key([a-f0-9-]{36}).txt", async (req, res) => {
+    try {
+      const { key } = req.params;
+      const hostname = req.hostname || "";
+      const subdomain = hostname.split(".")[0];
+      const { getLicenseBySubdomain, getLicenseSetting } = await import("../db");
+      const license = await getLicenseBySubdomain(subdomain);
+      if (license) {
+        const keySetting = await getLicenseSetting(license.id, "indexnow_key");
+        if (keySetting?.value === key) {
+          return res.type("text/plain").send(key);
+        }
+      }
+      res.status(404).send("Not found");
+    } catch {
+      res.status(404).send("Not found");
+    }
   });
 
   // ─── Sitemap endpoints ───────────────────────────────
@@ -188,7 +213,7 @@ async function startServer() {
     if (process.env.SITE_URL) return process.env.SITE_URL;
     const host = req.get('host') || '';
     if (process.env.NODE_ENV === 'production' || host.includes('manus')) {
-      return siteUrl; // fallback to SITE_URL or hambry.com default
+      return siteUrl; // fallback to SITE_URL or configured domain
     }
     return `${req.protocol}://${host}`;
   }

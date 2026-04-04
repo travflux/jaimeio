@@ -23,6 +23,7 @@ export const categories = mysqlTable("categories", {
   description: text("description"),
   color: varchar("color", { length: 7 }).default("#6366f1"),
   keywords: text("keywords"),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -37,6 +38,7 @@ export const articles = mysqlTable("articles", {
   slug: varchar("slug", { length: 600 }).notNull().unique(),
   status: mysqlEnum("status", ["draft", "pending", "approved", "published", "rejected"]).default("draft").notNull(),
   categoryId: int("categoryId"),
+  licenseId: int("license_id"),
   featuredImage: text("featuredImage"),
   featuredEmbed: text("featuredEmbed"),  // oEmbed HTML for X/Instagram embeds
   imageAttribution: text("imageAttribution"),  // attribution text for sourced real images
@@ -51,6 +53,17 @@ export const articles = mysqlTable("articles", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   publishedAt: timestamp("publishedAt"),
+  // GEO (Generative Engine Optimization) fields
+  geoSummary: text("geo_summary"),
+  geoFaq: text("geo_faq"),                         // JSON array of {question, answer}
+  geoSchema: text("geo_schema"),                    // JSON-LD string
+  geoSpeakable: text("geo_speakable"),
+  geoScore: int("geo_score"),                       // 0-100
+  geoGeneratedAt: timestamp("geo_generated_at"),
+  // Article tags for Discover sections
+  isEditorsPick: boolean("is_editors_pick").default(false).notNull(),
+  isTrending: boolean("is_trending").default(false).notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
 });
 
 export type Article = typeof articles.$inferSelect;
@@ -68,6 +81,7 @@ export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export const socialPosts = mysqlTable("social_posts", {
   id: int("id").autoincrement().primaryKey(),
   articleId: int("articleId").notNull(),
+  licenseId: int("license_id"),
   platform: mysqlEnum("platform", ["twitter", "facebook", "linkedin", "instagram", "threads"]).notNull(),
   content: text("content").notNull(),
   videoUrl: text("videoUrl"),
@@ -119,7 +133,12 @@ export const licenses = mysqlTable("licenses", {
   clientName: varchar("clientName", { length: 200 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   domain: varchar("domain", { length: 255 }).notNull(),
+  subdomain: varchar("subdomain", { length: 100 }),
   tier: mysqlEnum("tier", ["starter", "professional", "enterprise"]).notNull(),
+  maxUsers: int("maxUsers").default(5).notNull(),
+  features: json("features"), // JSON: { analytics: true, api: false, whiteLabel: true, ... }
+  logoUrl: text("logoUrl"),
+  primaryColor: varchar("primaryColor", { length: 7 }).default("#0f2d5e"),
   status: mysqlEnum("status", ["active", "expired", "suspended", "cancelled"]).default("active").notNull(),
   issuedAt: timestamp("issuedAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt"),
@@ -943,3 +962,95 @@ export const imageSourceDomains = mysqlTable("image_source_domains", {
 }));
 export type ImageSourceDomain = typeof imageSourceDomains.$inferSelect;
 export type InsertImageSourceDomain = typeof imageSourceDomains.$inferInsert;
+
+// ─── Custom Domains (White Label Client Routing) ──────────────────────────────
+export const customDomains = mysqlTable("custom_domains", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: varchar("client_id", { length: 100 }).notNull(),
+  customDomain: varchar("custom_domain", { length: 255 }).notNull().unique(),
+  publicationName: varchar("publication_name", { length: 255 }).notNull(),
+  sslStatus: mysqlEnum("ssl_status", ["pending", "active", "failed"]).notNull().default("pending"),
+  verifiedAt: datetime("verified_at"),
+  createdAt: datetime("created_at").notNull().default(sql`NOW()`),
+}, (table) => ({
+  clientIdx: index("idx_cd_client").on(table.clientId),
+  domainIdx: index("idx_cd_domain").on(table.customDomain),
+}));
+export type CustomDomain = typeof customDomains.$inferSelect;
+export type InsertCustomDomain = typeof customDomains.$inferInsert;
+
+// ─── Multi-Tenant License System (Block 4) ──────────────────────────────────
+
+// license_users: users that belong to a license (tenant)
+export const licenseUsers = mysqlTable("license_users", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("licenseId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "editor", "viewer"]).default("viewer").notNull(),
+  avatarUrl: text("avatarUrl"),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  emailLicenseUnique: uniqueIndex("idx_license_user_email").on(table.licenseId, table.email),
+}));
+export type LicenseUser = typeof licenseUsers.$inferSelect;
+export type InsertLicenseUser = typeof licenseUsers.$inferInsert;
+
+// license_settings: per-tenant key-value settings (mirrors workflow_settings but scoped)
+export const licenseSettings = mysqlTable("license_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("licenseId").notNull(),
+  key: varchar("key", { length: 100 }).notNull(),
+  value: text("value").notNull(),
+  type: mysqlEnum("type", ["number", "string", "boolean", "json", "text"]).default("string").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  licenseKeyUnique: uniqueIndex("idx_license_setting_key").on(table.licenseId, table.key),
+}));
+export type LicenseSetting = typeof licenseSettings.$inferSelect;
+export type InsertLicenseSetting = typeof licenseSettings.$inferInsert;
+
+// license_sessions: JWT session tracking for license users
+export const licenseSessions = mysqlTable("license_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseUserId: int("licenseUserId").notNull(),
+  licenseId: int("licenseId").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LicenseSession = typeof licenseSessions.$inferSelect;
+export type InsertLicenseSession = typeof licenseSessions.$inferInsert;
+
+// ─── Support Articles (Block 5) ─────────────────────────────────────────────
+export const supportArticles = mysqlTable("support_articles", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 500 }).notNull(),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }).notNull().default("general"),
+  isPublic: boolean("is_public").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SupportArticle = typeof supportArticles.$inferSelect;
+export type InsertSupportArticle = typeof supportArticles.$inferInsert;
+
+
+// ─── Publication Pages (editable content for static pages) ──────────────────
+export const publicationPages = mysqlTable("publication_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  pageSlug: varchar("page_slug", { length: 100 }).notNull(),
+  title: varchar("title", { length: 500 }),
+  content: text("content"),  // JSON content
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  licensePageUnique: uniqueIndex("idx_license_page").on(table.licenseId, table.pageSlug),
+}));
+export type PublicationPage = typeof publicationPages.$inferSelect;
+export type InsertPublicationPage = typeof publicationPages.$inferInsert;

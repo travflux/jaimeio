@@ -5,7 +5,7 @@
  * Bing, Yahoo, DuckDuckGo, Yandex, ChatGPT (Bing index), Naver, and Seznam.
  *
  * White-label compatible: key and host are read from env vars / DB settings,
- * not hardcoded to Hambry.
+ * not hardcoded to any deployment.
  */
 
 import * as db from "./db";

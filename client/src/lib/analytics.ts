@@ -7,7 +7,7 @@
  * Bots do not execute JavaScript, so only real human browser visits
  * are recorded. This is the primary source of truth for site traffic.
  *
- * White-label compatible: no Hambry-specific logic. All configuration
+ * White-label compatible: no deployment-specific logic. All configuration
  * comes from the deployment environment.
  */
 

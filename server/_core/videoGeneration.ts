@@ -4,7 +4,7 @@
  *
  * Example usage:
  *   const { url: videoUrl } = await generateVideo({
- *     prompt: "A satirical news anchor reporting on tech industry layoffs",
+ *     prompt: "A professional news anchor reporting on tech industry layoffs",
  *     duration: 10,
  *     aspectRatio: "16:9"
  *   });

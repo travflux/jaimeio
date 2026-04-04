@@ -1,5 +1,5 @@
 /**
- * Standalone Tweet Scheduler — runs inside the Satire Engine server process.
+ * Standalone Tweet Scheduler — runs inside the JAIME.IO Engine server process.
  *
  * Reads schedule settings from the database and uses node-cron to
  * trigger daily standalone tweet generation at the configured time.

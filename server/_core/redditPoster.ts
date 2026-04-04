@@ -106,7 +106,7 @@ export async function testRedditConnection(
       username,
       password,
       subreddit: "test",
-      title: "Test post from Satire Engine - please ignore",
+      title: "Test post from JAIME.IO Engine - please ignore",
       selftext: "This is an automated test post. Please ignore."
     });
     

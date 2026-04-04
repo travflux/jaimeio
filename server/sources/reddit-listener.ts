@@ -57,7 +57,7 @@ export async function fetchRedditCandidates(batchDate: string): Promise<number> 
       const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`;
       const response = await fetch(url, {
         headers: {
-          "User-Agent": "hambry-content-engine/4.0 (content aggregation bot)",
+          "User-Agent": "jaimeio-content-engine/4.0 (content aggregation bot)",
           Accept: "application/json",
         },
         signal: AbortSignal.timeout(10_000),

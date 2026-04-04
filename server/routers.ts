@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router, tenantOrAdminProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { generateVideo } from "./_core/videoGeneration";
@@ -25,7 +25,18 @@ import { attributionRouter } from "./routers/attribution";
 import { distributionRouter } from "./routers/distribution";
 import { smsRouter } from "./routers/sms";
 import { setupRouter } from "./routers/setup";
+import { domainsRouter } from "./routers/domains";
+import { tenantAuthRouter } from "./routers/tenantAuth";
+import { licenseManagementRouter } from "./routers/licenseManagement";
+import { userManagementRouter } from "./routers/userManagement";
+import { supportRouter } from "./routers/support";
+import { resolveLicense } from "./auth/licenseAuth";
+import { licenseSettingsRouter } from "./routers/licenseSettingsRouter";
+import { geoRouter } from "./routers/geo";
+import { colorSystemRouter } from "./routers/colorSystem";
+import { pagesRouter } from "./routers/pages";
 import { checkPublishGate } from "./publishGate";
+import { getOverviewStats } from "./analytics/overviewService";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
@@ -86,6 +97,198 @@ export const appRouter = router({
   distribution: distributionRouter,
   sms: smsRouter,
   setup: setupRouter,
+  domains: domainsRouter,
+  tenantAuth: tenantAuthRouter,
+  licenseManagement: licenseManagementRouter,
+  userManagement: userManagementRouter,
+  support: supportRouter,
+  licenseSettings: licenseSettingsRouter,
+  geo: geoRouter,
+  colorSystem: colorSystemRouter,
+  sourceFeeds: router({
+    list: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [rows] = await dbConn.execute(sqlFn`SELECT id, url as feedUrl, is_active as enabled, last_fetched as lastFetchTime, error_count as errorCount, last_error as lastError, created_at as createdAt, license_id FROM rss_feeds WHERE license_id = ${lid} ORDER BY created_at DESC`);
+      return (rows as any[]).map(r => ({ id: r.id, url: r.feedUrl, enabled: !!r.enabled, lastFetched: r.lastFetchTime, errorCount: r.errorCount || 0, lastError: r.lastError }));
+    }),
+    add: tenantOrAdminProcedure
+      .input(z.object({ url: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        await dbConn.execute(sqlFn`INSERT INTO rss_feed_weights (feedUrl, weight, enabled) VALUES (${input.url}, 1.0, 1)`);
+        await dbConn.execute(sqlFn`INSERT IGNORE INTO rss_feeds (license_id, url, name, is_active) VALUES (${ctx.licenseId || 7}, ${input.url}, ${input.url}, true)`);
+        return { success: true };
+      }),
+    remove: tenantOrAdminProcedure
+      .input(z.object({ feedId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        await dbConn.execute(sqlFn`DELETE FROM rss_feeds WHERE url = (SELECT feedUrl FROM rss_feed_weights WHERE id = ${input.feedId})`);
+        await dbConn.execute(sqlFn`DELETE FROM rss_feed_weights WHERE id = ${input.feedId}`);
+        return { success: true };
+      }),
+    toggle: tenantOrAdminProcedure
+      .input(z.object({ feedId: z.number(), enabled: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET enabled = ${input.enabled ? 1 : 0} WHERE id = ${input.feedId}`);
+        await dbConn.execute(sqlFn`UPDATE rss_feeds SET is_active = ${input.enabled} WHERE id = ${input.feedId}`);
+        return { success: true };
+      }),
+    fetchNow: tenantOrAdminProcedure
+      .input(z.object({ feedId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const [feeds] = await dbConn.execute(sqlFn`SELECT id, url FROM rss_feeds WHERE id = ${input.feedId} AND license_id = ${ctx.licenseId || 7} LIMIT 1`);
+        const feed = (feeds as any[])[0];
+        if (!feed) throw new TRPCError({ code: "NOT_FOUND" });
+        console.log("[SourceFeeds] Fetching feed:", feed.url);
+        // Update last_fetched
+        await dbConn.execute(sqlFn`UPDATE rss_feeds SET last_fetched = NOW() WHERE id = ${input.feedId}`);
+        return { success: true, newCandidates: 0, message: "Feed fetch triggered" };
+      }),
+  }),
+  selectorCandidates: router({
+    list: tenantOrAdminProcedure
+      .input(z.object({ status: z.string().optional(), limit: z.number().optional() }).optional())
+      .query(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return [];
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const status = input?.status || "pending";
+        const limit = input?.limit || 50;
+        const lid = ctx.licenseId;
+        const [rows] = lid
+          ? await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} AND license_id = ${lid} ORDER BY created_at DESC LIMIT ${limit}`)
+          : await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} ORDER BY created_at DESC LIMIT ${limit}`);
+        return rows as any[];
+      }),
+    ignore: tenantOrAdminProcedure
+      .input(z.object({ candidateId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        await dbConn.execute(ctx.licenseId ? sqlFn`UPDATE selector_candidates SET status = 'rejected' WHERE id = ${input.candidateId} AND license_id = ${ctx.licenseId}` : sqlFn`UPDATE selector_candidates SET status = 'rejected' WHERE id = ${input.candidateId}`);
+        return { success: true };
+      }),
+  }),
+  templates: router({
+    list: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const [rows] = await dbConn.execute(sqlFn`SELECT * FROM article_templates WHERE license_id = ${input.licenseId} OR licenseId = ${input.licenseId} ORDER BY createdAt DESC`);
+      return rows as any[];
+    }),
+    create: tenantOrAdminProcedure.input(z.object({
+      licenseId: z.number(), name: z.string(), description: z.string().optional(), promptTemplate: z.string().optional(),
+      headlineFormat: z.string().optional(), tone: z.string().optional(), targetWordCount: z.number().optional(),
+      categoryId: z.number().optional(), imageStylePrompt: z.string().optional(), imageProvider: z.string().optional(),
+      imageAspectRatio: z.string().optional(), seoTitleFormat: z.string().optional(), seoKeywordThemes: z.string().optional(),
+      geoFaqTopics: z.string().optional(), geoKeyTakeawayCount: z.number().optional(), geoFaqCount: z.number().optional(),
+      scheduleFrequency: z.string().optional(), scheduleDayOfWeek: z.number().optional(), scheduleHour: z.number().optional(),
+      scheduleColor: z.string().optional(), isActive: z.boolean().optional(),
+    })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const [result] = await dbConn.execute(sqlFn`INSERT INTO article_templates (license_id, licenseId, name, description, promptTemplate, headline_format, tone, target_word_count, category_id, categoryId, image_style_prompt, image_provider, image_aspect_ratio, seo_title_format, seo_keyword_themes, geo_faq_topics, geo_key_takeaway_count, geo_faq_count, schedule_frequency, schedule_day_of_week, schedule_hour, schedule_color, is_active) VALUES (${input.licenseId}, ${input.licenseId}, ${input.name}, ${input.description || ""}, ${input.promptTemplate || ""}, ${input.headlineFormat || ""}, ${input.tone || "default"}, ${input.targetWordCount || 800}, ${input.categoryId || null}, ${input.categoryId || null}, ${input.imageStylePrompt || ""}, ${input.imageProvider || ""}, ${input.imageAspectRatio || "16:9"}, ${input.seoTitleFormat || ""}, ${input.seoKeywordThemes || ""}, ${input.geoFaqTopics || ""}, ${input.geoKeyTakeawayCount || 5}, ${input.geoFaqCount || 5}, ${input.scheduleFrequency || "manual"}, ${input.scheduleDayOfWeek ?? null}, ${input.scheduleHour || 9}, ${input.scheduleColor || "#6366f1"}, ${input.isActive !== false ? 1 : 0})`);
+      return { success: true, id: (result as any).insertId };
+    }),
+    update: tenantOrAdminProcedure.input(z.object({
+      id: z.number(), licenseId: z.number(), name: z.string().optional(), description: z.string().optional(),
+      promptTemplate: z.string().optional(), headlineFormat: z.string().optional(), tone: z.string().optional(),
+      targetWordCount: z.number().optional(), categoryId: z.number().optional(), imageStylePrompt: z.string().optional(),
+      scheduleFrequency: z.string().optional(), scheduleDayOfWeek: z.number().optional(), scheduleHour: z.number().optional(),
+      scheduleColor: z.string().optional(), isActive: z.boolean().optional(),
+    })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sql: sqlFn } = await import("drizzle-orm");
+      await dbConn.execute(sqlFn`UPDATE article_templates SET name = COALESCE(${input.name}, name), description = COALESCE(${input.description}, description), promptTemplate = COALESCE(${input.promptTemplate}, promptTemplate), headline_format = COALESCE(${input.headlineFormat}, headline_format), tone = COALESCE(${input.tone}, tone), target_word_count = COALESCE(${input.targetWordCount}, target_word_count), schedule_frequency = COALESCE(${input.scheduleFrequency}, schedule_frequency), schedule_color = COALESCE(${input.scheduleColor}, schedule_color), is_active = COALESCE(${input.isActive !== undefined ? (input.isActive ? 1 : 0) : null}, is_active) WHERE id = ${input.id} AND (license_id = ${input.licenseId} OR licenseId = ${input.licenseId})`);
+      return { success: true };
+    }),
+    delete: tenantOrAdminProcedure.input(z.object({ id: z.number(), licenseId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sql: sqlFn } = await import("drizzle-orm");
+      await dbConn.execute(sqlFn`DELETE FROM article_templates WHERE id = ${input.id} AND (license_id = ${input.licenseId} OR licenseId = ${input.licenseId})`);
+      return { success: true };
+    }),
+    duplicate: tenantOrAdminProcedure.input(z.object({ id: z.number(), licenseId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sql: sqlFn } = await import("drizzle-orm");
+      await dbConn.execute(sqlFn`INSERT INTO article_templates (license_id, licenseId, name, description, promptTemplate, headline_format, tone, target_word_count, category_id, categoryId, image_style_prompt, schedule_frequency, schedule_color, is_active) SELECT license_id, licenseId, CONCAT(name, " (Copy)"), description, promptTemplate, headline_format, tone, target_word_count, category_id, categoryId, image_style_prompt, schedule_frequency, schedule_color, is_active FROM article_templates WHERE id = ${input.id} AND (license_id = ${input.licenseId} OR licenseId = ${input.licenseId})`);
+      return { success: true };
+    }),
+    skipSlot: tenantOrAdminProcedure.input(z.object({ templateId: z.number(), skipDate: z.string(), licenseId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sql: sqlFn } = await import("drizzle-orm");
+      await dbConn.execute(sqlFn`INSERT IGNORE INTO template_schedule_skips (template_id, license_id, skip_date) VALUES (${input.templateId}, ${input.licenseId}, ${input.skipDate})`);
+      return { success: true };
+    }),
+    getSkippedSlots: tenantOrAdminProcedure.input(z.object({ licenseId: z.number(), month: z.number(), year: z.number() })).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const [rows] = await dbConn.execute(sqlFn`SELECT template_id as templateId, skip_date as skipDate FROM template_schedule_skips WHERE license_id = ${input.licenseId} AND MONTH(skip_date) = ${input.month} AND YEAR(skip_date) = ${input.year}`);
+      return (rows as any[]).map(r => ({ templateId: r.templateId, skipDate: r.skipDate }));
+    }),
+  }),
+  apiAccess: router({
+    get: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { apiKey: null, createdAt: null, lastUsed: null };
+      const { licenseSettings: ls } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const [row] = await dbConn.select().from(ls)
+        .where(andOp(eqOp(ls.licenseId, input.licenseId), eqOp(ls.key, "api_key")))
+        .limit(1);
+      if (!row?.value) return { apiKey: null, createdAt: null, lastUsed: null };
+      return { apiKey: row.value.substring(0, 12) + "•".repeat(20), fullKey: row.value, createdAt: null, lastUsed: null };
+    }),
+    generate: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenseSettings: ls } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const crypto = await import("crypto");
+      const key = crypto.randomBytes(32).toString("hex");
+      const [existing] = await dbConn.select().from(ls)
+        .where(andOp(eqOp(ls.licenseId, input.licenseId), eqOp(ls.key, "api_key"))).limit(1);
+      if (existing) { await dbConn.update(ls).set({ value: key }).where(eqOp(ls.id, existing.id)); }
+      else { await dbConn.insert(ls).values({ licenseId: input.licenseId, key: "api_key", value: key, type: "string" }); }
+      return { success: true };
+    }),
+    regenerate: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenseSettings: ls } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const crypto = await import("crypto");
+      const key = crypto.randomBytes(32).toString("hex");
+      const [existing] = await dbConn.select().from(ls)
+        .where(andOp(eqOp(ls.licenseId, input.licenseId), eqOp(ls.key, "api_key"))).limit(1);
+      if (existing) { await dbConn.update(ls).set({ value: key }).where(eqOp(ls.id, existing.id)); }
+      else { await dbConn.insert(ls).values({ licenseId: input.licenseId, key: "api_key", value: key, type: "string" }); }
+      return { success: true };
+    }),
+  }),
+  pages: pagesRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -98,7 +301,7 @@ export const appRouter = router({
 
   // ─── Categories ──────────────────────────────────────
   categories: router({
-    list: publicProcedure.query(() => db.listCategories()),
+    list: publicProcedure.query(({ ctx }) => db.listCategories(ctx.licenseId || undefined)),
     getBySlug: publicProcedure.input(z.object({ slug: z.string() })).query(({ input }) => db.getCategoryBySlug(input.slug)),
     create: adminProcedure.input(z.object({ name: z.string(), slug: z.string(), description: z.string().optional(), color: z.string().optional() })).mutation(({ input }) => db.createCategory(input)),
     update: adminProcedure.input(z.object({ id: z.number(), name: z.string().optional(), slug: z.string().optional(), description: z.string().optional(), color: z.string().optional(), keywords: z.string().optional() })).mutation(({ input }) => { const { id, ...data } = input; return db.updateCategory(id, data); }),
@@ -116,7 +319,7 @@ export const appRouter = router({
       const params = input ?? {};
       const limit = params.limit ?? 20;
       const offset = params.cursor ? undefined : params.offset;
-      const result = await db.listArticles({ ...params, limit: limit + 1, offset });
+      const result = await db.listArticles({ ...params, limit: limit + 1, offset, licenseId: ctx.licenseId || undefined });
       const articles = result.articles.slice(0, limit);
       const hasMore = result.articles.length > limit;
       const nextCursor = hasMore ? articles[articles.length - 1]?.id : undefined;
@@ -153,6 +356,67 @@ export const appRouter = router({
       const limit = input?.limit ?? 5;
       return db.getTrendingArticles(hoursAgo, limit);
     }),
+    editorsPicks: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { articles: articlesTable } = await import("../drizzle/schema");
+      const { desc, eq: eqOp } = await import("drizzle-orm");
+      return dbConn.select().from(articlesTable)
+        .where(eqOp(articlesTable.isEditorsPick, true))
+        .orderBy(desc(articlesTable.publishedAt))
+        .limit(input?.limit ?? 20);
+    }),
+    stats: publicProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { total: 0, published: 0, pending: 0, draft: 0, rejected: 0, approved: 0, thisMonth: 0, viewsTotal: 0, categoryBreakdown: [] };
+      const { articles: at, categories: ct } = await import("../drizzle/schema");
+      const { sql: sqlFn, count, eq: eqOp, sum, gte, and: andOp } = await import("drizzle-orm");
+      const licFilter = ctx.licenseId ? sqlFn` WHERE license_id = ${ctx.licenseId}` : sqlFn``;
+      const [totalRows] = await dbConn.execute(sqlFn`SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as published,
+        SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END) as draft,
+        SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as thisMonth,
+        COALESCE(SUM(views), 0) as viewsTotal
+        FROM articles${licFilter}`);
+      const stats = (totalRows as any)[0] || {};
+      const [catRows] = await dbConn.execute(ctx.licenseId ? sqlFn`SELECT c.name, COUNT(a.id) as count FROM articles a LEFT JOIN categories c ON a.categoryId = c.id WHERE a.license_id = ${ctx.licenseId} GROUP BY c.name ORDER BY count DESC LIMIT 10` : sqlFn`SELECT c.name, COUNT(a.id) as count FROM articles a LEFT JOIN categories c ON a.categoryId = c.id GROUP BY c.name ORDER BY count DESC LIMIT 10`);
+      return {
+        total: Number(stats.total || 0),
+        published: Number(stats.published || 0),
+        pending: Number(stats.pending || 0),
+        draft: Number(stats.draft || 0),
+        rejected: Number(stats.rejected || 0),
+        approved: Number(stats.approved || 0),
+        thisMonth: Number(stats.thisMonth || 0),
+        viewsTotal: Number(stats.viewsTotal || 0),
+        categoryBreakdown: (catRows as any[]).map(r => ({ name: r.name || "Uncategorized", count: Number(r.count) })),
+      };
+    }),
+    updateImage: tenantOrAdminProcedure
+      .input(z.object({ articleId: z.number(), imageUrl: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.updateArticle(input.articleId, { featuredImage: input.imageUrl });
+        return { success: true };
+      }),
+    toggleTag: protectedProcedure
+      .input(z.object({ articleId: z.number(), tag: z.enum(["editors_pick", "trending", "featured"]) }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { articles: at } = await import("../drizzle/schema");
+        const { eq: eqOp } = await import("drizzle-orm");
+        const [article] = await dbConn.select().from(at).where(eqOp(at.id, input.articleId)).limit(1);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND" });
+        const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured" };
+        const field = fieldMap[input.tag] as keyof typeof article;
+        const current = article[field] as boolean;
+        await dbConn.update(at).set({ [field]: !current } as any).where(eqOp(at.id, input.articleId));
+        return { articleId: input.articleId, tag: input.tag, value: !current };
+      }),
     // Archive: list months that have published articles (for the archive browser)
     archiveMonths: publicProcedure.query(async () => {
       const dbConn = await db.getDb();
@@ -265,7 +529,7 @@ export const appRouter = router({
         return { keywords: getFallbackKeywords() };
       }
     }),
-    stats: adminProcedure.query(() => db.getArticleStats()),
+    _adminStats: adminProcedure.query(() => db.getArticleStats()),
     videoStats: adminProcedure.query(async () => {
       const allArticles = await db.listArticles({ limit: 10000 });
       const articlesWithVideos = allArticles.articles.filter(a => a.videoUrl);
@@ -312,7 +576,7 @@ export const appRouter = router({
       
       return stats;
     }),
-    create: adminProcedure.input(z.object({
+    create: tenantOrAdminProcedure.input(z.object({
       headline: z.string(), subheadline: z.string().optional(), body: z.string(), slug: z.string(),
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
@@ -333,13 +597,13 @@ export const appRouter = router({
       const ids = await db.bulkCreateArticles(dataList);
       return { ids, count: ids.length };
     }),
-    update: adminProcedure.input(z.object({
+    update: tenantOrAdminProcedure.input(z.object({
       id: z.number(), headline: z.string().optional(), subheadline: z.string().optional(),
       body: z.string().optional(), slug: z.string().optional(),
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
     })).mutation(({ input }) => { const { id, ...data } = input; return db.updateArticle(id, data); }),
-    updateStatus: adminProcedure.input(z.object({ id: z.number(), status: z.enum(["draft", "pending", "approved", "published", "rejected"]) })).mutation(async ({ input }) => {
+    updateStatus: tenantOrAdminProcedure.input(z.object({ id: z.number(), status: z.enum(["draft", "pending", "approved", "published", "rejected"]) })).mutation(async ({ input }) => {
       // Get the article's previous status before updating
       const articleBefore = await db.getArticleById(input.id);
       const previousStatus = articleBefore?.status;
@@ -761,10 +1025,10 @@ export const appRouter = router({
 
   // ─── Newsletter ──────────────────────────────────────
   newsletter: router({
-    subscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input }) => db.subscribeNewsletter(input.email)),
+    subscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input, ctx }) => db.subscribeNewsletter(input.email, ctx.licenseId || undefined)),
     unsubscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input }) => db.unsubscribeNewsletter(input.email)),
-    list: adminProcedure.query(() => db.listSubscribers()),
-    subscriberCount: publicProcedure.query(() => db.countNewsletterSubscribers("active")),
+    list: adminProcedure.query(({ ctx }) => db.listSubscribers(ctx.licenseId || undefined)),
+    subscriberCount: publicProcedure.query(({ ctx }) => db.countNewsletterSubscribers("active", ctx.licenseId || undefined)),
     sendDigest: adminProcedure
       .input(z.object({ dryRun: z.boolean().optional() }))
       .mutation(async ({ input }) => {
@@ -777,6 +1041,22 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { testResendConnection } = await import("./newsletterDigest");
         return testResendConnection(input.toEmail);
+      }),
+    getTemplates: publicProcedure.query(() => {
+      return [
+        { name: "editorial", label: "Editorial", description: "Classic newspaper style with serif masthead" },
+        { name: "modern", label: "Modern", description: "Card-based layout with gradient header" },
+        { name: "magazine", label: "Magazine", description: "Image-heavy with bold typography" },
+        { name: "minimal", label: "Minimal", description: "Text-only, ultra-clean layout" },
+        { name: "bold", label: "Bold", description: "Dark background with bright accents" },
+        { name: "corporate", label: "Corporate", description: "Professional B2B layout" },
+      ];
+    }),
+    setTemplate: adminProcedure
+      .input(z.object({ template: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.upsertSetting({ key: "newsletter_template", value: input.template, category: "newsletter", type: "string" });
+        return { success: true };
       }),
   }),
   // ─── Social Posts ────────────────────────────────────
@@ -886,7 +1166,7 @@ export const appRouter = router({
 
   // ─── Workflow Batches ────────────────────────────────
   workflow: router({
-    list: adminProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input }) => db.listWorkflowBatches(input?.limit)),
+    list: adminProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input, ctx }) => db.listWorkflowBatches(input?.limit, ctx.licenseId || undefined)),
     get: adminProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getWorkflowBatch(input.id)),
     getByDate: adminProcedure.input(z.object({ batchDate: z.string() })).query(({ input }) => db.getWorkflowBatchByDate(input.batchDate)),
     create: adminProcedure.input(z.object({
@@ -906,6 +1186,51 @@ export const appRouter = router({
       const { triggerWorkflowNow } = await import("./scheduler");
       return triggerWorkflowNow();
     }),
+    getAllSchedulerStatus: adminProcedure.query(async () => {
+      const { getAllTenantSchedulerStatus } = await import("./scheduler");
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const [licenses] = await dbConn.execute(sqlFn`SELECT id, subdomain FROM licenses WHERE status = 'active'`);
+      const schedulerStatus = getAllTenantSchedulerStatus();
+      return (licenses as any[]).map(l => {
+        const s = schedulerStatus.find(s => s.licenseId === l.id);
+        return { licenseId: l.id, subdomain: l.subdomain, taskCount: s?.taskCount || 0, isRunning: s?.isRunning || false };
+      });
+    }),
+    generateFromCandidate: tenantOrAdminProcedure
+      .input(z.object({ candidateId: z.number(), categoryId: z.number().optional(), tags: z.array(z.string()).optional(), imageUrl: z.string().optional(), templateId: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const [candidates] = ctx.licenseId ? await dbConn.execute(sqlFn`SELECT id, title, summary, source_url FROM selector_candidates WHERE id = ${input.candidateId} AND license_id = ${ctx.licenseId} LIMIT 1`) : await dbConn.execute(sqlFn`SELECT id, title, summary, source_url FROM selector_candidates WHERE id = ${input.candidateId} LIMIT 1`);
+        const candidate = (candidates as any[])[0];
+        if (!candidate) throw new TRPCError({ code: "NOT_FOUND", message: "Candidate not found" });
+        const { generateSatiricalArticle } = await import("./workflow");
+        const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.source_url || "" };
+        let writingStyle = (await db.getSetting("writing_style_prompt"))?.value || "Write in a professional editorial style.";
+        let targetWords = parseInt((await db.getSetting("target_article_length"))?.value || "800");
+        
+        // Apply template settings if templateId provided
+        let templateSettings: any = undefined;
+        if (input.templateId) {
+          const { applyTemplateSettings } = await import("./templateSettings");
+          templateSettings = await applyTemplateSettings(input.templateId);
+          if (templateSettings.targetWordCount) targetWords = templateSettings.targetWordCount;
+          if (templateSettings.userMessage) writingStyle = templateSettings.userMessage;
+          if (templateSettings.categoryId && !input.categoryId) input.categoryId = templateSettings.categoryId;
+        }
+        
+        const article = await generateSatiricalArticle(event as any, writingStyle, targetWords, templateSettings);
+        const slugify = (await import("slugify")).default;
+        const slug = slugify(article.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
+        let body = article.body || "";
+        if (!body.trim().startsWith("<")) body = body.split("\n\n").filter((p: string) => p.trim()).map((p: string) => "<p>" + p.trim() + "</p>").join("");
+        const articleId = await db.createArticle({ headline: article.headline || "Untitled", subheadline: article.subheadline || "", body, slug, status: "pending", categoryId: input.categoryId, featuredImage: input.imageUrl || "", sourceEvent: candidate.title, sourceUrl: candidate.source_url, licenseId: 7, templateId: input.templateId || undefined } as any);
+        await dbConn.execute(sqlFn`UPDATE selector_candidates SET status = 'selected', article_id = ${articleId} WHERE id = ${input.candidateId}`);
+        return { success: true, articleId, slug };
+      }),
   }),
 
   // ─── FeedHive Trigger URLs (Archived Feb 21, 2026) ──────────────────────
@@ -1035,7 +1360,9 @@ export const appRouter = router({
   // ─── Workflow Settings ──────────────────────────────
   // ─── Public Branding (accessible without auth for frontend rendering) ──
   branding: router({
-    get: publicProcedure.query(async () => {
+    get: publicProcedure
+      .input(z.object({ hostname: z.string().optional() }).optional())
+      .query(async ({ input }) => {
       const settings = await db.getSettingsByCategory("branding");
       const map: Record<string, string> = {};
       for (const s of settings) { map[s.key] = s.value; }
@@ -1043,7 +1370,99 @@ export const appRouter = router({
       // derive www vs non-www canonical preference without a separate query.
       const siteUrlSetting = await db.getSetting("site_url");
       if (siteUrlSetting?.value) map["site_url"] = siteUrlSetting.value;
+      // Include additional settings the frontend needs for theming & navigation
+      for (const key of ["printify_enabled", "shop_external_url", "brand_heading_font", "brand_body_font", "brand_palette"]) {
+        const s = await db.getSetting(key);
+        if (s?.value) map[key] = s.value;
+      }
+      // If hostname provided, resolve license and merge tenant-specific settings
+      const hostname = input?.hostname;
+      if (hostname && hostname !== "app.getjaime.io" && hostname !== "localhost") {
+        try {
+          const license = await resolveLicense(hostname);
+          if (license) {
+            const dbConn = await import("./db").then(m => m.getDb()).then(d => d);
+            const { licenseSettings: lsTable } = await import("../drizzle/schema");
+            const { eq: eqOp } = await import("drizzle-orm");
+            const licenseRows = await dbConn.select().from(lsTable).where(eqOp(lsTable.licenseId, license.id));
+            const MERGE_KEYS = ["brand_heading_font", "brand_body_font", "brand_palette", "printify_enabled",
+              "printify_api_token", "printify_shop_id", "shop_external_url", "brand_tagline",
+              "brand_name", "brand_site_name", "brand_description", "brand_primary_color", "brand_secondary_color",
+              "brand_logo_url", "brand_logo_light_url", "brand_logo_dark_url", "brand_favicon_url",
+              "brand_contact_email", "brand_business_name", "brand_phone", "brand_address",
+              "brand_template", "brand_disclaimer", "categories", "blotato_platforms", "brand_website_url",
+              "social_x_url", "social_instagram_url", "social_linkedin_url", "social_facebook_url",
+              "social_tiktok_url", "social_pinterest_url"];
+            for (const row of licenseRows) {
+              if (MERGE_KEYS.includes(row.key)) map[row.key] = row.value;
+            }
+            // Map wizard field names to branding field names
+            if (map["brand_logo_light_url"]) {
+              map["brand_logo_url"] = map["brand_logo_light_url"];
+            }
+            if (map["brand_name"] && !map["brand_site_name"]) {
+              map["brand_site_name"] = map["brand_name"];
+            }
+            if (map["brand_primary_color"]) {
+              map["brand_color_primary"] = map["brand_primary_color"];
+            }
+            if (map["brand_secondary_color"]) {
+              map["brand_color_secondary"] = map["brand_secondary_color"];
+            }
+          }
+        } catch { /* ignore — fall back to workflow_settings */ }
+      }
       return map;
+    }),
+    regeneratePalette: tenantOrAdminProcedure
+      .input(z.object({ licenseId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { licenseSettings: lsTable } = await import("../drizzle/schema");
+        const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+        
+        // Read current colors
+        const rows = await dbConn.select().from(lsTable).where(eqOp(lsTable.licenseId, input.licenseId));
+        const settings: Record<string, string> = {};
+        for (const r of rows) settings[r.key] = r.value;
+        
+        const primary = settings.brand_color_primary || settings.brand_primary_color || "#2DD4BF";
+        const secondary = settings.brand_color_secondary || settings.brand_secondary_color || "#0F2D5E";
+        
+        // Generate palette
+        const { generatePalette, generateCssVariables } = await import("./utils/colorSystem");
+        const palette = generatePalette(primary, secondary);
+        const paletteJson = JSON.stringify(palette);
+        
+        // Also add font variables to CSS
+        const headingFont = settings.brand_heading_font || "Playfair Display";
+        const bodyFont = settings.brand_body_font || "Inter";
+        
+        // Upsert brand_palette
+        const [existing] = await dbConn.select().from(lsTable)
+          .where(andOp(eqOp(lsTable.licenseId, input.licenseId), eqOp(lsTable.key, "brand_palette")))
+          .limit(1);
+        if (existing) {
+          await dbConn.update(lsTable).set({ value: paletteJson }).where(eqOp(lsTable.id, existing.id));
+        } else {
+          await dbConn.insert(lsTable).values({ licenseId: input.licenseId, key: "brand_palette", value: paletteJson, type: "json" });
+        }
+        
+        // Also sync brand_primary_color and brand_secondary_color keys
+        for (const [key, val] of [["brand_primary_color", primary], ["brand_secondary_color", secondary]]) {
+          const [ex] = await dbConn.select().from(lsTable)
+            .where(andOp(eqOp(lsTable.licenseId, input.licenseId), eqOp(lsTable.key, key)))
+            .limit(1);
+          if (ex) { await dbConn.update(lsTable).set({ value: val }).where(eqOp(lsTable.id, ex.id)); }
+          else { await dbConn.insert(lsTable).values({ licenseId: input.licenseId, key, value: val, type: "string" }); }
+        }
+        
+        return { success: true, palette };
+      }),
+    clearBrandingCache: tenantOrAdminProcedure.mutation(({ ctx }) => {
+      console.log("[Branding] Cache cleared for license", ctx.licenseId);
+      return { cleared: true, licenseId: ctx.licenseId };
     }),
     /** Live X follower count — cached for 6 hours to avoid burning API quota */
     xFollowerCount: publicProcedure.query(async () => {
@@ -1439,11 +1858,7 @@ export const appRouter = router({
     }),
 
     generateImage: adminProcedure.input(z.object({ prompt: z.string() })).mutation(async ({ input }) => {
-      // Add mascot instruction to user-provided prompt
-      const mascotInstructionSetting = await db.getSetting("mascot_instruction");
-      const mascotInstruction = mascotInstructionSetting?.value || "Add the mascot character as a small hidden detail in the background.";
-      const promptWithMascot = `${input.prompt}\n\n${mascotInstruction}`;
-      const result = await generateImage({ prompt: promptWithMascot });
+      const result = await generateImage({ prompt: input.prompt });
       return { url: result.url };
     }),
 
@@ -1457,7 +1872,7 @@ export const appRouter = router({
     }),
 
     // ─── Image Backfill Job (in-memory state for polling) ───────────────────
-    backfillMissingImages: adminProcedure.mutation(async () => {
+    backfillMissingImages: tenantOrAdminProcedure.mutation(async () => {
       if (imageBackfillState.isRunning) {
         return { started: false, message: "Backfill already in progress", ...imageBackfillState };
       }
@@ -1473,11 +1888,11 @@ export const appRouter = router({
       return { started: true, message: `Started backfill for ${missingImages.length} articles`, ...imageBackfillState };
     }),
 
-    backfillImagesStatus: adminProcedure.query(() => {
+    backfillImagesStatus: tenantOrAdminProcedure.query(() => {
       return imageBackfillState;
     }),
 
-    backfillImagesCancel: adminProcedure.mutation(() => {
+    backfillImagesCancel: tenantOrAdminProcedure.mutation(() => {
       if (imageBackfillState.isRunning) {
         imageBackfillCancelled = true;
         return { cancelled: true };
@@ -1794,6 +2209,10 @@ export const appRouter = router({
     searchHistory: adminProcedure
       .input(z.object({ days: z.number().optional() }).optional())
       .query(({ input }) => db.getSearchAnalytics(input?.days ?? 30)),
+
+    overview: adminProcedure.query(async () => {
+      return getOverviewStats();
+    }),
   }),
 
 

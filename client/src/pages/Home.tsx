@@ -18,7 +18,7 @@ import { Loader2, TrendingUp, ArrowRight, Flame, Sparkles, Mail, Newspaper, Arch
 import { Button } from "@/components/ui/button";
 import { SiteLoader, SiteInlineLoader } from "@/components/SiteLoader";
 import { setOGTags } from "@/lib/og-tags";
-import { setOrganizationSchema, HAMBRY_ORGANIZATION } from "@/lib/organization-schema";
+import { setOrganizationSchema, HAMBRY_ORGANIZATION as DEFAULT_ORGANIZATION } from "@/lib/organization-schema";
 import { setCanonicalURL } from "@/lib/canonical-url";
 import { useScrollAnimations } from "@/hooks/useScrollAnimation";
 import { usePageView } from "@/hooks/usePageView";
@@ -46,7 +46,7 @@ export default function Home() {
       type: 'website',
     });
     setOrganizationSchema({
-      ...HAMBRY_ORGANIZATION,
+      ...DEFAULT_ORGANIZATION,
       name: branding.siteName,
       description: seoDescription,
     });
@@ -158,9 +158,55 @@ export default function Home() {
             <SiteLoader message="Loading latest news..." size="large" />
           </div>
         ) : articles.length === 0 ? (
-          <div className="container py-32 text-center">
-            <h2 className="font-headline text-3xl font-bold mb-3 tracking-tight">No Articles Yet</h2>
-            <p className="text-muted-foreground text-[15px]">The newsroom is warming up. Check back soon for the latest news.</p>
+          <div className="container py-20 sm:py-28">
+            <div className="max-w-lg mx-auto text-center">
+              {branding.logoUrl && branding.logoUrl !== "/logo.svg" ? (
+                <img src={branding.logoUrl} alt={branding.siteName} className="h-16 mx-auto mb-6 opacity-60" />
+              ) : (
+                <h2 className="font-headline text-4xl sm:text-5xl font-black mb-4 tracking-tight" style={{ color: "var(--brand-primary, #0f2d5e)" }}>
+                  {branding.siteName}
+                </h2>
+              )}
+              <h3 className="font-headline text-2xl sm:text-3xl font-bold mb-3 tracking-tight">
+                We're just getting started.
+              </h3>
+              <p className="text-muted-foreground text-[15px] mb-8 leading-relaxed">
+                Check back soon for the latest content from {branding.siteName}.
+              </p>
+              <div className="bg-muted/50 rounded-xl p-6 border border-border">
+                <p className="text-sm font-semibold mb-3">Be the first to know — subscribe to our newsletter</p>
+                <form
+                  onSubmit={e => { e.preventDefault(); if (newsletterEmail.trim() && homeTcpa) newsletterMutation.mutate({ email: newsletterEmail.trim() }); }}
+                  className="flex flex-col gap-3"
+                >
+                  <div className="flex gap-2">
+                    <input
+                      type="email" value={newsletterEmail}
+                      onChange={e => setNewsletterEmail(e.target.value)}
+                      placeholder="your@email.com" required
+                      className="flex-1 px-4 py-2.5 rounded-lg text-sm border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <Button type="submit" disabled={newsletterMutation.isPending || !homeTcpa} size="sm" className="px-5">
+                      {newsletterMutation.isPending ? "..." : "Subscribe"}
+                    </Button>
+                  </div>
+                  <label className="flex items-start gap-2 cursor-pointer select-none text-left">
+                    <input type="checkbox" checked={homeTcpa} onChange={e => setHomeTcpa(e.target.checked)} className="mt-0.5 shrink-0 accent-primary" required />
+                    <span className="text-[11px] text-muted-foreground leading-snug">
+                      I agree to receive the newsletter. <a href="/privacy" className="underline">Privacy Policy</a>.
+                    </span>
+                  </label>
+                </form>
+                {newsletterStatus === "success" && <p className="text-green-600 text-sm mt-2 font-medium">You're subscribed! Welcome aboard.</p>}
+              </div>
+              {branding.twitterUrl && (
+                <a href={branding.twitterUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-6 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  Follow {branding.siteName} on X
+                </a>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -227,7 +273,7 @@ export default function Home() {
                             </div>
                           ) : (
                             <div className="aspect-[16/10] rounded-sm mb-2.5 flex items-center justify-center relative overflow-hidden bg-muted/60">
-                              <img src={branding.mascotUrl} alt={branding.mascotName} className="w-1/3 h-auto opacity-30 group-hover:opacity-50 transition-opacity duration-500" loading="lazy" />
+                              <img src={branding.logoUrl} alt={branding.siteName} className="w-1/3 h-auto opacity-30 group-hover:opacity-50 transition-opacity duration-500" loading="lazy" />
                               {catName && (
                                 <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: getCategoryColor(catSlug || "") }}>
                                   {catName}

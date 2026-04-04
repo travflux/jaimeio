@@ -24,4 +24,4 @@ CREATE INDEX `idx_daily_analytics_date` ON `daily_analytics` (`date`);--> statem
 CREATE INDEX `idx_js_pv_viewed_at` ON `js_page_views` (`viewed_at`);--> statement-breakpoint
 CREATE INDEX `idx_js_pv_session` ON `js_page_views` (`session_id`);--> statement-breakpoint
 CREATE INDEX `idx_js_pv_source` ON `js_page_views` (`source`);--> statement-breakpoint
-CREATE INDEX `idx_js_pv_path` ON `js_page_views` (`path`);
+CREATE INDEX `idx_js_pv_path` ON `js_page_views` (`path`(255));

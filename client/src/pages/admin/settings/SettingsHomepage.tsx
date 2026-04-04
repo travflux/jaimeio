@@ -181,7 +181,7 @@ export default function SettingsHomepage() {
                     type="text"
                     value={edits.site_tagline || ""}
                     onChange={(e) => updateEdit("site_tagline", e.target.value)}
-                    placeholder="Your daily dose of satirical news"
+                    placeholder="Your daily dose of AI-powered content"
                     className="w-full px-3 py-2 border border-input rounded text-sm bg-background"
                   />
                 </div>

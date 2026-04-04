@@ -140,9 +140,12 @@ export async function getFirstAdmin() {
 }
 
 // ─── Categories ──────────────────────────────────────────
-export async function listCategories() {
+export async function listCategories(licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (licenseId) {
+    return db.select().from(categories).where(eq(categories.licenseId, licenseId)).orderBy(asc(categories.name));
+  }
   return db.select().from(categories).orderBy(asc(categories.name));
 }
 
@@ -192,7 +195,7 @@ export async function seedDefaultCategories() {
 }
 
 // ─── Articles ────────────────────────────────────────────
-export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean } = {}) {
+export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; licenseId?: number } = {}) {
   const db = await getDb();
   if (!db) return { articles: [], total: 0 };
   
@@ -205,6 +208,7 @@ export async function listArticles(opts: { status?: string; categoryId?: number;
   if (opts.categoryId) conditions.push(eq(articles.categoryId, opts.categoryId));
   if (opts.search) conditions.push(like(articles.headline, `%${opts.search}%`));
   if (opts.noImage) conditions.push(sql`(${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '')`);
+  if (opts.licenseId) conditions.push(eq(articles.licenseId, opts.licenseId));
 
   
   // Add date range filter
@@ -476,7 +480,7 @@ export async function getUsedSourceUrls(daysBack: number = 30): Promise<Set<stri
 }
 
 // ─── Newsletter ──────────────────────────────────────────
-export async function subscribeNewsletter(email: string) {
+export async function subscribeNewsletter(email: string, licenseId?: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(newsletterSubscribers).values({ email }).onDuplicateKeyUpdate({ set: { status: "active" } });
@@ -488,7 +492,7 @@ export async function unsubscribeNewsletter(email: string) {
   await db.update(newsletterSubscribers).set({ status: "unsubscribed" }).where(eq(newsletterSubscribers.email, email));
 }
 
-export async function listSubscribers() {
+export async function listSubscribers(licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt));
@@ -615,7 +619,7 @@ export async function releaseStuckPostingPosts(): Promise<number> {
 }
 
 // ─── Workflow Batches ────────────────────────────────────
-export async function listWorkflowBatches(limit = 20) {
+export async function listWorkflowBatches(limit = 20, licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(workflowBatches).orderBy(desc(workflowBatches.createdAt)).limit(limit);
@@ -663,6 +667,39 @@ export async function getSetting(key: string) {
   const result = await db.select().from(workflowSettings).where(eq(workflowSettings.key, key)).limit(1);
   return result[0];
 }
+
+
+/** Read a setting from license_settings for a specific tenant */
+export async function getLicenseSetting(licenseId: number, key: string): Promise<{ key: string; value: string } | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { licenseSettings } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const [row] = await db.select().from(licenseSettings)
+    .where(and(eq(licenseSettings.licenseId, licenseId), eq(licenseSettings.key, key)))
+    .limit(1);
+  return row ? { key: row.key, value: row.value } : undefined;
+}
+
+/** Read a license setting with fallback to global workflow_settings */
+
+/** Get a license record by subdomain */
+export async function getLicenseBySubdomain(subdomain: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { licenses } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const [license] = await db.select().from(licenses).where(eq(licenses.subdomain, subdomain)).limit(1);
+  return license ?? null;
+}
+
+export async function getLicenseSettingOrGlobal(licenseId: number, key: string): Promise<string | undefined> {
+  const ls = await getLicenseSetting(licenseId, key);
+  if (ls?.value) return ls.value;
+  const gs = await getSetting(key);
+  return gs?.value;
+}
+
 
 export async function getSettingsByCategory(category: string) {
   const db = await getDb();
@@ -814,8 +851,6 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "watermark_font_size", value: "16", label: "Watermark Font Size", description: "Base font size for watermark text (scales with image).", category: "image_providers", type: "number" },
   { key: "watermark_text_color", value: "255,255,255", label: "Watermark Text Color", description: "RGB color for watermark text.", category: "image_providers", type: "string" },
   { key: "watermark_bg_opacity", value: "60", label: "Watermark Background Opacity", description: "Opacity of watermark background (0-100).", category: "image_providers", type: "number" },
-  { key: "watermark_show_mascot", value: "true", label: "Show Mascot in Watermark", description: "Include mascot image in watermark overlay.", category: "image_providers", type: "boolean" },
-  { key: "watermark_mascot_size", value: "12", label: "Mascot Size", description: "Mascot size as percentage of image height (5-30).", category: "image_providers", type: "number" },
   // Real Image Sourcing (licensed photos from free image APIs)
   { key: "real_image_sourcing_enabled", value: "false", label: "Enable Real Image Sourcing", description: "Search free image APIs (Flickr CC, Wikimedia, Unsplash, Pexels, Pixabay) for real photos before falling back to AI generation.", category: "image_providers", type: "boolean" },
   { key: "real_image_fallback", value: "ai_generate", label: "Fallback When No Real Image Found", description: "What to use when no real image meets the relevance threshold: ai_generate, branded_card, or none.", category: "image_providers", type: "string" },
@@ -901,10 +936,10 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
    * DEFAULT_SETTINGS — Seed values for new installs and backfill for upgrades.
    *
    * ⚠️ CRITICAL: These defaults are inserted into EVERY deployment's database,
-   * including white-label clients. NEVER use Hambry-specific brand values here.
+   * including white-label clients. NEVER use deployment-specific brand values here.
    * All brand_* values must be generic placeholders or empty strings.
    *
-   * Hambry's own brand values are set via the Setup Wizard or Admin → Settings,
+   * JAIME.IO's own brand values are set via the Setup Wizard or Admin → Settings,
    * NOT through seed defaults.
    */
   // Branding — Brand Identity
@@ -913,10 +948,8 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "brand_description", value: "", label: "Description", description: "Longer description used in the footer and meta tags.", category: "branding", type: "text" },
   { key: "brand_logo_url", value: "/logo.svg", label: "Logo URL", description: "URL to your site logo image (SVG or PNG recommended).", category: "branding", type: "string" },
   { key: "brand_favicon_url", value: "/favicon.ico", label: "Favicon URL", description: "URL to your browser tab icon (ICO, PNG, or SVG, 32×32px or 64×64px).", category: "branding", type: "string" },
-  { key: "brand_mascot_url", value: "", label: "Mascot Image URL", description: "URL to your mascot image (used in footer, 404 page, loading states).", category: "branding", type: "string" },
-  { key: "brand_mascot_name", value: "", label: "Mascot Name", description: "Name of your mascot character.", category: "branding", type: "string" },
   // v4.9.1: white-label attribution — set to empty string to hide the link
-  { key: "powered_by_url", value: "https://hambryengine.com", label: "Powered By URL", description: "If set, a subtle 'Powered by Hambry Engine' link appears in the footer. Clear this field to remove the link (white-label opt-out).", category: "branding", type: "string" },
+  { key: "powered_by_url", value: "https://getjaime.io", label: "Powered By URL", description: "If set, a subtle 'Powered by JAIME.IO Engine' link appears in the footer. Clear this field to remove the link (white-label opt-out).", category: "branding", type: "string" },
 
   // Masthead customization (v4.9.6)
   { key: "masthead_bg_color", value: "", label: "Masthead Background Color", description: "Background color of the masthead area. Leave blank to use the primary brand color.", category: "branding", type: "string" },
@@ -1036,7 +1069,7 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "merch_printify_shop_id", value: "", label: "Printify Shop ID", description: "Your Printify shop ID (found in the shop URL or API).", category: "monetization", type: "string" },
   { key: "merch_markup_percent", value: "50", label: "Merch Markup %", description: "Percentage markup above Printify base cost. Default 50 = 50% markup.", category: "monetization", type: "number" },
   { key: "merch_digital_price", value: "2.99", label: "Digital Print Price ($)", description: "Fixed price for digital download products.", category: "monetization", type: "string" },
-  { key: "merch_loading_animation_url", value: "", label: "Loading Animation URL", description: "URL to a looping WebP or MP4 mascot animation shown while products load.", category: "monetization", type: "string" },
+  { key: "merch_loading_animation_url", value: "", label: "Loading Animation URL", description: "URL to a looping WebP or MP4 animation shown while products load.", category: "monetization", type: "string" },
   { key: "merch_blueprint_mug", value: "", label: "Printify Blueprint ID — Mug", description: "Printify blueprint ID for ceramic mugs.", category: "monetization", type: "string" },
   { key: "merch_blueprint_shirt", value: "", label: "Printify Blueprint ID — T-Shirt", description: "Printify blueprint ID for t-shirts.", category: "monetization", type: "string" },
   { key: "merch_blueprint_poster", value: "", label: "Printify Blueprint ID — Poster", description: "Printify blueprint ID for posters.", category: "monetization", type: "string" },
@@ -1110,7 +1143,7 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "threads_auto_post_enabled", value: "false", label: "Threads Auto-Post Articles", description: "Mirror article posts to Threads", category: "social", type: "boolean" },
   { key: "threads_posts_per_day", value: "15", label: "Threads Posts Per Day", description: "Maximum posts per day on Threads", category: "social", type: "number" },
   // Bluesky
-  { key: "bluesky_handle", value: "", label: "Bluesky Handle", description: "Your Bluesky handle (e.g., hambry.bsky.social)", category: "social", type: "string" },
+  { key: "bluesky_handle", value: "", label: "Bluesky Handle", description: "Your Bluesky handle (e.g., jaimeio.bsky.social)", category: "social", type: "string" },
   { key: "bluesky_app_password", value: "", label: "Bluesky App Password", description: "Settings → App Passwords → Create. Do NOT use your main password.", category: "social", type: "string" },
   { key: "bluesky_auto_post_enabled", value: "false", label: "Bluesky Auto-Post Articles", description: "Mirror article posts to Bluesky", category: "social", type: "boolean" },
   { key: "bluesky_posts_per_day", value: "15", label: "Bluesky Posts Per Day", description: "Maximum posts per day on Bluesky", category: "social", type: "number" },
@@ -1150,9 +1183,30 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "network_sync_interval", value: "60", label: "Network Sync Interval (minutes)", description: "v4.7.0: How often this deployment pushes metrics to the network hub. Default: 60 minutes.", category: "system", type: "number" },
   // v4.7.1: Setup gate — production loop and batch workflow skip until this is true
   { key: "setup_complete", value: "false", label: "Setup Complete", description: "v4.7.1: Set to true once the operator has completed the Setup Wizard. The production loop and batch workflow will not run until this is true. Prevents wrong-niche content on fresh deployments.", category: "system", type: "boolean" },
-  // v4.7.2: Configurable loading screen (replaces HambryLoader with white-label SiteLoader)
+  // v4.7.2: Configurable loading screen (replaces legacy loader with white-label SiteLoader)
   { key: "loading_style", value: "spinner", label: "Loading Style", description: "v4.7.2: Controls the loading animation shown while pages render. Options: spinner (CSS-only, default), logo (custom image from loading_logo_url), none (instant load, no animation).", category: "branding", type: "string" },
-  { key: "loading_logo_url", value: "", label: "Loading Logo URL", description: "v4.7.2: URL to a custom logo or mascot image shown during page load. Only used when loading_style=logo. If empty and style=logo, falls back to spinner.", category: "branding", type: "string" },
+  { key: "loading_logo_url", value: "", label: "Loading Logo URL", description: "v4.7.2: URL to a custom logo image shown during page load. Only used when loading_style=logo. If empty and style=logo, falls back to spinner.", category: "branding", type: "string" },
+  // Sponsorship & Advertising (v5.0)
+  { key: "adsense_enabled", value: "false", label: "AdSense Enabled", description: "Enable Google AdSense ad placements.", category: "monetization", type: "boolean" },
+  { key: "adsense_publisher_id", value: "", label: "AdSense Publisher ID", description: "Your AdSense publisher ID (ca-pub-...).", category: "monetization", type: "string" },
+  { key: "adsense_header_unit", value: "", label: "Header Ad Unit ID", description: "Ad unit ID for header banner.", category: "monetization", type: "string" },
+  { key: "adsense_sidebar_unit", value: "", label: "Sidebar Ad Unit ID", description: "Ad unit ID for sidebar.", category: "monetization", type: "string" },
+  { key: "adsense_article_unit", value: "", label: "In-Article Ad Unit ID", description: "Ad unit ID for in-article ads.", category: "monetization", type: "string" },
+  { key: "adsense_footer_unit", value: "", label: "Footer Ad Unit ID", description: "Ad unit ID for footer.", category: "monetization", type: "string" },
+  { key: "amazon_enabled", value: "false", label: "Amazon Affiliate Enabled", description: "Enable Amazon product recommendations.", category: "monetization", type: "boolean" },
+  { key: "amazon_associate_tag", value: "", label: "Amazon Associate Tag", description: "Your Amazon Associate tracking tag.", category: "monetization", type: "string" },
+  { key: "amazon_store_id", value: "", label: "Amazon Store ID", description: "Optional Amazon storefront ID.", category: "monetization", type: "string" },
+  { key: "amazon_keywords", value: "", label: "Amazon Keywords", description: "Default keywords for Amazon product search.", category: "monetization", type: "string" },
+  // Shop (v5.0)
+  { key: "printify_enabled", value: "false", label: "Printify Enabled", description: "Enable print-on-demand merchandise shop.", category: "monetization", type: "boolean" },
+  { key: "printify_api_key", value: "", label: "Printify API Key", description: "Your Printify API key.", category: "monetization", type: "string" },
+  { key: "printify_shop_id", value: "", label: "Printify Shop ID", description: "Your Printify shop ID.", category: "monetization", type: "string" },
+  { key: "brand_shop_title", value: "Shop", label: "Shop Title", description: "Title for the shop page.", category: "branding", type: "string" },
+  { key: "brand_shop_description", value: "", label: "Shop Description", description: "Description shown at the top of the shop page.", category: "branding", type: "string" },
+  { key: "brand_shop_nav_label", value: "Shop", label: "Shop Nav Label", description: "Label for shop link in navigation.", category: "branding", type: "string" },
+  { key: "shop_in_nav", value: "false", label: "Show Shop in Nav", description: "Show shop link in navigation menu.", category: "branding", type: "boolean" },
+  // Brand Palette (v5.0)
+  { key: "brand_palette", value: "", label: "Brand Palette", description: "Auto-generated WCAG-compliant color palette JSON.", category: "branding", type: "string" },
   { key: "loading_text", value: "", label: "Loading Text", description: "v4.7.2: Optional text shown below the loading animation (e.g., your site name). Leave blank to show no text.", category: "branding", type: "string" },
   // v4.7.3: Configurable Google Analytics tag (replaces hardcoded AW-17988276150)
   { key: "brand_gtag_id", value: "", label: "Google Analytics Tag ID", description: "v4.7.3: Your GA4 measurement ID (G-XXXXXXXX) or Google Ads conversion ID (AW-XXXXXXXXX). Leave blank to disable analytics entirely. Each deployment must use its own ID.", category: "branding", type: "string" },
@@ -2178,7 +2232,7 @@ export async function getDailyArticleCounts(days: number): Promise<{ date: strin
 }
 
 /** Count active newsletter subscribers. */
-export async function countNewsletterSubscribers(status: string): Promise<number> {
+export async function countNewsletterSubscribers(status: string, licenseId?: number): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   const rows = await db

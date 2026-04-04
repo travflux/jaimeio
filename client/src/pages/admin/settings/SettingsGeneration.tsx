@@ -447,7 +447,7 @@ export default function SettingsGeneration() {
                 </div>
               </div>
               <CardDescription className="mt-1">
-                The user message sent to the LLM for each article — this is where "Write a highly satirical news article" lives. Override it to change the content type entirely (e.g., real estate tips, tech explainers, product reviews).
+                The user message sent to the LLM for each article — this is where "Write a professional news article" lives. Override it to change the content type entirely (e.g., real estate tips, tech explainers, product reviews).
               </CardDescription>
             </CardHeader>
             {userMsgPanelOpen && (

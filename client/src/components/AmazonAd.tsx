@@ -2,7 +2,7 @@ import { ExternalLink, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AmazonAdProps {
-  /** Amazon Associates tracking tag (e.g., "hambry-20") */
+  /** Amazon Associates tracking tag (e.g., "yourtag-20") */
   associateTag: string;
   /** Contextual keywords for product search */
   keywords?: string;

@@ -41,15 +41,7 @@ class ManusImageProvider implements ImageProvider {
     const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
     const fullUrl = new URL("images.v1.ImageService/GenerateImage", baseUrl).toString();
 
-    // Get mascot image URL from settings and add to original_images
-    let originalImages = options.originalImages || [];
-    const mascotImageUrlSetting = await db.getSetting("mascot_image_url");
-    if (mascotImageUrlSetting?.value) {
-      originalImages = [
-        ...originalImages,
-        { url: mascotImageUrlSetting.value },
-      ];
-    }
+    const originalImages = options.originalImages || [];
 
     const response = await fetch(fullUrl, {
       method: "POST",
@@ -220,23 +212,24 @@ class ReplicateImageProvider implements ImageProvider {
       throw new Error("Replicate image generation timed out");
     }
 
-    // Download and store in S3
+    // Download and upload to S3 for persistence
+    console.log("[ImageGen] Replicate image ready, uploading to S3...");
     const imageResp = await fetch(imageUrl);
-    if (!imageResp.ok) {
-      throw new Error(`Failed to download Replicate image: ${imageResp.status}`);
-    }
+    if (!imageResp.ok) throw new Error("Failed to download Replicate image: " + imageResp.status);
     let buffer = Buffer.from(await imageResp.arrayBuffer());
     
-    // Add watermark if enabled
     const watermarkEnabled = await db.getSetting("watermark_enabled");
-    console.log('[Image Provider] Watermark enabled check:', watermarkEnabled?.value);
     if (watermarkEnabled?.value === "true") {
-      const { getWatermarkSettings } = await import("../watermark");
-      const watermarkOptions = await getWatermarkSettings();
-      buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+      try {
+        const { addWatermark, getWatermarkSettings } = await import("../watermark");
+        const watermarkOptions = await getWatermarkSettings();
+        buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+      } catch { /* watermark optional */ }
     }
     
-    const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
+    const { storagePut } = await import("../storage");
+    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    console.log("[ImageGen] Replicate image saved to S3:", url.substring(0, 80));
     return { url };
   }
 
@@ -327,11 +320,71 @@ class CustomAPIImageProvider implements ImageProvider {
 
 // ─── Provider Registry ──────────────────────────────────────────────────────
 
+// ─── Gemini Imagen 3 Provider ──────────────────────────────────────────────
+class GeminiImageProvider implements ImageProvider {
+  name = "gemini";
+  async generate(options: ImageGenerationOptions): Promise<{ url: string }> {
+    const apiKey = await this.getApiKey();
+    if (!apiKey) throw new Error("Gemini API key not configured. Add it in Settings > Images.");
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=" + apiKey,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instances: [{ prompt: options.prompt }], parameters: { sampleCount: 1, aspectRatio: options.aspectRatio === "16:9" ? "16:9" : "1:1" } }) }
+    );
+    if (!response.ok) { const err = await response.text(); throw new Error("Gemini Imagen API error: " + response.status + " " + err.substring(0, 200)); }
+    const data = await response.json() as any;
+    const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
+    if (!b64) throw new Error("Gemini returned no image data");
+    let buffer = Buffer.from(b64, "base64");
+    const watermarkEnabled = await db.getSetting("watermark_enabled");
+    if (watermarkEnabled?.value === "true") { try { const { addWatermark, getWatermarkSettings } = await import("../watermark"); buffer = Buffer.from(await addWatermark(buffer, await getWatermarkSettings())); } catch {} }
+    const { storagePut } = await import("../storage");
+    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    return { url };
+  }
+  private async getApiKey(): Promise<string | null> {
+    const setting = await db.getSetting("image_provider_gemini_api_key");
+    return setting?.value || process.env.GEMINI_API_KEY || null;
+  }
+}
+
+// ─── xAI Grok (Aurora) Provider ───────────────────────────────────────────
+class GrokImageProvider implements ImageProvider {
+  name = "grok";
+  async generate(options: ImageGenerationOptions): Promise<{ url: string }> {
+    const apiKey = await this.getApiKey();
+    if (!apiKey) throw new Error("xAI Grok API key not configured. Add it in Settings > Images.");
+    const response = await fetch("https://api.x.ai/v1/images/generations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify({ model: "grok-2-image", prompt: options.prompt, n: 1, response_format: "url" }),
+    });
+    if (!response.ok) { const err = await response.text(); throw new Error("Grok API error: " + response.status + " " + err.substring(0, 200)); }
+    const data = await response.json() as any;
+    const imageUrl = data?.data?.[0]?.url;
+    if (!imageUrl) throw new Error("Grok returned no image URL");
+    const imageResp = await fetch(imageUrl);
+    if (!imageResp.ok) throw new Error("Failed to download Grok image: " + imageResp.status);
+    let buffer = Buffer.from(await imageResp.arrayBuffer());
+    const watermarkEnabled = await db.getSetting("watermark_enabled");
+    if (watermarkEnabled?.value === "true") { try { const { addWatermark, getWatermarkSettings } = await import("../watermark"); buffer = Buffer.from(await addWatermark(buffer, await getWatermarkSettings())); } catch {} }
+    const { storagePut } = await import("../storage");
+    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    return { url };
+  }
+  private async getApiKey(): Promise<string | null> {
+    const setting = await db.getSetting("image_provider_grok_api_key");
+    return setting?.value || process.env.XAI_API_KEY || null;
+  }
+}
+
 const providers: Record<string, ImageProvider> = {
   manus: new ManusImageProvider(),
   openai: new OpenAIImageProvider(),
   replicate: new ReplicateImageProvider(),
   custom: new CustomAPIImageProvider(),
+  gemini: new GeminiImageProvider(),
+  grok: new GrokImageProvider(),
 };
 
 // ─── Main Generation Function ───────────────────────────────────────────────
@@ -358,7 +411,7 @@ export async function generateImageWithProvider(
 
   const provider = providers[primaryProvider];
   if (!provider) {
-    throw new Error(`Unknown image provider: ${primaryProvider}. Valid options are: manus, openai, replicate, custom.`);
+    throw new Error(`Unknown image provider: ${primaryProvider}. Valid options are: openai, replicate, custom, gemini, grok.`);
   }
 
   try {
@@ -393,7 +446,7 @@ export async function generateImageWithProvider(
 /**
  * Legacy generateImage function for backward compatibility
  * Delegates to the new multi-provider system
- * Falls back to mascot placeholder if generation fails
+ * Falls back to placeholder if generation fails
  */
 export async function generateImage(
   options: ImageGenerationOptions

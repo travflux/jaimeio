@@ -1,5 +1,5 @@
 /**
- * Satire Engine Licensing System
+ * JAIME.IO Licensing System
  * 
  * Manages license keys, validation, and version tracking for white-label deployments.
  */
@@ -210,7 +210,7 @@ export function getLicenseInfo(license: License): string {
 
 // Example usage and testing
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log("🔑 Satire Engine License Generator\n");
+  console.log("🔑 JAIME.IO License Generator\n");
 
   // Generate a sample license
   const license = generateLicenseKey(

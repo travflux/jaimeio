@@ -59,7 +59,7 @@ function stripHtml(str: string): string {
 }
 
 async function getBranding() {
-  const [siteName, tagline, description, siteUrl, ogImage, editorialTeam, mascotUrl, twitterUrl, mascotName, commentsEnabled, disqusShortname, disclaimer] =
+  const [siteName, tagline, description, siteUrl, ogImage, editorialTeam, twitterUrl, commentsEnabled, disqusShortname, disclaimer] =
     await Promise.all([
       getSetting("brand_site_name"),
       getSetting("brand_tagline"),
@@ -67,23 +67,19 @@ async function getBranding() {
       getSetting("site_url"),
       getSetting("brand_og_image"),
       getSetting("brand_editorial_team"),
-      getSetting("brand_mascot_url"),
       getSetting("brand_twitter_url"),
-      getSetting("brand_mascot_name"),
       getSetting("article_comments_enabled"),
       getSetting("disqus_shortname"),
       getSetting("brand_disclaimer"),
     ]);
   return {
     siteName: siteName?.value || process.env.VITE_APP_TITLE || "",
-    tagline: tagline?.value || "The News, Remastered",
+    tagline: tagline?.value || "AI-Powered Content, Automated",
     description: description?.value || "Your source for the latest news and commentary.",
     siteUrl: (siteUrl?.value || "https://example.com").replace(/\/$/, ""),
     ogImage: ogImage?.value || "/og-image.jpg",
     editorialTeam: editorialTeam?.value || "Editorial Team",
-    mascotUrl: mascotUrl?.value || "",
     twitterUrl: twitterUrl?.value || "https://x.com/yourbrand",
-    mascotName: mascotName?.value || "Mascot",
     commentsEnabled: commentsEnabled?.value === "true",
     disqusShortname: disqusShortname?.value || "",
     disclaimer: disclaimer?.value || "",
@@ -161,8 +157,6 @@ function buildArticleHtml(params: {
   description: string;
   siteUrl: string;
   editorialTeam: string;
-  mascotUrl: string;
-  mascotName: string;
   twitterUrl: string;
   ogImage: string;
   navCategories: Array<{ name: string; slug: string }>;
@@ -177,12 +171,16 @@ function buildArticleHtml(params: {
   disqusShortname?: string;
   disclaimer?: string;
   isApiRoute?: boolean;
+  geoSchema?: string;
+  geoFaq?: string;
+  geoSummary?: string;
+  geoSpeakable?: string;
 }): string {
   const {
     headline, subheadline, body, slug, featuredImage,
     publishedAt, modifiedAt, categoryName, categorySlug,
     siteName, tagline, description, siteUrl, editorialTeam,
-    mascotUrl, mascotName, twitterUrl, ogImage,
+    twitterUrl, ogImage,
     navCategories, relatedArticles,
     commentsEnabled = false, disqusShortname = "", disclaimer = "",
   } = params;
@@ -190,9 +188,7 @@ function buildArticleHtml(params: {
   const canonicalUrl = `${siteUrl}/article/${slug}`;
   const desc = subheadline ? subheadline : truncate(stripHtml(body), 160);
   const image = featuredImage || (ogImage.startsWith("http") ? ogImage : `${siteUrl}${ogImage}`);
-  const mascotAbsUrl = mascotUrl
-    ? (mascotUrl.startsWith("http") ? mascotUrl : `${siteUrl}${mascotUrl}`)
-    : "";
+  const logoAbsUrl = ogImage.startsWith("http") ? ogImage : `${siteUrl}${ogImage}`;
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const pubDate = new Date(publishedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
@@ -226,14 +222,44 @@ function buildArticleHtml(params: {
       url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: mascotAbsUrl,
+        url: logoAbsUrl,
         // Google recommends logo dimensions for publisher logos
         width: 600,
         height: 60,
       },
     },
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["#key-takeaways", "h1", ".article-subheadline", ".geo-speakable"]
+    },
+    timeRequired: "PT" + Math.max(1, Math.ceil(stripHtml(body).split(/\s+/).length / 200)) + "M",
     mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
   });
+
+  // GEO data from stored fields
+  const geoJsonLd = params.geoSchema || "";
+  const geoFaqSchema = (() => {
+    if (!params.geoFaq) return "";
+    try {
+      const faq = JSON.parse(params.geoFaq);
+      if (!Array.isArray(faq) || faq.length === 0) return "";
+      return JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faq.map((item: any) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      });
+    } catch { return ""; }
+  })();
+  const geoSummary = params.geoSummary || "";
+  const geoSpeakable = params.geoSpeakable || "";
+  const geoFaqItems: Array<{question: string; answer: string}> = (() => {
+    try { return params.geoFaq ? JSON.parse(params.geoFaq) : []; }
+    catch { return []; }
+  })();
 
   // Convert HTML body to readable paragraphs
   const paragraphs = body
@@ -302,7 +328,8 @@ function buildArticleHtml(params: {
   <meta name="twitter:image" content="${escapeHtml(image)}">
 
   <!-- JSON-LD NewsArticle -->
-  <script type="application/ld+json">${jsonLd}</script>
+  <script type="application/ld+json">${geoJsonLd || jsonLd}</script>
+  ${geoFaqSchema ? `<script type="application/ld+json">${geoFaqSchema}</script>` : ""}
 
   <style>
     /* ── Reset & Base ── */
@@ -751,6 +778,22 @@ ${paragraphsHtml}
       <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
     </section>` : ''}
 
+    ${geoSummary ? `
+    <div class="geo-takeaway" style="margin:2rem 0;padding:1.25rem 1.5rem;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-left:4px solid #10b981;border-radius:0 12px 12px 0;">
+      <p class="geo-speakable" style="font-weight:600;color:#065f46;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Key Takeaway</p>
+      <p style="font-size:1.05rem;line-height:1.6;color:#1a1a1a;margin:0;">${escapeHtml(geoSummary)}</p>
+    </div>` : ""}
+    ${geoFaqItems.length > 0 ? `
+    <section class="geo-faq" style="margin:2.5rem 0;padding:0;" itemscope itemtype="https://schema.org/FAQPage">
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:1.25rem;color:#1a1a1a;">Frequently Asked Questions</h2>
+      ${geoFaqItems.map((faq: any) => `
+      <details style="margin-bottom:0.75rem;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <summary style="padding:1rem 1.25rem;font-weight:600;cursor:pointer;background:#f9fafb;font-size:1rem;" itemprop="name">${escapeHtml(faq.question)}</summary>
+        <div style="padding:1rem 1.25rem;line-height:1.6;color:#374151;" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text" style="margin:0;">${escapeHtml(faq.answer)}</p>
+        </div>
+      </details>`).join("")}
+    </section>` : ""}
     ${relatedHtml}
   </main>
 
@@ -869,8 +912,6 @@ async function handleArticleRequest(
       description: branding.description,
       siteUrl: branding.siteUrl,
       editorialTeam: branding.editorialTeam,
-      mascotUrl: branding.mascotUrl,
-      mascotName: branding.mascotName,
       twitterUrl: branding.twitterUrl,
       ogImage: branding.ogImage,
       navCategories: navCategories.map((c: any) => ({ name: c.name, slug: c.slug })),
@@ -879,6 +920,10 @@ async function handleArticleRequest(
       disqusShortname: branding.disqusShortname,
       disclaimer: branding.disclaimer,
       isApiRoute,
+      geoSchema: article.geoSchema ?? undefined,
+      geoFaq: article.geoFaq ?? undefined,
+      geoSummary: article.geoSummary ?? undefined,
+      geoSpeakable: article.geoSpeakable ?? undefined,
     });
 
     // /api/article/:slug is the internal SSR endpoint — tell Google the canonical is /article/:slug

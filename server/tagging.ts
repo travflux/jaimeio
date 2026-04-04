@@ -1,5 +1,5 @@
 /**
- * Tagging system for Hambry / white-label content engine.
+ * Tagging system for JAIME.IO / white-label content engine.
  *
  * Responsibilities:
  *  - Auto-tag articles using LLM (extracts 3-7 tags from headline + subheadline + body)

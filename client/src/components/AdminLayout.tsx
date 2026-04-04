@@ -1,5 +1,6 @@
+import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 import { Link, useLocation } from "wouter";
 import { useBranding } from "@/hooks/useBranding";
 import {
@@ -8,8 +9,7 @@ import {
   Filter, Send, Search, Newspaper, HelpCircle,
   Timer, Zap, Rss, Image, Video, Share2, Globe, Calendar, ShoppingCart, Scale,
   Package, Database, Palette, MessageSquareReply, ClipboardList, Twitter, ShoppingBag, BarChart2,
-  ExternalLink, MessageSquare, CheckCircle2, ChevronDown, Layers, ListChecks, Hash, MousePointerClick,
-} from "lucide-react";
+  ExternalLink, MessageSquare, CheckCircle2, ChevronDown, Layers, ListChecks, Hash, MousePointerClick, Building2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import CommandPalette from "@/components/CommandPalette";
@@ -42,6 +42,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/ai", icon: Sparkles, label: "AI Generator" },
       { href: "/admin/categories", icon: FolderOpen, label: "Categories" },
       { href: "/admin/tags", icon: Hash, label: "Tags" },
+      { href: "/admin/pages", icon: FileText, label: "Pages" },
       { href: "/admin/source-feeds", icon: Filter, label: "Source Feeds" },
       { href: "/admin/feed-performance", icon: TrendingUp, label: "Feed Performance" },
       { href: "/admin/sources", icon: Layers, label: "Source Manager" },
@@ -82,7 +83,9 @@ const navGroups: NavGroup[] = [
   {
     label: "System",
     items: [
-      { href: "/api/briefing-room-m4x1q", icon: ExternalLink, label: "CEO Dashboard", external: true },
+      { href: "/admin/mission-control", icon: Building2, label: "Mission Control" },
+      { href: "/admin/support", icon: HelpCircle, label: "Support Articles" },
+      { href: "/admin/performance", icon: BarChart2, label: "Performance Dashboard" },
       { href: "/admin/attribution", icon: BarChart2, label: "Attribution" },
       { href: "/admin/search-analytics", icon: TrendingUp, label: "Search Analytics" },
       { href: "/admin/ceo-directives", icon: ClipboardList, label: "CEO Directives" },
@@ -90,6 +93,12 @@ const navGroups: NavGroup[] = [
       { href: "/admin/licenses", icon: Key, label: "Licenses" },
       { href: "/admin/deployment-updates", icon: Package, label: "Deployment Updates" },
       { href: "/admin/migration", icon: Database, label: "Migration" },
+    ],
+  },
+  {
+    label: "White Label",
+    items: [
+      { href: "/admin/domains", icon: Globe, label: "Client Domains" },
     ],
   },
 ];
@@ -100,7 +109,19 @@ const allNavItems = navGroups.flatMap(g => g.items);
 
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  // On tenant subdomains, check tenant auth; on app domain, check super admin auth
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const isAppDomain = hostname === "app.getjaime.io" || hostname === "localhost" || hostname === "127.0.0.1";
+  const superAdminAuth = useAuth();
+  const tenantMeQuery = trpc.tenantAuth.me.useQuery(undefined, { 
+    retry: false, refetchOnWindowFocus: false, enabled: !isAppDomain 
+  });
+  
+  // Use the appropriate auth based on domain
+  const user = isAppDomain ? superAdminAuth.user : (tenantMeQuery.data || superAdminAuth.user);
+  const loading = isAppDomain ? superAdminAuth.loading : (tenantMeQuery.isLoading && superAdminAuth.loading);
+  const isAuthenticated = isAppDomain ? superAdminAuth.isAuthenticated : (!!tenantMeQuery.data || superAdminAuth.isAuthenticated);
+  const logout = superAdminAuth.logout;
   const { branding } = useBranding();
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -166,11 +187,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = isAppDomain ? "/admin/login" : "/admin";
     return null;
   }
 
-  if (user?.role !== "admin") {
+  // On app domain: require admin role. On tenant subdomains: any authenticated tenant user can access.
+  if (isAppDomain && user?.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -184,6 +206,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
+
+  // On tenant subdomains, show a minimal sidebar with just key navigation
+  const tenantSidebarContent = !isAppDomain ? (
+    <>
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-between mb-3">
+          <Link href="/" className="flex items-center gap-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+            <ArrowLeft className="w-3 h-3" /> Back to site
+          </Link>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded-md hover:bg-sidebar-accent">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <h2 className="text-sm font-semibold text-sidebar-foreground">{branding.siteName || "Publication"}</h2>
+        <p className="text-xs text-sidebar-foreground/50">Tenant Portal</p>
+      </div>
+      <nav className="flex-1 overflow-y-auto p-3">
+        <div className="space-y-1">
+          <Link href="/admin/dashboard" className={"flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors " + (location === "/admin/dashboard" ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50")}>
+            <LayoutDashboard className="w-4 h-4" /> Dashboard
+          </Link>
+          <Link href="/admin/articles" className={"flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors " + (location.startsWith("/admin/articles") ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50")}>
+            <FileText className="w-4 h-4" /> Articles
+          </Link>
+          <Link href="/admin/settings" className={"flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors " + (location === "/admin/settings" ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50")}>
+            <Settings className="w-4 h-4" /> Settings
+          </Link>
+          <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
+            <Eye className="w-4 h-4" /> View Publication
+          </Link>
+        </div>
+      </nav>
+    </>
+  ) : null;
 
   const sidebarContent = (
     <>
@@ -365,7 +421,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           transition-transform duration-200 ease-in-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}>
-          {sidebarContent}
+          {tenantSidebarContent || sidebarContent}
         </aside>
 
         {/* Main content */}

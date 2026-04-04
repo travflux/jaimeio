@@ -11,8 +11,6 @@ export interface BrandingConfig {
   tagline: string;
   description: string;
   logoUrl: string;
-  mascotUrl: string;
-  mascotName: string;
 
   // Colors
   colorPrimary: string;
@@ -65,6 +63,14 @@ export interface BrandingConfig {
   // Analytics (v4.8.0)
   clarityId: string;
 
+  // Shop (v4.9.9)
+  printifyEnabled: boolean;
+  shopExternalUrl: string;
+
+  // Typography (v4.9.9)
+  headingFont: string;
+  bodyFont: string;
+
   // White-label attribution (v4.9.1)
   poweredByUrl: string;
 
@@ -88,10 +94,8 @@ const DEFAULTS: BrandingConfig = {
   tagline: "",
   description: "",
   logoUrl: "/logo.svg",
-  mascotUrl: "/mascot.png",
-  mascotName: "",
-  colorPrimary: "#dc2626",
-  colorSecondary: "#1e40af",
+  colorPrimary: "#0f2d5e",
+  colorSecondary: "#2dd4bf",
   contactEmail: "contact@example.com",
   editorEmail: "editor@example.com",
   privacyEmail: "privacy@example.com",
@@ -117,7 +121,11 @@ const DEFAULTS: BrandingConfig = {
   loadingText: "",
   gtagId: "",
   clarityId: "",
-  poweredByUrl: "https://hambryengine.com",
+  printifyEnabled: false,
+  shopExternalUrl: "",
+  headingFont: "",
+  bodyFont: "",
+  poweredByUrl: "https://getjaime.io",
 
   // Masthead customization (v4.9.6)
   mastheadBgColor: "",
@@ -143,8 +151,6 @@ function mapKeyToField(key: string): keyof BrandingConfig | null {
     brand_tagline: "tagline",
     brand_description: "description",
     brand_logo_url: "logoUrl",
-    brand_mascot_url: "mascotUrl",
-    brand_mascot_name: "mascotName",
     brand_color_primary: "colorPrimary",
     brand_color_secondary: "colorSecondary",
     brand_contact_email: "contactEmail",
@@ -172,6 +178,10 @@ function mapKeyToField(key: string): keyof BrandingConfig | null {
     loading_text: "loadingText",
     brand_gtag_id: "gtagId",
     brand_clarity_id: "clarityId",
+    printify_enabled: "printifyEnabled",
+    shop_external_url: "shopExternalUrl",
+    brand_heading_font: "headingFont",
+    brand_body_font: "bodyFont",
     powered_by_url: "poweredByUrl",
     masthead_bg_color: "mastheadBgColor",
     masthead_text_color: "mastheadTextColor",
@@ -195,9 +205,9 @@ function mapKeyToField(key: string): keyof BrandingConfig | null {
  * Uses a public endpoint so it works for unauthenticated visitors.
  */
 export function useBranding(): { branding: BrandingConfig; isLoading: boolean } {
-  const { data: raw, isLoading } = trpc.branding.get.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnWindowFocus: false,
+  const { data: raw, isLoading } = trpc.branding.get.useQuery({ hostname: window.location.hostname }, {
+    staleTime: 30 * 1000, // Cache for 30 seconds only
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   // Fields that must be coerced from DB strings to their correct runtime types
@@ -205,6 +215,7 @@ export function useBranding(): { branding: BrandingConfig; isLoading: boolean } 
     "mastheadShowTagline",
     "mastheadShowDate",
     "mastheadBorderBottom",
+    "printifyEnabled",
   ]);
   const NUMBER_FIELDS = new Set<keyof BrandingConfig>(["mastheadLogoHeight"]);
 

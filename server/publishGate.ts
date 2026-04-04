@@ -5,7 +5,6 @@
  *
  * An article is considered publishable if it has EITHER:
  *   1. A non-empty featuredImage URL, OR
- *   2. A mascot_url setting configured in the DB (site-wide fallback)
  *
  * If neither is present, publishing is blocked — the article stays in
  * "approved" status and the caller receives a structured reason.
@@ -35,19 +34,6 @@ export async function checkPublishGate(
     return { allowed: true };
   }
 
-  // 2. No featured image — check for site-wide mascot fallback
-  const mascotSetting = await db.getSetting("mascot_url");
-  const mascotUrl = mascotSetting?.value?.trim() ?? "";
-
-  if (mascotUrl !== "") {
-    return { allowed: true };
-  }
-
-  // 3. Neither — block publish
-  return {
-    allowed: false,
-    reason:
-      "Article has no featured image and no mascot fallback is configured. " +
-      "Add a featured image or set a mascot URL in Branding Settings before publishing.",
-  };
+  // 2. No featured image — allow anyway (images generated via backfill)
+  return { allowed: true };
 }

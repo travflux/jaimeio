@@ -37,15 +37,10 @@ export async function buildImagePrompt(
   // Load style settings
   const stylePrompt = await db.getSetting("image_style_prompt");
   const styleKeywords = await db.getSetting("image_style_keywords");
-  const mascotInstructionSetting = await db.getSetting("mascot_instruction");
-  const mascotInstruction = mascotInstructionSetting?.value || "";
+
 
   // Assemble the final prompt
   let finalPrompt = `${stylePrompt?.value || "Professional editorial illustration, clean modern style"}: ${imgPrompt}. ${styleKeywords?.value || "High quality, sharp detail, professional photography aesthetic. No text or words in the image."}`;
-
-  if (mascotInstruction) {
-    finalPrompt += `\n\n${mascotInstruction}`;
-  }
 
   return finalPrompt;
 }
