@@ -299,3 +299,34 @@ export async function getBlotatoSourceStatus(
     apiKey, "GET", `/source-resolutions-v3/${sourceId}`
   ) as BlotatoSourceResult;
 }
+
+// ─── Auto-sync helper (called from settings save hook) ────────────────────────
+
+export async function syncBlotatoAccountsForLicense(licenseId: number): Promise<void> {
+  const { getLicenseSetting, storeBlotatoAccounts } = await import("./db");
+  const ls = await getLicenseSetting(licenseId, "blotato_api_key");
+  const apiKey = ls?.value || null;
+  if (!apiKey) return;
+
+  const accounts = await getBlotatoAccounts(apiKey);
+  const enrichedAccounts = await Promise.all(
+    accounts.map(async (account) => {
+      let pageId: string | undefined;
+      if (account.platform === "facebook" || account.platform === "linkedin") {
+        try {
+          const subaccounts = await getBlotatoSubaccounts(apiKey, account.id);
+          if (subaccounts.length > 0) pageId = subaccounts[0].id;
+        } catch { /* no subaccounts */ }
+      }
+      return {
+        id: account.id,
+        platform: account.platform,
+        username: account.username || account.fullname,
+        ...(pageId && { pageId }),
+      };
+    })
+  );
+
+  await storeBlotatoAccounts(licenseId, enrichedAccounts);
+  console.log("[Blotato] Synced " + enrichedAccounts.length + " accounts for licenseId " + licenseId);
+}

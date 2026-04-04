@@ -100,6 +100,14 @@ export const licenseSettingsRouter = router({
           console.log("[Settings] Reloaded scheduler for license", input.licenseId);
         } catch (e: any) { console.log("[Settings] Scheduler reload skipped:", e.message?.substring(0, 50)); }
       }
+      // Auto-sync Blotato accounts when API key changes
+      if (entries.some(([key]) => key === "blotato_api_key")) {
+        import("../blotato").then(({ syncBlotatoAccountsForLicense }) => {
+          syncBlotatoAccountsForLicense(input.licenseId).catch(err =>
+            console.error("[Blotato] Auto-sync failed:", err)
+          );
+        });
+      }
       return { success: true };
     }),
 });

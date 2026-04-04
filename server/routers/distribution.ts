@@ -222,14 +222,48 @@ export const distributionRouter = router({
     return testBlotatoConnection(apiKey);
   }),
 
-  // List Blotato accounts for a tenant
+  // List stored Blotato accounts for a tenant (reads from license_settings, no API call)
   getBlotatoAccounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.licenseId) return [];
+    if (!ctx.licenseId) return { accounts: [], hasApiKey: false, isConfigured: false };
+    const accounts = await db.getBlotatoAccountsFromSettings(ctx.licenseId);
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    return {
+      accounts,
+      hasApiKey: !!(ls?.value),
+      isConfigured: accounts.length > 0,
+    };
+  }),
+
+  // Sync Blotato accounts from API and store in license_settings
+  syncBlotatoAccounts: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
     const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
     const apiKey = ls?.value || null;
-    if (!apiKey) return [];
-    const { getBlotatoAccounts } = await import("../blotato");
-    return getBlotatoAccounts(apiKey);
+    if (!apiKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No Blotato API key configured" });
+
+    const { getBlotatoAccounts, getBlotatoSubaccounts } = await import("../blotato");
+    const accounts = await getBlotatoAccounts(apiKey);
+
+    const enrichedAccounts = await Promise.all(
+      accounts.map(async (account) => {
+        let pageId: string | undefined;
+        if (account.platform === "facebook" || account.platform === "linkedin") {
+          try {
+            const subaccounts = await getBlotatoSubaccounts(apiKey, account.id);
+            if (subaccounts.length > 0) pageId = subaccounts[0].id;
+          } catch { /* no subaccounts */ }
+        }
+        return {
+          id: account.id,
+          platform: account.platform,
+          username: account.username || account.fullname,
+          ...(pageId && { pageId }),
+        };
+      })
+    );
+
+    await db.storeBlotatoAccounts(ctx.licenseId, enrichedAccounts);
+    return { success: true, accounts: enrichedAccounts, count: enrichedAccounts.length };
   }),
 
 });
