@@ -128,4 +128,29 @@ export const systemRouter = router({
     } catch { return []; }
   }),
 
+  getLLMProviders: adminProcedure.query(() => {
+    return {
+      groq: {
+        available: !!process.env.GROQ_API_KEY,
+        model: "llama-3.3-70b-versatile",
+        costPer1k: 0.001,
+      },
+      anthropic: {
+        available: !!(process.env.ANTHROPIC_API_KEY || process.env.BUILT_IN_FORGE_API_KEY),
+        model: "claude-sonnet-4-20250514",
+        costPer1k: 0.10,
+      },
+      openai: {
+        available: !!process.env.OPENAI_API_KEY,
+        model: "gpt-4o",
+        costPer1k: 0.03,
+      },
+      gemini: {
+        available: !!process.env.GEMINI_API_KEY,
+        model: "gemini-2.5-flash",
+        costPer1k: 0.002,
+      },
+    };
+  }),
+
 });
