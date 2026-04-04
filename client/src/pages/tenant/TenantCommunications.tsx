@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
@@ -11,6 +13,14 @@ export default function TenantCommunications() {
   useEffect(() => { if (initSettings) setS(initSettings); }, [initSettings]);
 
   const update = (key: string, value: string) => setS(prev => ({ ...prev, [key]: value }));
+  const [testEmail, setTestEmail] = useState("");
+  const sendTestMut = trpc.newsletter.sendTest.useMutation({
+    onSuccess: (result: any) => {
+      if (result.success) { toast.success("Test email sent! Check your inbox."); setTestEmail(""); }
+      else { toast.error("Send failed", { description: result.error }); }
+    },
+    onError: (err: any) => toast.error("Send failed", { description: err.message }),
+  });
   const handleSave = async () => {
     if (!licenseId) return;
     await saveMut.mutateAsync({ licenseId, settings: s });
@@ -110,6 +120,23 @@ export default function TenantCommunications() {
         </div>
       </div>
 
+
+      {/* Send Test Email */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginTop: 16 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Send Test Email</h3>
+        <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>Verify your email configuration by sending a test message</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
+            placeholder="your@email.com"
+            onKeyDown={e => { if (e.key === "Enter" && testEmail.includes("@")) sendTestMut.mutate({ toEmail: testEmail }); }}
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
+          <button onClick={() => sendTestMut.mutate({ toEmail: testEmail })}
+            disabled={sendTestMut.isPending || !testEmail.includes("@")}
+            style={{ padding: "8px 16px", borderRadius: 6, background: sendTestMut.isPending ? "#9ca3af" : "#2dd4bf", color: "#0f2d5e", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            {sendTestMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Sending...</> : <><Send size={14} /> Send Test</>}
+          </button>
+        </div>
+      </div>
     </TenantLayout>
   );
 }

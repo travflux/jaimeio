@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useBranding } from "@/hooks/useBranding";
 import { useTheme } from "@/contexts/ThemeContext";
+import CommandPalette from "@/components/CommandPalette";
 import {
   LayoutDashboard, Palette, CreditCard, Users, Mail, Bell, Key, ExternalLink,
   GitBranch, FileText, PenSquare, CalendarDays, LayoutTemplate, FolderOpen,
@@ -74,6 +75,16 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
   useEffect(() => {
     setExpandedSection(getActiveSection(location));
   }, [location]);
+
+  // Command palette (Cmd+K / Ctrl+K)
+  const [cmdOpen, setCmdOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(o => !o); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleSectionClick = (key: string) => {
     // Can't collapse the active section; clicking collapsed section expands it
@@ -156,7 +167,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
           <span style={{ flex: 1 }}>Setup Wizard</span>
           <span style={{ background: "#2dd4bf", color: "#0f2d5e", fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>START</span>
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f2937", borderRadius: 6, padding: "6px 10px" }}>
+        <div onClick={() => setCmdOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f2937", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
           <Search size={14} style={{ color: "#6b7280" }} />
           <span style={{ color: "#6b7280", flex: 1 }}>Search...</span>
           <span style={{ fontSize: 9, color: "#4b5563", border: "1px solid #374151", borderRadius: 3, padding: "1px 4px" }}>⌘K</span>
@@ -260,6 +271,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>{children}</div>
       </div>
 
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
       <style>{`
         @media (max-width: 1024px) {
           .tenant-sidebar-desktop { display: none !important; }

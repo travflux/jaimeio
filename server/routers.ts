@@ -1042,6 +1042,20 @@ export const appRouter = router({
         const { testResendConnection } = await import("./newsletterDigest");
         return testResendConnection(input.toEmail);
       }),
+    sendTest: tenantOrAdminProcedure
+      .input(z.object({ toEmail: z.string().email() }))
+      .mutation(async ({ input, ctx }) => {
+        const { sendEmail } = await import("./communications/emailService");
+        const licId = ctx.licenseId || undefined;
+        const result = await sendEmail(licId, input.toEmail, "[Test] Newsletter Test Email",
+          `<div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
+            <h2 style="color: #111827;">Newsletter Test Email</h2>
+            <p style="color: #374151; font-size: 16px;">This is a test email from your JAIME.IO publication newsletter system.</p>
+            <p style="color: #6b7280; font-size: 14px;">If you received this, your email configuration is working correctly.</p>
+          </div>`
+        );
+        return { success: result.success, error: result.error };
+      }),
     getTemplates: publicProcedure.query(() => {
       return [
         { name: "editorial", label: "Editorial", description: "Classic newspaper style with serif masthead" },
