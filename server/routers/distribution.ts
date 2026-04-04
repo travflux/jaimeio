@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { publicProcedure, protectedProcedure, tenantOrAdminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -196,12 +196,40 @@ export const distributionRouter = router({
       return testBlotatoConnection(input.apiKey);
     }),
 
-  getBlotatoStatus: adminProcedure.query(async () => {
-    const key = await db.getSetting("blotato_api_key");
+  getBlotatoStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    let keyValue: string | null = null;
+    if (ctx.licenseId) {
+      const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+      keyValue = ls?.value || null;
+    }
+    if (!keyValue) {
+      const gs = await db.getSetting("blotato_api_key");
+      keyValue = gs?.value || null;
+    }
     return {
-      configured: !!(key?.value),
-      maskedKey: key?.value ? key.value.substring(0, 8) + "..." : null,
+      configured: !!keyValue,
+      maskedKey: keyValue ? keyValue.substring(0, 8) + "..." : null,
     };
+  }),
+
+  // Tenant-aware Blotato connection test (reads API key from license_settings)
+  testBlotatoConnection: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) return { success: false, error: "No license context" };
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    const apiKey = ls?.value || null;
+    if (!apiKey) return { success: false, error: "No Blotato API key configured" };
+    const { testBlotatoConnection } = await import("../blotato");
+    return testBlotatoConnection(apiKey);
+  }),
+
+  // List Blotato accounts for a tenant
+  getBlotatoAccounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return [];
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    const apiKey = ls?.value || null;
+    if (!apiKey) return [];
+    const { getBlotatoAccounts } = await import("../blotato");
+    return getBlotatoAccounts(apiKey);
   }),
 
 });
