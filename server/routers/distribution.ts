@@ -356,4 +356,48 @@ export const distributionRouter = router({
       return { success: true, platformCount: queued };
     }),
 
+
+  // Poll Blotato statuses for this tenant's pending posts
+  pollBlotatoStatuses: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) return { success: false, checked: 0, updated: 0 };
+    const { pollBlotatoStatusesForLicense } = await import("../blotato");
+    const result = await pollBlotatoStatusesForLicense(ctx.licenseId);
+    return { success: true, ...result };
+  }),
+
+  // Recent distribution activity for this tenant
+  getRecentActivity: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return { items: [] };
+    const database = await db.getDb();
+    if (!database) return { items: [] };
+    const { distributionQueue, articles } = await import("../../drizzle/schema");
+    const { desc, sql, eq } = await import("drizzle-orm");
+    const rows = await database
+      .select({
+        id: distributionQueue.id,
+        platform: distributionQueue.platform,
+        status: distributionQueue.status,
+        postUrl: distributionQueue.postUrl,
+        sentAt: distributionQueue.sentAt,
+        errorMessage: distributionQueue.errorMessage,
+        articleId: distributionQueue.articleId,
+        createdAt: distributionQueue.createdAt,
+      })
+      .from(distributionQueue)
+      .where(sql.raw("distribution_queue.license_id = " + ctx.licenseId))
+      .orderBy(desc(distributionQueue.createdAt))
+      .limit(15);
+
+    const items = await Promise.all(rows.map(async (row) => {
+      let headline = "Standalone post";
+      if (row.articleId) {
+        const [art] = await database.select({ headline: articles.headline }).from(articles).where(eq(articles.id, row.articleId)).limit(1);
+        if (art) headline = art.headline;
+      }
+      return { ...row, articleHeadline: headline };
+    }));
+
+    return { items };
+  }),
+
 });

@@ -41,6 +41,12 @@ export default function TenantDistribution() {
     onError: (e: any) => toast.error("Save failed", { description: e.message }),
   });
 
+  const activityQuery = trpc.distribution.getRecentActivity.useQuery(undefined, { staleTime: 30000 });
+  const pollMut = trpc.distribution.pollBlotatoStatuses.useMutation({
+    onSuccess: (r: any) => { if (r.updated > 0) toast.success("Updated " + r.updated + " post(s)"); else toast.success("All posts up to date"); activityQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const accounts = accountsQuery.data?.accounts || [];
   const hasApiKey = accountsQuery.data?.hasApiKey || false;
 
@@ -197,6 +203,45 @@ export default function TenantDistribution() {
         <Toggle k="blotato_facebook_enabled" label="Facebook" />
         <Toggle k="blotato_threads_enabled" label="Threads" />
       </div>
+
+      {/* Recent Activity */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600 }}>Recent Distribution</h3>
+          <button onClick={() => pollMut.mutate()} disabled={pollMut.isPending}
+            style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer", color: "#374151" }}>
+            {pollMut.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            Check Statuses
+          </button>
+        </div>
+        {activityQuery.isLoading ? (
+          <p style={{ color: "#9ca3af", fontSize: 13 }}>Loading...</p>
+        ) : (activityQuery.data?.items || []).length === 0 ? (
+          <p style={{ color: "#9ca3af", fontSize: 13 }}>No distribution activity yet. Distribute an article to see results here.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {(activityQuery.data?.items || []).map((item: any) => (
+              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
+                <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: "#f3f4f6", color: "#374151", textTransform: "capitalize", width: 70, textAlign: "center" }}>
+                  {PLATFORM_LABELS[item.platform] || item.platform}
+                </span>
+                <span style={{ fontSize: 12, color: "#374151", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.articleHeadline?.substring(0, 50)}
+                </span>
+                <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
+                  background: item.status === "sent" ? "#d1fae5" : item.status === "failed" ? "#fee2e2" : "#fef3c7",
+                  color: item.status === "sent" ? "#065f46" : item.status === "failed" ? "#991b1b" : "#92400e" }}>
+                  {item.status === "sent" ? "Published" : item.status === "failed" ? "Failed" : "Pending"}
+                </span>
+                {item.postUrl && (
+                  <a href={item.postUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>View</a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
 
       {/* Post Template */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>

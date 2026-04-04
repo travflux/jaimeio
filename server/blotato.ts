@@ -471,9 +471,10 @@ export async function queueArticleToBlotato(
       try {
         const { getDb } = await import("./db");
         const { distributionQueue } = await import("../drizzle/schema");
-        const db = await getDb();
-        if (db) {
-          await db.insert(distributionQueue).values({
+        const { sql } = await import("drizzle-orm");
+        const db2 = await getDb();
+        if (db2) {
+          const [insertResult] = await db2.insert(distributionQueue).values({
             articleId: article.id,
             platform: account.platform,
             status: "sending",
@@ -482,6 +483,10 @@ export async function queueArticleToBlotato(
             triggeredBy: "auto",
             imageUrl: article.featuredImage || undefined,
           });
+          // Set license_id via raw SQL (column exists in DB but not Drizzle schema)
+          if (insertResult.insertId) {
+            await db2.execute(sql.raw("UPDATE distribution_queue SET license_id = " + licenseId + " WHERE id = " + insertResult.insertId));
+          }
         }
       } catch (e) {
         console.error("[Blotato] Failed to record queue entry:", e);
@@ -493,4 +498,127 @@ export async function queueArticleToBlotato(
     }
   }
   return queued;
+}
+
+// ─── Status Polling ───────────────────────────────────────────────────────────
+
+export async function pollBlotatoStatuses(): Promise<{ checked: number; updated: number }> {
+  const { getDb } = await import("./db");
+  const db = await getDb();
+  if (!db) return { checked: 0, updated: 0 };
+
+  const { distributionQueue } = await import("../drizzle/schema");
+  const { eq, and, isNotNull, sql } = await import("drizzle-orm");
+
+  // Get all "sending" rows that have a platformPostId
+  const pendingRows = await db
+    .select()
+    .from(distributionQueue)
+    .where(and(eq(distributionQueue.status, "sending"), isNotNull(distributionQueue.platformPostId)))
+    .limit(50);
+
+  if (pendingRows.length === 0) return { checked: 0, updated: 0 };
+
+  console.log("[Blotato Poller] Checking " + pendingRows.length + " pending posts");
+
+  // Group by license to reuse API keys
+  const keyCache = new Map<number, string | null>();
+  let updated = 0;
+
+  for (const row of pendingRows) {
+    try {
+      // Get license_id via raw SQL since column may not be in Drizzle schema
+      let licenseId: number | null = null;
+      const [licRow] = await db.execute(sql.raw("SELECT license_id FROM distribution_queue WHERE id = " + row.id));
+      if (licRow && (licRow as any).license_id) licenseId = (licRow as any).license_id;
+      // Fallback: get from article
+      if (!licenseId && row.articleId) {
+        const { articles } = await import("../drizzle/schema");
+        const [art] = await db.select({ licenseId: articles.licenseId }).from(articles).where(eq(articles.id, row.articleId)).limit(1);
+        if (art?.licenseId) licenseId = art.licenseId;
+      }
+      if (!licenseId) continue;
+
+      // Get API key (cached per license)
+      if (!keyCache.has(licenseId)) {
+        const { getLicenseSetting } = await import("./db");
+        const ls = await getLicenseSetting(licenseId, "blotato_api_key");
+        keyCache.set(licenseId, ls?.value || null);
+      }
+      const apiKey = keyCache.get(licenseId);
+      if (!apiKey) continue;
+
+      const status = await getBlotatoPostStatus(apiKey, row.platformPostId!);
+
+      if (status.status === "published") {
+        await db.update(distributionQueue).set({
+          status: "sent",
+          sentAt: new Date(),
+          postUrl: status.publicUrl ?? null,
+        }).where(eq(distributionQueue.id, row.id));
+        console.log("[Blotato Poller] Post " + row.platformPostId + " published on " + row.platform);
+        updated++;
+      } else if (status.status === "failed") {
+        await db.update(distributionQueue).set({
+          status: "failed",
+          errorMessage: status.errorMessage ?? "Unknown error",
+        }).where(eq(distributionQueue.id, row.id));
+        console.log("[Blotato Poller] Post " + row.platformPostId + " failed: " + status.errorMessage);
+        updated++;
+      }
+      // "in-progress" — leave as sending
+
+    } catch (err) {
+      console.error("[Blotato Poller] Error checking post " + row.platformPostId + ":", err);
+    }
+
+    // Small delay to avoid rate limits
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  return { checked: pendingRows.length, updated };
+}
+
+export async function pollBlotatoStatusesForLicense(licenseId: number): Promise<{ checked: number; updated: number }> {
+  const { getDb, getLicenseSetting } = await import("./db");
+  const db = await getDb();
+  if (!db) return { checked: 0, updated: 0 };
+
+  const ls = await getLicenseSetting(licenseId, "blotato_api_key");
+  const apiKey = ls?.value || null;
+  if (!apiKey) return { checked: 0, updated: 0 };
+
+  const { distributionQueue } = await import("../drizzle/schema");
+  const { eq, and, isNotNull, sql } = await import("drizzle-orm");
+
+  const pendingRows = await db
+    .select()
+    .from(distributionQueue)
+    .where(and(
+      eq(distributionQueue.status, "sending"),
+      isNotNull(distributionQueue.platformPostId),
+      sql.raw("license_id = " + licenseId),
+    ))
+    .limit(50);
+
+  if (pendingRows.length === 0) return { checked: 0, updated: 0 };
+
+  let updated = 0;
+  for (const row of pendingRows) {
+    try {
+      const status = await getBlotatoPostStatus(apiKey, row.platformPostId!);
+      if (status.status === "published") {
+        await db.update(distributionQueue).set({ status: "sent", sentAt: new Date(), postUrl: status.publicUrl ?? null }).where(eq(distributionQueue.id, row.id));
+        updated++;
+      } else if (status.status === "failed") {
+        await db.update(distributionQueue).set({ status: "failed", errorMessage: status.errorMessage ?? "Unknown error" }).where(eq(distributionQueue.id, row.id));
+        updated++;
+      }
+    } catch (err) {
+      console.error("[Blotato Poller] Error:", err);
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  return { checked: pendingRows.length, updated };
 }
