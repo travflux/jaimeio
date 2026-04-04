@@ -330,3 +330,48 @@ export async function syncBlotatoAccountsForLicense(licenseId: number): Promise<
   await storeBlotatoAccounts(licenseId, enrichedAccounts);
   console.log("[Blotato] Synced " + enrichedAccounts.length + " accounts for licenseId " + licenseId);
 }
+
+// ─── Slot sync helper ─────────────────────────────────────────────────────────
+
+export async function syncSlotsToBlotato(
+  licenseId: number,
+  slots: Array<{ platform: string; day: string; hour: number; minute: number }>
+): Promise<void> {
+  const { getLicenseSetting, getBlotatoAccountsFromSettings } = await import("./db");
+  const ls = await getLicenseSetting(licenseId, "blotato_api_key");
+  const apiKey = ls?.value || null;
+  if (!apiKey) return;
+
+  const accounts = await getBlotatoAccountsFromSettings(licenseId);
+  if (accounts.length === 0) return;
+
+  // Get existing Blotato slots and delete them (clean slate)
+  const existingSlots = await getBlotatoSlots(apiKey);
+  for (const slot of existingSlots) {
+    try { await deleteBlotatoSlot(apiKey, slot.id); } catch { /* skip if has content */ }
+  }
+
+  // Create new slots from config
+  const blotatoSlots = slots
+    .map(slot => {
+      const account = accounts.find(a => a.platform === slot.platform);
+      if (!account) return null;
+      return {
+        hour: slot.hour,
+        minute: slot.minute,
+        day: slot.day,
+        selectedTargets: [{
+          platform: slot.platform,
+          accountId: account.id,
+          subaccountId: account.pageId ?? null,
+        }],
+      };
+    })
+    .filter(Boolean) as Array<Omit<BlotatoSlot, "id">>;
+
+  if (blotatoSlots.length > 0) {
+    await createBlotatoSlots(apiKey, blotatoSlots);
+  }
+
+  console.log("[Blotato] Synced " + blotatoSlots.length + " slots for licenseId " + licenseId);
+}

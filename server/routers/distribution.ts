@@ -266,4 +266,64 @@ export const distributionRouter = router({
     return { success: true, accounts: enrichedAccounts, count: enrichedAccounts.length };
   }),
 
+  // Save Blotato API key and auto-sync accounts
+  saveBlotatoApiKey: tenantOrAdminProcedure
+    .input(z.object({ apiKey: z.string().min(10) }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { licenseSettings } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const [existing] = await database.select().from(licenseSettings)
+        .where(and(eq(licenseSettings.licenseId, ctx.licenseId), eq(licenseSettings.key, "blotato_api_key")))
+        .limit(1);
+      if (existing) {
+        await database.update(licenseSettings).set({ value: input.apiKey }).where(eq(licenseSettings.id, existing.id));
+      } else {
+        await database.insert(licenseSettings).values({ licenseId: ctx.licenseId, key: "blotato_api_key", value: input.apiKey, type: "string" });
+      }
+      // Auto-sync accounts
+      import("../blotato").then(({ syncBlotatoAccountsForLicense }) => {
+        syncBlotatoAccountsForLicense(ctx.licenseId!).catch(e => console.error("[Blotato] Auto-sync failed:", e));
+      });
+      return { success: true };
+    }),
+
+  // Get stored schedule slots
+  getScheduleSlots: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return [];
+    return db.getScheduleSlots(ctx.licenseId);
+  }),
+
+  // Save schedule slots and sync to Blotato
+  saveScheduleSlots: tenantOrAdminProcedure
+    .input(z.object({
+      slots: z.array(z.object({
+        platform: z.string(),
+        day: z.enum(["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]),
+        hour: z.number().min(0).max(23),
+        minute: z.number().min(0).max(59),
+      }))
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      await db.saveScheduleSlots(ctx.licenseId, input.slots);
+      // Sync to Blotato in background
+      import("../blotato").then(({ syncSlotsToBlotato }) => {
+        syncSlotsToBlotato(ctx.licenseId!, input.slots).catch(e => console.error("[Blotato] Slot sync failed:", e));
+      });
+      return { success: true, count: input.slots.length };
+    }),
+
+  // Manually trigger slot sync to Blotato
+  syncSlotsToBlotato: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+    const slots = await db.getScheduleSlots(ctx.licenseId);
+    if (slots.length === 0) return { success: false, error: "No slots configured" };
+    const { syncSlotsToBlotato } = await import("../blotato");
+    await syncSlotsToBlotato(ctx.licenseId, slots);
+    return { success: true };
+  }),
+
 });
