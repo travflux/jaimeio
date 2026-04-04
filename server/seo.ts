@@ -12,7 +12,8 @@
 import { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { getArticleBySlug, getSetting, getRecentPublishedArticles, getArticlesByCategory } from "./db";
+import { getArticleBySlug, getSetting, getLicenseSetting, getRecentPublishedArticles, getArticlesByCategory } from "./db";
+import { resolveLicense } from "./auth/licenseAuth";
 
 // ─── HTML template loader ─────────────────────────────────────────────────────
 
@@ -52,7 +53,45 @@ function stripHtml(str: string): string {
   return str.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-async function getBrandingSettings() {
+async function getBrandingSettings(hostname?: string) {
+  // Try per-tenant license_settings first if hostname is a tenant subdomain
+  let licenseId: number | null = null;
+  if (hostname) {
+    try {
+      const license = await resolveLicense(hostname);
+      if (license) licenseId = license.id;
+    } catch {}
+  }
+
+  if (licenseId) {
+    const get = async (key: string) => {
+      const ls = await getLicenseSetting(licenseId!, key);
+      return ls?.value || undefined;
+    };
+    const [siteName, tagline, description, siteUrl, ogImage, editorialTeam, mascotUrl, genre] =
+      await Promise.all([
+        get("brand_site_name"),
+        get("brand_tagline"),
+        get("brand_description"),
+        get("site_url"),
+        get("brand_og_image"),
+        get("brand_editorial_team"),
+        get("brand_mascot_url"),
+        get("brand_genre"),
+      ]);
+    return {
+      siteName: siteName || "My Publication",
+      tagline: tagline || "",
+      description: description || "Your source for the latest news and commentary.",
+      siteUrl: (siteUrl || `https://${hostname}`).replace(/\/$/, ""),
+      ogImage: ogImage || "/og-image.jpg",
+      editorialTeam: editorialTeam || "Editorial Team",
+      mascotUrl: mascotUrl || "",
+      genre: genre || "news",
+    };
+  }
+
+  // Fallback: global workflow_settings (for app.getjaime.io or unknown hosts)
   const [siteName, tagline, description, siteUrl, ogImage, editorialTeam, mascotUrl, genre] =
     await Promise.all([
       getSetting("brand_site_name"),
@@ -216,7 +255,7 @@ export function registerSeoRoutes(app: Express) {
       const slug = req.params.slug;
       const [article, branding] = await Promise.all([
         getArticleBySlug(slug),
-        getBrandingSettings(),
+        getBrandingSettings(req.hostname),
       ]);
 
       if (!article || article.status !== "published") {
@@ -263,7 +302,7 @@ export function registerSeoRoutes(app: Express) {
   // ── Category pages ─────────────────────────────────────────────────────────
   app.get("/category/:slug", async (req, res, next) => {
     try {
-      const branding = await getBrandingSettings();
+      const branding = await getBrandingSettings(req.hostname);
       const categorySlug = req.params.slug;
 
       // Fix 2: Return 404 for non-existent category slugs
@@ -309,7 +348,7 @@ export function registerSeoRoutes(app: Express) {
   // ── Tag pages ─────────────────────────────────────────────────────────────
   app.get("/tag/:slug", async (req, res, next) => {
     try {
-      const branding = await getBrandingSettings();
+      const branding = await getBrandingSettings(req.hostname);
       const tagSlug = req.params.slug;
 
       const { tags: tagsTable } = await import("../drizzle/schema");
@@ -359,7 +398,7 @@ export function registerSeoRoutes(app: Express) {
   // ── Tags index ────────────────────────────────────────────────────────────
   app.get("/tags", async (req, res, next) => {
     try {
-      const branding = await getBrandingSettings();
+      const branding = await getBrandingSettings(req.hostname);
       const metaTags = buildDefaultMetaTags({
         pageTitle: `Browse Topics | ${branding.siteName}`,
         description: `Explore all topics and tags on ${branding.siteName}. Find articles by subject, theme, or keyword.`,
@@ -377,7 +416,7 @@ export function registerSeoRoutes(app: Express) {
   // ── Archive page ──────────────────────────────────────────────────────────
   app.get("/archive", async (req, res, next) => {
     try {
-      const branding = await getBrandingSettings();
+      const branding = await getBrandingSettings(req.hostname);
       const metaTags = buildDefaultMetaTags({
         pageTitle: `Archive | ${branding.siteName}`,
         description: `Browse the complete ${branding.siteName} archive by month and year.`,
@@ -396,12 +435,12 @@ export function registerSeoRoutes(app: Express) {
   app.get("/", async (req, res, next) => {
     try {
       const [branding, recentArticles] = await Promise.all([
-        getBrandingSettings(),
+        getBrandingSettings(req.hostname),
         getRecentPublishedArticles(20),
       ]);
 
       const metaTags = buildDefaultMetaTags({
-        pageTitle: `${branding.siteName} — ${branding.tagline}`,
+        pageTitle: branding.tagline ? `${branding.siteName} — ${branding.tagline}` : branding.siteName,
         description: branding.description,
         siteUrl: branding.siteUrl,
         ogImage: branding.ogImage,
