@@ -701,6 +701,75 @@ export async function getLicenseSettingOrGlobal(licenseId: number, key: string):
 }
 
 
+// ─── Blotato Account Storage ──────────────────────────────────────────────────
+
+export async function storeBlotatoAccounts(
+  licenseId: number,
+  accounts: Array<{ id: string; platform: string; username: string; pageId?: string }>
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const { licenseSettings: ls } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const key = "blotato_accounts";
+  const value = JSON.stringify(accounts);
+  const [existing] = await db.select().from(ls)
+    .where(and(eq(ls.licenseId, licenseId), eq(ls.key, key)))
+    .limit(1);
+  if (existing) {
+    await db.update(ls).set({ value }).where(eq(ls.id, existing.id));
+  } else {
+    await db.insert(ls).values({ licenseId, key, value, type: "string" });
+  }
+}
+
+export async function getBlotatoAccountsFromSettings(
+  licenseId: number
+): Promise<Array<{ id: string; platform: string; username: string; pageId?: string }>> {
+  const stored = await getLicenseSetting(licenseId, "blotato_accounts");
+  if (!stored?.value) return [];
+  try {
+    return JSON.parse(stored.value);
+  } catch {
+    return [];
+  }
+}
+
+export async function getBlotatoAccountForPlatform(
+  licenseId: number,
+  platform: string
+): Promise<{ id: string; platform: string; username: string; pageId?: string } | null> {
+  const accounts = await getBlotatoAccountsFromSettings(licenseId);
+  return accounts.find(a => a.platform === platform) ?? null;
+}
+
+// ─── Blotato Schedule Slots ───────────────────────────────────────────────────
+
+export interface ScheduleSlotConfig {
+  platform: string;
+  day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+  hour: number;
+  minute: number;
+}
+
+export async function getScheduleSlots(licenseId: number): Promise<ScheduleSlotConfig[]> {
+  const stored = await getLicenseSetting(licenseId, "blotato_schedule_slots");
+  if (!stored?.value) return [];
+  try { return JSON.parse(stored.value); } catch { return []; }
+}
+
+export async function saveScheduleSlots(licenseId: number, slots: ScheduleSlotConfig[]): Promise<void> {
+  const { licenseSettings: ls } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const db = await getDb();
+  if (!db) return;
+  const key = "blotato_schedule_slots";
+  const value = JSON.stringify(slots);
+  const [existing] = await db.select().from(ls).where(and(eq(ls.licenseId, licenseId), eq(ls.key, key))).limit(1);
+  if (existing) { await db.update(ls).set({ value }).where(eq(ls.id, existing.id)); }
+  else { await db.insert(ls).values({ licenseId, key, value, type: "string" }); }
+}
+
 export async function getSettingsByCategory(category: string) {
   const db = await getDb();
   if (!db) return [];

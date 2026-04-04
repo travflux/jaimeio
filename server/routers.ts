@@ -672,6 +672,24 @@ export const appRouter = router({
         if (publishedArticle?.slug) {
           notifyArticlePublished(publishedArticle.slug).catch(() => {});
         }
+        // Queue to Blotato for social distribution — fire-and-forget
+        if (publishedArticle?.licenseId) {
+          (async () => {
+            try {
+              const { queueArticleToBlotato } = await import("./blotato");
+              const siteUrlSetting = await db.getLicenseSetting(publishedArticle.licenseId!, "site_url");
+              let siteUrl = siteUrlSetting?.value || "";
+              if (!siteUrl) {
+                const { getLicenseById } = await import("./auth/licenseAuth");
+                const license = await getLicenseById(publishedArticle.licenseId!);
+                siteUrl = license?.subdomain ? "https://" + license.subdomain + ".getjaime.io" : "";
+              }
+              if (siteUrl) {
+                await queueArticleToBlotato(publishedArticle.licenseId!, publishedArticle, siteUrl);
+              }
+            } catch (e) { console.error("[Blotato] Auto-distribute failed:", e); }
+          })();
+        }
       }
       // Auto-generate featured image on publish if missing
       if (input.status === "published") {
@@ -796,6 +814,18 @@ export const appRouter = router({
               await db.updateArticleStatus(input.id, "published");
               await db.updateArticle(input.id, { publishedAt: new Date() });
               console.log(`[AutoPublish] Auto-published article ${input.id} on approval`);
+              // Queue to Blotato for social distribution
+              if (approvedArticleForGate?.licenseId) {
+                const { queueArticleToBlotato } = await import("./blotato");
+                const siteUrlSetting2 = await db.getLicenseSetting(approvedArticleForGate.licenseId, "site_url");
+                let siteUrl2 = siteUrlSetting2?.value || "";
+                if (!siteUrl2) {
+                  const { getLicenseById: getLic } = await import("./auth/licenseAuth");
+                  const lic = await getLic(approvedArticleForGate.licenseId);
+                  siteUrl2 = lic?.subdomain ? "https://" + lic.subdomain + ".getjaime.io" : "";
+                }
+                if (siteUrl2) queueArticleToBlotato(approvedArticleForGate.licenseId, approvedArticleForGate, siteUrl2).catch(e => console.error("[Blotato] Auto-distribute on approval failed:", e));
+              }
               // Notify IndexNow on auto-publish
               const approvedArticle = await db.getArticleById(input.id);
               if (approvedArticle?.slug) {

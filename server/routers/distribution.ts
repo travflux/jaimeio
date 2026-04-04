@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { publicProcedure, protectedProcedure, tenantOrAdminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -196,12 +196,208 @@ export const distributionRouter = router({
       return testBlotatoConnection(input.apiKey);
     }),
 
-  getBlotatoStatus: adminProcedure.query(async () => {
-    const key = await db.getSetting("blotato_api_key");
+  getBlotatoStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    let keyValue: string | null = null;
+    if (ctx.licenseId) {
+      const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+      keyValue = ls?.value || null;
+    }
+    if (!keyValue) {
+      const gs = await db.getSetting("blotato_api_key");
+      keyValue = gs?.value || null;
+    }
     return {
-      configured: !!(key?.value),
-      maskedKey: key?.value ? key.value.substring(0, 8) + "..." : null,
+      configured: !!keyValue,
+      maskedKey: keyValue ? keyValue.substring(0, 8) + "..." : null,
     };
+  }),
+
+  // Tenant-aware Blotato connection test (reads API key from license_settings)
+  testBlotatoConnection: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) return { success: false, error: "No license context" };
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    const apiKey = ls?.value || null;
+    if (!apiKey) return { success: false, error: "No Blotato API key configured" };
+    const { testBlotatoConnection } = await import("../blotato");
+    return testBlotatoConnection(apiKey);
+  }),
+
+  // List stored Blotato accounts for a tenant (reads from license_settings, no API call)
+  getBlotatoAccounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return { accounts: [], hasApiKey: false, isConfigured: false };
+    const accounts = await db.getBlotatoAccountsFromSettings(ctx.licenseId);
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    return {
+      accounts,
+      hasApiKey: !!(ls?.value),
+      isConfigured: accounts.length > 0,
+    };
+  }),
+
+  // Sync Blotato accounts from API and store in license_settings
+  syncBlotatoAccounts: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+    const ls = await db.getLicenseSetting(ctx.licenseId, "blotato_api_key");
+    const apiKey = ls?.value || null;
+    if (!apiKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No Blotato API key configured" });
+
+    const { getBlotatoAccounts, getBlotatoSubaccounts } = await import("../blotato");
+    const accounts = await getBlotatoAccounts(apiKey);
+
+    const enrichedAccounts = await Promise.all(
+      accounts.map(async (account) => {
+        let pageId: string | undefined;
+        if (account.platform === "facebook" || account.platform === "linkedin") {
+          try {
+            const subaccounts = await getBlotatoSubaccounts(apiKey, account.id);
+            if (subaccounts.length > 0) pageId = subaccounts[0].id;
+          } catch { /* no subaccounts */ }
+        }
+        return {
+          id: account.id,
+          platform: account.platform,
+          username: account.username || account.fullname,
+          ...(pageId && { pageId }),
+        };
+      })
+    );
+
+    await db.storeBlotatoAccounts(ctx.licenseId, enrichedAccounts);
+    return { success: true, accounts: enrichedAccounts, count: enrichedAccounts.length };
+  }),
+
+  // Save Blotato API key and auto-sync accounts
+  saveBlotatoApiKey: tenantOrAdminProcedure
+    .input(z.object({ apiKey: z.string().min(10) }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { licenseSettings } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const [existing] = await database.select().from(licenseSettings)
+        .where(and(eq(licenseSettings.licenseId, ctx.licenseId), eq(licenseSettings.key, "blotato_api_key")))
+        .limit(1);
+      if (existing) {
+        await database.update(licenseSettings).set({ value: input.apiKey }).where(eq(licenseSettings.id, existing.id));
+      } else {
+        await database.insert(licenseSettings).values({ licenseId: ctx.licenseId, key: "blotato_api_key", value: input.apiKey, type: "string" });
+      }
+      // Auto-sync accounts
+      import("../blotato").then(({ syncBlotatoAccountsForLicense }) => {
+        syncBlotatoAccountsForLicense(ctx.licenseId!).catch(e => console.error("[Blotato] Auto-sync failed:", e));
+      });
+      return { success: true };
+    }),
+
+  // Get stored schedule slots
+  getScheduleSlots: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return [];
+    return db.getScheduleSlots(ctx.licenseId);
+  }),
+
+  // Save schedule slots and sync to Blotato
+  saveScheduleSlots: tenantOrAdminProcedure
+    .input(z.object({
+      slots: z.array(z.object({
+        platform: z.string(),
+        day: z.enum(["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]),
+        hour: z.number().min(0).max(23),
+        minute: z.number().min(0).max(59),
+      }))
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      await db.saveScheduleSlots(ctx.licenseId, input.slots);
+      // Sync to Blotato in background
+      import("../blotato").then(({ syncSlotsToBlotato }) => {
+        syncSlotsToBlotato(ctx.licenseId!, input.slots).catch(e => console.error("[Blotato] Slot sync failed:", e));
+      });
+      return { success: true, count: input.slots.length };
+    }),
+
+  // Manually trigger slot sync to Blotato
+  syncSlotsToBlotato: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+    const slots = await db.getScheduleSlots(ctx.licenseId);
+    if (slots.length === 0) return { success: false, error: "No slots configured" };
+    const { syncSlotsToBlotato } = await import("../blotato");
+    await syncSlotsToBlotato(ctx.licenseId, slots);
+    return { success: true };
+  }),
+
+  // Manually distribute a published article to Blotato
+  distributeArticle: tenantOrAdminProcedure
+    .input(z.object({ articleId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      const article = await db.getArticleById(input.articleId);
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+      if (article.licenseId && article.licenseId !== ctx.licenseId) throw new TRPCError({ code: "FORBIDDEN" });
+
+      // Resolve site URL
+      const siteUrlSetting = await db.getLicenseSetting(ctx.licenseId, "site_url");
+      let siteUrl = siteUrlSetting?.value || "";
+      if (!siteUrl) {
+        const { getLicenseById } = await import("../auth/licenseAuth");
+        const license = await getLicenseById(ctx.licenseId);
+        siteUrl = license?.subdomain ? "https://" + license.subdomain + ".getjaime.io" : "https://app.getjaime.io";
+      }
+
+      const { queueArticleToBlotato } = await import("../blotato");
+      const queued = await queueArticleToBlotato(ctx.licenseId, {
+        id: article.id,
+        headline: article.headline,
+        subheadline: article.subheadline,
+        slug: article.slug,
+        featuredImage: article.featuredImage,
+      }, siteUrl);
+
+      return { success: true, platformCount: queued };
+    }),
+
+
+  // Poll Blotato statuses for this tenant's pending posts
+  pollBlotatoStatuses: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.licenseId) return { success: false, checked: 0, updated: 0 };
+    const { pollBlotatoStatusesForLicense } = await import("../blotato");
+    const result = await pollBlotatoStatusesForLicense(ctx.licenseId);
+    return { success: true, ...result };
+  }),
+
+  // Recent distribution activity for this tenant
+  getRecentActivity: tenantOrAdminProcedure.query(async ({ ctx }) => {
+    if (!ctx.licenseId) return { items: [] };
+    const database = await db.getDb();
+    if (!database) return { items: [] };
+    const { distributionQueue, articles } = await import("../../drizzle/schema");
+    const { desc, sql, eq } = await import("drizzle-orm");
+    const rows = await database
+      .select({
+        id: distributionQueue.id,
+        platform: distributionQueue.platform,
+        status: distributionQueue.status,
+        postUrl: distributionQueue.postUrl,
+        sentAt: distributionQueue.sentAt,
+        errorMessage: distributionQueue.errorMessage,
+        articleId: distributionQueue.articleId,
+        createdAt: distributionQueue.createdAt,
+      })
+      .from(distributionQueue)
+      .where(sql.raw("distribution_queue.license_id = " + ctx.licenseId))
+      .orderBy(desc(distributionQueue.createdAt))
+      .limit(15);
+
+    const items = await Promise.all(rows.map(async (row) => {
+      let headline = "Standalone post";
+      if (row.articleId) {
+        const [art] = await database.select({ headline: articles.headline }).from(articles).where(eq(articles.id, row.articleId)).limit(1);
+        if (art) headline = art.headline;
+      }
+      return { ...row, articleHeadline: headline };
+    }));
+
+    return { items };
   }),
 
 });

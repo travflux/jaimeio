@@ -528,6 +528,17 @@ export async function initScheduler() {
       console.warn(`[Scheduler] [v4/Reddit] Error: ${err.message}`);
     }
   });
+
+  // v5.5: Poll Blotato post statuses every 15 minutes
+  cron.schedule("*/15 * * * *", async () => {
+    try {
+      const { pollBlotatoStatuses } = await import("./blotato");
+      const result = await pollBlotatoStatuses();
+      if (result.updated > 0) console.log(`[Scheduler] [Blotato] Updated ${result.updated} of ${result.checked} pending posts`);
+    } catch (err: any) {
+      console.warn(`[Scheduler] [Blotato] Poll error: ${err.message}`);
+    }
+  });
 }
 
 export function getSchedulerStatus() {
