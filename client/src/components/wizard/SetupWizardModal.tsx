@@ -29,12 +29,29 @@ function KBLink({ path, label }: { path: string; label: string }) {
   );
 }
 
+function FieldTooltipIcon({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <HelpCircle size={13} style={{ color: "#9ca3af", cursor: "pointer", marginLeft: 4 }}
+        onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}
+        onClick={() => setVisible(v => !v)} />
+      {visible && (
+        <span style={{ position: "absolute", left: 20, top: 0, zIndex: 50, width: 256, background: "#fff", color: "#374151", fontSize: 12, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e5e7eb", padding: 12, lineHeight: 1.5, pointerEvents: "auto" }}
+          onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function Field({ label, tooltip, children }: { label: string; tooltip: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
         {label}
-        <span title={tooltip} style={{ cursor: "help" }}><HelpCircle size={13} style={{ color: "#9ca3af" }} /></span>
+        <FieldTooltipIcon text={tooltip} />
       </label>
       {children}
     </div>
