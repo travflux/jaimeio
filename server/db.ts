@@ -304,21 +304,22 @@ export async function listRecentArticlesForEngine(limit: number = 30) {
     .limit(limit);
 }
 
-export async function getMostReadArticles(limit: number = 5) {
+export async function getMostReadArticles(limit: number = 5, licenseId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(articles).where(eq(articles.status, "published")).orderBy(desc(articles.views)).limit(limit);
+  const conditions = [eq(articles.status, "published")];
+  if (licenseId) conditions.push(eq(articles.licenseId, licenseId));
+  return db.select().from(articles).where(and(...conditions)).orderBy(desc(articles.views)).limit(limit);
 }
 
-export async function getTrendingArticles(hoursAgo: number, limit: number = 5) {
+export async function getTrendingArticles(hoursAgo: number, limit: number = 5, licenseId?: number | null) {
   const db = await getDb();
   if (!db) return [];
   const cutoffDate = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+  const conditions = [eq(articles.status, "published"), sql`${articles.publishedAt} >= ${cutoffDate}`];
+  if (licenseId) conditions.push(eq(articles.licenseId, licenseId));
   return db.select().from(articles)
-    .where(and(
-      eq(articles.status, "published"),
-      sql`${articles.publishedAt} >= ${cutoffDate}`
-    ))
+    .where(and(...conditions))
     .orderBy(desc(articles.views))
     .limit(limit);
 }

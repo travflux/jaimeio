@@ -60,7 +60,7 @@ function ModernHome({ licenseSettings, articles, categories }: TemplateProps) {
             </a>
           ))}
         </div>
-        {articles.length === 0 && <p style={{ textAlign: "center", padding: 80, color: "var(--brand-text-secondary)", fontSize: 15 }}>No articles published yet.</p>}
+        {articles.length === 0 && (<div style={{ textAlign: "center", padding: "80px 24px" }}><h2 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 22, fontWeight: 600, color: "var(--brand-text-secondary)", marginBottom: 8 }}>Content coming soon</h2><p style={{ fontSize: 14, color: "var(--brand-text-secondary)", opacity: 0.6 }}>{licenseSettings.brand_site_name || "This publication"} is setting up. Check back shortly.</p></div>)}
 
         {/* Explore Topics */}
         {categories.length > 0 && (
