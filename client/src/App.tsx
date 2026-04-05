@@ -88,6 +88,7 @@ import MissionControl from "./pages/admin/MissionControl";
 import TenantDashboard from "./pages/TenantDashboard";
 import TenantLogin from "./pages/TenantLogin";
 import TenantSetup from "./pages/TenantSetup";
+import TenantSettings from "./pages/tenant/TenantSettings";
 import SupportArticlePage from "./pages/SupportArticlePage";
 import AdminSupportArticles from "./pages/admin/AdminSupportArticles";
 import PerformanceDashboard from "./pages/admin/PerformanceDashboard";
@@ -220,6 +221,7 @@ function Router() {
           <Route path="/admin/dashboard" component={TenantDashboardPage} />
           <Route path="/admin/articles" component={TenantArticles} />
           <Route path="/admin/articles/create" component={TenantCreateArticle} />
+          <Route path="/admin/generator" component={TenantCreateArticle} />
           <Route path="/admin/articles/:id" component={AdminArticleEditor} />
           <Route path="/admin/branding" component={TenantBranding} />
           <Route path="/admin/billing" component={TenantBilling} />
@@ -254,7 +256,8 @@ function Router() {
           <Route path="/admin/merch-store" component={TenantMerchStore} />
           <Route path="/admin/merch-pipeline" component={TenantMerchPipeline} />
           <Route path="/admin/ticket" component={TenantTicket} />
-          <Route path="/admin/settings" component={TenantSetup} />
+          <Route path="/admin/settings" component={TenantSettings} />
+          <Route path="/admin/setup-wizard" component={TenantSetup} />
         </>
       )}
 
