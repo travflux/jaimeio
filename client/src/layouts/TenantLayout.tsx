@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 // Platform icons not in lucide — use generic
-const Twitter = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>;
-const Youtube = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.6 9.5.6 9.5.6s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>;
+const Twitter = ({ size = 14, ...props }: any) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>;
+const Youtube = ({ size = 14, ...props }: any) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.6 9.5.6 9.5.6s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>;
 
 interface TenantLayoutProps {
   children: ReactNode;
@@ -110,7 +110,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
   }, []);
 
   const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-  const isActive = (href: string) => location === href || (href !== "/admin/dashboard" && location.startsWith(href + "/"));
+  const isActive = (href: string) => location === href;
   const initials = pubName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
 
   const handleSave = async () => { if (!saveAction) return; setSaving(true); try { await saveAction(); } finally { setSaving(false); } };

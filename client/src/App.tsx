@@ -89,6 +89,7 @@ import TenantDashboard from "./pages/TenantDashboard";
 import TenantLogin from "./pages/TenantLogin";
 import TenantSetup from "./pages/TenantSetup";
 import TenantSettings from "./pages/tenant/TenantSettings";
+import TenantContentEngine from "./pages/tenant/TenantContentEngine";
 import SupportArticlePage from "./pages/SupportArticlePage";
 import AdminSupportArticles from "./pages/admin/AdminSupportArticles";
 import PerformanceDashboard from "./pages/admin/PerformanceDashboard";
@@ -222,6 +223,7 @@ function Router() {
           <Route path="/admin/articles" component={TenantArticles} />
           <Route path="/admin/articles/create" component={TenantCreateArticle} />
           <Route path="/admin/generator" component={TenantCreateArticle} />
+          <Route path="/admin/content-engine" component={TenantContentEngine} />
           <Route path="/admin/articles/:id" component={AdminArticleEditor} />
           <Route path="/admin/branding" component={TenantBranding} />
           <Route path="/admin/billing" component={TenantBilling} />
