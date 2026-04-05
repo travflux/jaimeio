@@ -752,6 +752,15 @@ export async function getLLMProvider(licenseId: number): Promise<"auto" | "groq"
   return valid.includes(setting?.value ?? "") ? setting!.value as any : "auto";
 }
 
+
+export async function getTodayForTenant(licenseId?: number): Promise<string> {
+  let tz = "America/Los_Angeles";
+  if (licenseId) {
+    const setting = await getLicenseSetting(licenseId, "workflow_timezone");
+    if (setting?.value) tz = setting.value;
+  }
+  return new Date().toLocaleDateString("en-CA", { timeZone: tz });
+}
 export async function getActiveLicenseIds(): Promise<number[]> {
   const db = await getDb();
   if (!db) return [];

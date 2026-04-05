@@ -287,7 +287,7 @@ export async function runProductionLoopTick(): Promise<{ articlesGenerated: numb
     const socialPlatforms = socialPlatformsStr.split(",").map(p => p.trim()).filter(Boolean);
 
     // ── Safety cap check ──
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
     const createdToday = await countArticlesToday(today);
     if (createdToday >= maxDailyArticles) {
       return { articlesGenerated: 0, message: `Safety cap reached: ${createdToday}/${maxDailyArticles} articles today` };
