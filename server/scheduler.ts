@@ -540,14 +540,19 @@ export async function initScheduler() {
     }
   });
 
-  // v5.6: Per-tenant production loop — pool-drain model every hour
-  cron.schedule("0 * * * *", async () => {
+  // v5.9: Per-tenant production loop — checks frequency every 15 minutes
+  cron.schedule("*/15 * * * *", async () => {
     try {
-      const { getActiveLicenseIds } = await import("./db");
-      const { runTenantProductionLoopTick } = await import("./tenantProductionLoop");
+      const { getActiveLicenseIds, getLicenseSetting } = await import("./db");
+      const { runTenantProductionLoopTick, getTenantProductionLoopStatus } = await import("./tenantProductionLoop");
       const licenseIds = await getActiveLicenseIds();
       for (const licenseId of licenseIds) {
         try {
+          const freqSetting = await getLicenseSetting(licenseId, "generation_frequency_hours");
+          const freqHours = parseFloat(freqSetting?.value || "1");
+          const lastRun = getTenantProductionLoopStatus(licenseId).lastRunAt;
+          const hoursSince = lastRun ? (Date.now() - lastRun.getTime()) / (1000 * 60 * 60) : 999;
+          if (hoursSince < freqHours) continue;
           const result = await runTenantProductionLoopTick(licenseId);
           if (result.articlesGenerated > 0) console.log(`[Scheduler] TenantLoop licenseId ${licenseId}: ${result.articlesGenerated} articles`);
         } catch (e: any) { console.error(`[Scheduler] TenantLoop error licenseId ${licenseId}:`, e.message?.substring(0, 100)); }
