@@ -8,7 +8,7 @@ import {
   LayoutDashboard, FileText, PenLine, Sparkles, Inbox, CalendarDays, Image,
   Rss, Share2, Send, Mail, BarChart2, TrendingUp, DollarSign,
   Settings, Users, CreditCard, LifeBuoy, ExternalLink, Search,
-  ChevronRight, X, Menu, Moon, Sun, MessageCircle, PieChart
+  ChevronRight, X, Menu, MessageCircle, PieChart
 } from "lucide-react";
 
 // Platform icons not in lucide — use generic
@@ -239,10 +239,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
           <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12 }}>
             <span style={{ color: "#9ca3af" }}>{statsQuery.data?.total || 0} articles</span>
             <span style={{ color: "#9ca3af" }}>{statsQuery.data?.published || 0} published</span>
-            <button onClick={() => { const root = document.documentElement; const isDark = root.classList.contains("dark"); root.classList.toggle("dark"); localStorage.setItem("jaime-theme", isDark ? "light" : "dark"); }}
-              style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: 4 }} title="Toggle dark mode">
-              {typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#22c55e", fontSize: 11 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />Active
             </span>
