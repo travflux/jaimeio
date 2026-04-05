@@ -111,8 +111,9 @@ export const appRouter = router({
       if (!dbConn) return [];
       const { sql: sqlFn } = await import("drizzle-orm");
       const lid = ctx.licenseId || 7;
-      const [rows] = await dbConn.execute(sqlFn`SELECT id, url as feedUrl, is_active as enabled, last_fetched as lastFetchTime, error_count as errorCount, last_error as lastError, created_at as createdAt, license_id FROM rss_feeds WHERE license_id = ${lid} ORDER BY created_at DESC`);
-      return (rows as any[]).map(r => ({ id: r.id, url: r.feedUrl, enabled: !!r.enabled, lastFetched: r.lastFetchTime, errorCount: r.errorCount || 0, lastError: r.lastError }));
+      // Join rss_feed_weights for actual lastFetchTime (rss_feeds.last_fetched is stale)
+      const [rows] = await dbConn.execute(sqlFn`SELECT w.id, w.feedUrl as url, w.enabled, w.lastFetchTime, w.errorCount, w.lastError FROM rss_feed_weights w WHERE w.license_id = ${lid} ORDER BY w.lastFetchTime DESC`);
+      return (rows as any[]).map(r => ({ id: r.id, url: r.url, enabled: !!r.enabled, lastFetched: r.lastFetchTime, errorCount: r.errorCount || 0, lastError: r.lastError }));
     }),
     add: tenantOrAdminProcedure
       .input(z.object({ url: z.string() }))
@@ -403,6 +404,27 @@ export const appRouter = router({
       .input(z.object({ articleId: z.number(), imageUrl: z.string() }))
       .mutation(async ({ input }) => {
         await db.updateArticle(input.articleId, { featuredImage: input.imageUrl });
+        return { success: true };
+      }),
+    regenerateImage: tenantOrAdminProcedure
+      .input(z.object({ articleId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const article = await db.getArticleById(input.articleId);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        const { buildImagePrompt } = await import("./imagePromptBuilder");
+        const { generateImage } = await import("./_core/imageGeneration");
+        const prompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: ctx.licenseId || article.licenseId || undefined });
+        const result = await generateImage({ prompt, licenseId: ctx.licenseId || article.licenseId || undefined });
+        if (result?.url) {
+          await db.updateArticle(input.articleId, { featuredImage: result.url } as any);
+          return { success: true, url: result.url };
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Image generation failed" });
+      }),
+    deleteImage: tenantOrAdminProcedure
+      .input(z.object({ articleId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.updateArticle(input.articleId, { featuredImage: null } as any);
         return { success: true };
       }),
     toggleTag: protectedProcedure

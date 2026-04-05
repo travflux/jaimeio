@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
-import { X, Loader2, Share2 } from "lucide-react";
+import { X, Loader2, Share2, RefreshCw, Trash2 as TrashIcon } from "lucide-react";
 import { toast } from "sonner";
 
 function ReviewPanel({ article, categories, onClose, onAction }: { article: any; categories: any[]; onClose: () => void; onAction: () => void }) {
@@ -14,6 +14,13 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
     onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
   });
   const updateImageMut = trpc.articles.updateImage.useMutation();
+  const regenImageMut = trpc.articles.regenerateImage.useMutation({
+    onSuccess: (r: any) => { if (r?.url) setImageUrl(r.url); toast.success("New image generated"); },
+    onError: () => toast.error("Image generation failed"),
+  });
+  const deleteImageMut = trpc.articles.deleteImage.useMutation({
+    onSuccess: () => { setImageUrl(""); toast.success("Image removed"); },
+  });
   const [localArticle, setLocalArticle] = useState(article);
   const geoRefetchQuery = trpc.geo.getArticleGeo.useQuery({ articleId: article.id }, { enabled: false });
   const generateGeo = trpc.geo.generateForArticle.useMutation({
@@ -116,9 +123,23 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                   <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>No featured image</p>
                 </div>
               )}
-              <button onClick={() => setShowUrlInput(!showUrlInput)} style={{ background: "none", border: "none", color: "#2dd4bf", fontSize: 12, cursor: "pointer", textDecoration: "underline", marginBottom: 8, display: "block" }}>
-                {showUrlInput ? "Cancel" : "Paste an image URL"}
-              </button>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                <button onClick={() => regenImageMut.mutate({ articleId: article.id })} disabled={regenImageMut.isPending}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#374151" }}>
+                  {regenImageMut.isPending ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                  {regenImageMut.isPending ? "Generating..." : "Regenerate"}
+                </button>
+                <button onClick={() => setShowUrlInput(!showUrlInput)}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#374151" }}>
+                  {showUrlInput ? "Cancel" : "Paste URL"}
+                </button>
+                {imageUrl && (
+                  <button onClick={() => deleteImageMut.mutate({ articleId: article.id })} disabled={deleteImageMut.isPending}
+                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, border: "1px solid #ef4444", background: "#fff", fontSize: 11, cursor: "pointer", color: "#ef4444" }}>
+                    <TrashIcon size={11} /> Remove
+                  </button>
+                )}
+              </div>
               {showUrlInput && (
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   <input value={manualUrl} onChange={e => setManualUrl(e.target.value)} placeholder="https://..." style={{ flex: 1, height: 36, padding: "0 12px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13 }} />

@@ -166,7 +166,7 @@ class ReplicateImageProvider implements ImageProvider {
   name = "replicate";
 
   async generate(options: ImageGenerationOptions): Promise<{ url: string }> {
-    const apiKey = await this.getApiKey();
+    const apiKey = await this.getApiKey(options.licenseId);
     const model = await this.getModel();
     
     if (!apiKey) {
@@ -249,7 +249,16 @@ class ReplicateImageProvider implements ImageProvider {
     return { url };
   }
 
-  private async getApiKey(): Promise<string | null> {
+  private async getApiKey(licenseId?: number): Promise<string | null> {
+    // Per-tenant key first
+    if (licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const tenantKey = await getLicenseSetting(licenseId, "image_api_key");
+      if (tenantKey?.value) return tenantKey.value;
+      const altKey = await getLicenseSetting(licenseId, "replicate_api_key");
+      if (altKey?.value) return altKey.value;
+    }
+    // Global fallback
     const setting = await db.getSetting("image_provider_replicate_api_key");
     return setting?.value || null;
   }
