@@ -509,7 +509,7 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
     const genreLabel = genre.charAt(0).toUpperCase() + genre.slice(1);
     return {
       headline: `${genreLabel}: ${event.title.slice(0, 60)}`,
-      subheadline: "Our writers are working on a better version.",
+      subheadline: "",  // No placeholder — empty is better than misleading
       body: fallbackBody,
     };
   }
