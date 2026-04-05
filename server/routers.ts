@@ -185,11 +185,12 @@ export const appRouter = router({
       }),
   }),
   templates: router({
-    list: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input }) => {
+    list: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input, ctx }) => {
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { sql: sqlFn } = await import("drizzle-orm");
-      const [rows] = await dbConn.execute(sqlFn`SELECT * FROM article_templates WHERE license_id = ${input.licenseId} OR licenseId = ${input.licenseId} ORDER BY createdAt DESC`);
+      const lid = ctx.licenseId || input.licenseId;
+      const [rows] = await dbConn.execute(sqlFn`SELECT * FROM article_templates WHERE license_id = ${lid} OR licenseId = ${lid} ORDER BY createdAt DESC`);
       return rows as any[];
     }),
     create: tenantOrAdminProcedure.input(z.object({
