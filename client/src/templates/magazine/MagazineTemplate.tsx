@@ -3,8 +3,8 @@ import { trpc } from "@/lib/trpc";
 import type { TemplateProps } from "../shared/types";
 import { AdZone, SponsorBar, NewsletterBar, PublicationFooter, ArticleCard, BreakingTicker } from "../shared";
 import { PublicationMasthead } from "../shared/PublicationMasthead";
-import { EditorialArticle } from "../editorial/EditorialArticle";
-import { EditorialCategory } from "../editorial/EditorialCategory";
+import { MagazineArticle } from "./MagazineArticle";
+import { MagazineCategory } from "./MagazineCategory";
 import { EditorialCategories } from "../editorial/EditorialCategories";
 import { EditorialDiscover } from "../editorial/EditorialDiscover";
 import { EditorialStaticPage } from "../editorial/EditorialStaticPage";
@@ -184,8 +184,8 @@ export function MagazineTemplate(props: TemplateProps) {
     }}>
       <style dangerouslySetInnerHTML={{ __html: magazineStyles }} />
       {page === "home" && <MagazineHomepage {...props} />}
-      {page === "article" && <EditorialArticle {...props} />}
-      {page === "category" && <EditorialCategory {...props} />}
+      {page === "article" && <MagazineArticle {...props} />}
+      {page === "category" && <MagazineCategory {...props} />}
       {page === "categories" && <EditorialCategories {...props} />}
       {page === "latest" && <EditorialDiscover variant="latest" {...props} />}
       {page === "most-read" && <EditorialDiscover variant="most-read" {...props} />}

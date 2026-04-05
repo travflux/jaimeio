@@ -7,12 +7,12 @@ const HEADING_FONTS = ["Playfair Display","Cormorant Garamond","Merriweather","L
 const BODY_FONTS = ["Inter","DM Sans","Nunito","Open Sans","Lato","Poppins","Raleway","Source Sans Pro","Work Sans","Mulish","Outfit","Plus Jakarta Sans","Roboto","Montserrat","Jost"];
 
 const TEMPLATES = [
-  { id: "editorial", name: "Editorial", desc: "Classic newspaper style. Clean columns, strong typography.", bg: "#f8f8f8" },
-  { id: "magazine", name: "Magazine", desc: "Colorful and dynamic. Large imagery, bold layouts.", bg: "#faf0e6" },
-  { id: "modern", name: "Modern", desc: "Minimal and sharp. Card-based layouts, ample white space.", bg: "#f0f4ff" },
-  { id: "minimal", name: "Minimal", desc: "Pure content focus. No distractions, maximum readability.", bg: "#fafafa" },
-  { id: "bold", name: "Bold", desc: "High contrast, large type, strong imagery.", bg: "#1a1a1a", textColor: "#fff" },
-  { id: "corporate", name: "Corporate", desc: "Professional and trustworthy. Structured layouts.", bg: "#f0f4f8" },
+  { id: "editorial", name: "Editorial", desc: "Classic newspaper layout with hero article, grid, and sidebar.", bestFor: "News, politics, finance", available: true },
+  { id: "magazine", name: "Magazine", desc: "Full-bleed hero image, category rows, lifestyle-first layout.", bestFor: "Lifestyle, fashion, culture", available: true },
+  { id: "modern", name: "Modern", desc: "Card-based, clean navigation, lots of white space.", bestFor: "Tech, startups, SaaS", available: true },
+  { id: "minimal", name: "Minimal", desc: "Typography-first, no images, pure reading experience.", bestFor: "Writers, essayists, thought leaders", available: true },
+  { id: "corporate", name: "Corporate", desc: "Structured sidebar, muted palette, industry-focused.", bestFor: "B2B, professional services", available: true },
+  { id: "creative", name: "Personal / Creative", desc: "Author-centered, essay format, intimate newsletter CTA.", bestFor: "Bloggers, creators, personal brands", available: true },
 ];
 
 function loadFont(font: string) {
