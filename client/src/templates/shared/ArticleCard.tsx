@@ -47,7 +47,7 @@ export function ArticleCard({ article, size, categories, showImage = true, showE
         onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
         onMouseLeave={e => (e.currentTarget.style.transform = "none")}>
         {showImage && article.featuredImage && (
-          <img src={article.featuredImage} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} loading="lazy" />
+          <img src={article.featuredImage} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} loading="lazy" onError={e => (e.currentTarget.style.display = "none")} />
         )}
         <div style={{ minWidth: 0 }}>
           {cat && (
@@ -84,7 +84,7 @@ export function ArticleCard({ article, size, categories, showImage = true, showE
       onMouseLeave={e => (e.currentTarget.style.transform = "none")}>
       {showImage && article.featuredImage && (
         <div style={{ aspectRatio: sizeConfig.imgRatio, overflow: "hidden", borderRadius: 8, marginBottom: 12 }}>
-          <img src={article.featuredImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+          <img src={article.featuredImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => (e.currentTarget.style.display = "none")} />
         </div>
       )}
       {cat && (
