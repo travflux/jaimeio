@@ -167,16 +167,25 @@ export function EditorialArticle({ licenseSettings, categories, currentArticle, 
       {/* Two-column layout */}
       <div className="article-layout" style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px 48px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 40 }}>
         <article>
-          {/* GEO Key Takeaway */}
-          {article.geoSummary && (
-            <div style={{
-              background: "var(--brand-surface)", borderLeft: "3px solid var(--brand-primary)",
-              padding: 16, marginBottom: 24, borderRadius: 4,
-            }}>
-              <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--brand-primary)", fontWeight: 700, display: "block", marginBottom: 4 }}>Key Takeaway</span>
-              <p style={{ fontSize: 15, color: "var(--brand-text-primary)", lineHeight: 1.6, margin: 0 }}>{article.geoSummary}</p>
-            </div>
-          )}
+          {/* GEO Key Takeaways */}
+          {article.geoSummary && (() => {
+            let items: string[] = [];
+            try { const p = JSON.parse(article.geoSummary); if (Array.isArray(p)) items = p; } catch { if (article.geoSummary) items = [article.geoSummary]; }
+            if (items.length === 0) return null;
+            return (
+              <div style={{ background: "var(--brand-surface)", borderLeft: "3px solid var(--brand-primary)", padding: 16, marginBottom: 24, borderRadius: 4 }}>
+                <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--brand-primary)", fontWeight: 700, display: "block", marginBottom: 8 }}>Key Takeaways</span>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {items.map((item: string, i: number) => (
+                    <li key={i} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 15, color: "var(--brand-text-primary)", lineHeight: 1.6 }}>
+                      <span style={{ color: "var(--brand-primary)", marginTop: 2, flexShrink: 0 }}>•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           {/* Article Body */}
           <div className="article-body" style={{

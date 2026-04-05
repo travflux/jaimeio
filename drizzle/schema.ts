@@ -32,7 +32,7 @@ export type InsertCategory = typeof categories.$inferInsert;
 
 export const articles = mysqlTable("articles", {
   id: int("id").autoincrement().primaryKey(),
-  headline: varchar("headline", { length: 500 }).notNull(),
+  headline: text("headline").notNull(),
   subheadline: varchar("subheadline", { length: 500 }),
   body: text("body").notNull(),
   slug: varchar("slug", { length: 600 }).notNull().unique(),
