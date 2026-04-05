@@ -957,7 +957,7 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
   console.log(`${"=".repeat(60)}`);
 
   // Get category map
-  const categories = await db.listCategories();
+  const categories = await db.listCategories(tenantId);
   const catMap: Record<string, number> = {};
   for (const cat of categories) {
     catMap[cat.slug] = cat.id;
