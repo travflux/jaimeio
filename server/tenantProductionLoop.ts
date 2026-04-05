@@ -67,6 +67,37 @@ async function getCandidatesByPotential(licenseId: number, potential: string, li
 }
 
 // Per-tenant state
+// ─── Publish Window Check ────────────────────────────────────────────────────
+async function isWithinPublishWindow(licenseId: number): Promise<boolean> {
+  const tzSetting = await getLicenseSetting(licenseId, "workflow_timezone");
+  const tz = tzSetting?.value || "America/Los_Angeles";
+  const startSetting = await getLicenseSetting(licenseId, "publish_window_start");
+  const endSetting = await getLicenseSetting(licenseId, "publish_window_end");
+  const windowStart = parseInt(startSetting?.value || "6");
+  const windowEnd = parseInt(endSetting?.value || "22");
+  const hour = parseInt(new Date().toLocaleString("en-US", { timeZone: tz, hour: "numeric", hour12: false }));
+  return hour >= windowStart && hour < windowEnd;
+}
+
+// ─── Deduplication Check ────────────────────────────────────────────────────
+async function isDuplicate(licenseId: number, title: string): Promise<boolean> {
+  const dedupSetting = await getLicenseSetting(licenseId, "deduplication_enabled");
+  if (dedupSetting?.value === "false") return false;
+  const db = await getDb();
+  if (!db) return false;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recent = await db.select({ headline: articles.headline }).from(articles)
+    .where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo))).limit(200);
+  const candidateWords = new Set(title.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 4));
+  if (candidateWords.size === 0) return false;
+  for (const a of recent) {
+    const artWords = new Set((a.headline || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 4));
+    const overlap = [...candidateWords].filter(w => artWords.has(w)).length;
+    if (overlap / Math.max(candidateWords.size, 1) > 0.6) return true;
+  }
+  return false;
+}
+
 const loopState = new Map<number, {
   isRunning: boolean;
   lastRunAt: Date | null;
@@ -98,6 +129,12 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "workflow_paused" };
   }
 
+  // Check publish window
+  const inWindow = await isWithinPublishWindow(licenseId);
+  if (!inWindow) {
+    return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "outside_publish_window" };
+  }
+
   const config = await getLoopConfig(licenseId);
   if (!config.enabled) return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "disabled" };
 
@@ -117,6 +154,8 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     for (const candidate of highCandidates) {
       if (articlesGenerated >= remaining) break;
       try {
+        // Dedup check
+        if (await isDuplicate(licenseId, candidate.title || "")) { candidatesProcessed++; continue; }
         console.log("[TenantLoop] license " + licenseId + " — generating from high candidate " + candidate.id);
         const { generateFromCandidateInternal } = await import("./workflow");
         if (typeof generateFromCandidateInternal === "function") {
@@ -171,6 +210,8 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
       for (const candidate of mediumCandidates) {
         if (articlesGenerated >= remaining) break;
         try {
+          // Dedup check
+          if (await isDuplicate(licenseId, candidate.title || "")) { candidatesProcessed++; continue; }
           console.log("[TenantLoop] license " + licenseId + " — generating from medium candidate " + candidate.id);
           const db = await getDb();
           if (!db) continue;
