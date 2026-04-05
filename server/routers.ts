@@ -872,6 +872,30 @@ export const appRouter = router({
     }),
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteArticle(input.id)),
     bulkDeleteRejected: adminProcedure.mutation(() => db.bulkDeleteRejectedArticles()),
+    regenerateMissingImages: adminProcedure.mutation(async () => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { total: 0, succeeded: 0, failed: 0 };
+      const { articles: artTable } = await import("../drizzle/schema");
+      const { eq, and, isNull } = await import("drizzle-orm");
+      const needImages = await dbConn.select().from(artTable).where(and(eq(artTable.licenseId, 7), eq(artTable.status, "published"), isNull(artTable.featuredImage))).limit(25);
+      console.log("[ImageRegen] Found " + needImages.length + " articles needing images");
+      let succeeded = 0, failed = 0;
+      for (const article of needImages) {
+        try {
+          const { buildImagePrompt } = await import("./imagePromptBuilder");
+          const { generateImage } = await import("./_core/imageGeneration");
+          const prompt = await buildImagePrompt(article.headline, article.subheadline);
+          const result = await generateImage({ prompt, licenseId: article.licenseId ?? 7 });
+          if (result?.url) {
+            await dbConn.update(artTable).set({ featuredImage: result.url }).where(eq(artTable.id, article.id));
+            console.log("[ImageRegen] " + article.id + ": " + result.url.substring(0, 80));
+            succeeded++;
+          } else { failed++; }
+          await new Promise(r => setTimeout(r, 3000));
+        } catch (err: any) { console.error("[ImageRegen] Failed " + article.id + ":", err.message?.substring(0, 100)); failed++; }
+      }
+      return { total: needImages.length, succeeded, failed };
+    }),
     bulkGenerateVideos: adminProcedure.input(z.object({ articleIds: z.array(z.number()).optional() }).optional()).mutation(({ input }) => bulkGenerateVideos(input?.articleIds)),
     backfillSeoDescriptions: adminProcedure.mutation(async () => {
       const { articles: allArticles } = await db.listArticles({ limit: 10000 });
