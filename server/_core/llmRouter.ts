@@ -44,23 +44,20 @@ async function tryProviderWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_DELAYS_MS[attempt] ?? 15_000;
-      console.log("[LLM Router] " + providerName + " retry " + attempt + "/" + (maxRetries - 1) + " in " + delay + "ms");
       await sleep(delay);
     }
 
     try {
       const result = await providerFn(params);
-      if (attempt > 0) console.log("[LLM Router] " + providerName + " succeeded on retry " + attempt);
       return result;
     } catch (err) {
       lastError = err;
       const status = getStatusCode(err);
       // Non-retryable errors — move to next provider immediately
       if (status !== null && !RETRYABLE_STATUS_CODES.has(status)) {
-        console.log("[LLM Router] " + providerName + " non-retryable error " + status);
-        throw err;
+          throw err;
       }
-      console.log("[LLM Router] " + providerName + " attempt " + (attempt + 1) + " failed: " + (err instanceof Error ? err.message.substring(0, 120) : err));
+      if (attempt === maxRetries - 1) console.log("[LLM Router] " + providerName + " exhausted retries: " + (err instanceof Error ? err.message.substring(0, 80) : err));
     }
   }
 
@@ -73,8 +70,7 @@ export async function invokeLLMWithFallback(params: InvokeParams): Promise<Invok
   // Provider 1: Groq
   if (isGroqAvailable()) {
     try {
-      console.log("[LLM Router] Trying Groq");
-      const result = await tryProviderWithRetry("Groq", invokeGroqDirect, params);
+        const result = await tryProviderWithRetry("Groq", invokeGroqDirect, params);
       lastUsedProvider = "groq";
       return result;
     } catch (err) {
@@ -85,7 +81,6 @@ export async function invokeLLMWithFallback(params: InvokeParams): Promise<Invok
 
   // Provider 2: Anthropic
   try {
-    console.log("[LLM Router] Trying Anthropic");
     const result = await tryProviderWithRetry("Anthropic", invokeAnthropic, params);
     lastUsedProvider = "anthropic";
     return result;
@@ -97,8 +92,7 @@ export async function invokeLLMWithFallback(params: InvokeParams): Promise<Invok
   // Provider 3: OpenAI
   if (isOpenAIAvailable()) {
     try {
-      console.log("[LLM Router] Trying OpenAI");
-      const result = await tryProviderWithRetry("OpenAI", invokeOpenAIDirect, params);
+        const result = await tryProviderWithRetry("OpenAI", invokeOpenAIDirect, params);
       lastUsedProvider = "openai";
       return result;
     } catch (err) {
@@ -110,8 +104,7 @@ export async function invokeLLMWithFallback(params: InvokeParams): Promise<Invok
   // Provider 4: Gemini
   if (isGeminiAvailable()) {
     try {
-      console.log("[LLM Router] Trying Gemini");
-      const result = await tryProviderWithRetry("Gemini", invokeGeminiDirect, params);
+        const result = await tryProviderWithRetry("Gemini", invokeGeminiDirect, params);
       lastUsedProvider = "gemini";
       return result;
     } catch (err) {

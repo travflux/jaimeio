@@ -219,6 +219,9 @@ export default function MissionControl() {
 
   const stats = statsQuery.data;
   const licenses = licensesQuery.data ?? [];
+  const providersData = trpc.system.getLLMProviders.useQuery().data;
+  const testLLMMut = trpc.system.testLLMRouting.useMutation();
+
   const activeLicenses = licenses.filter((l: any) => l.status === "active");
 
   const deleteMut = trpc.licenseManagement.delete.useMutation({
@@ -400,6 +403,38 @@ export default function MissionControl() {
       {/* ── Create License Panel ────────────────────────────────── */}
       <CreateLicensePanel onCreated={() => { licensesQuery.refetch(); statsQuery.refetch(); }} />
       </div>
+
+      {/* ── AI Provider Status ──────────────────────────────── */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-headline">AI Providers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {providersData && Object.entries(providersData).map(([name, info]: [string, any]) => (
+              <div key={name} className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${info.available ? "bg-green-500" : "bg-gray-300"}`} />
+                  <span className="text-sm capitalize font-medium">{name}</span>
+                  <span className="text-xs text-muted-foreground">{info.model}</span>
+                </div>
+                <Badge variant={info.available ? "default" : "outline"} className="text-xs">
+                  {info.available ? `$${info.costPer1k}/article` : "Not configured"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="w-full mt-3"
+            onClick={() => testLLMMut.mutate()} disabled={testLLMMut.isPending}>
+            {testLLMMut.isPending ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Testing...</> : "Test LLM Routing"}
+          </Button>
+          {testLLMMut.data && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Using <strong>{testLLMMut.data.provider}</strong> — "{testLLMMut.data.response?.substring(0, 60)}"
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Footer */}
       <div style={{ background: "#0f2d5e", padding: "16px 0", textAlign: "center" as const }}>

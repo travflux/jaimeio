@@ -873,6 +873,21 @@ export const appRouter = router({
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteArticle(input.id)),
     bulkDeleteRejected: adminProcedure.mutation(() => db.bulkDeleteRejectedArticles()),
     bulkGenerateVideos: adminProcedure.input(z.object({ articleIds: z.array(z.number()).optional() }).optional()).mutation(({ input }) => bulkGenerateVideos(input?.articleIds)),
+    backfillSeoDescriptions: adminProcedure.mutation(async () => {
+      const { articles: allArticles } = await db.listArticles({ limit: 10000 });
+      const missing = allArticles.filter((a: any) => !a.seoDescription);
+      let succeeded = 0;
+      for (const article of missing) {
+        const sub = article.subheadline || "";
+        const bodyText = (article.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        let desc = "";
+        if (sub && sub.length >= 50 && sub.length <= 160) { desc = sub; }
+        else { const firstSent = bodyText.split(/[.!?]/)[0]?.trim(); if (firstSent && firstSent.length >= 50 && firstSent.length <= 160) desc = firstSent + "."; else { const combined = sub ? article.headline + " — " + sub : article.headline; desc = combined.length > 160 ? combined.substring(0, 157) + "..." : combined; } }
+        await db.updateArticle(article.id, { seoDescription: desc } as any);
+        succeeded++;
+      }
+      return { total: missing.length, processed: succeeded, succeeded };
+    }),
     regenerateVideo: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       const article = await db.getArticleById(input.id);
       if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
