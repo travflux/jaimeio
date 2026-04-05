@@ -16,7 +16,7 @@ export default function TenantWorkflow() {
   const update = (k: string, v: string) => setS(p => ({ ...p, [k]: v }));
   const handleSave = async () => { if (licenseId) await saveMut.mutateAsync({ licenseId, settings: s }); };
 
-  const tabs = ["workflow", "generation", "ai", "publishing", "schedule", "distribution"];
+  const tabs: string[] = []; // tabs removed — settings moved to Content Engine page
   const isEnabled = s.workflow_enabled === "true";
   const runNowMut = trpc.workflow.triggerNow.useMutation({ onSuccess: () => { try { alert("Workflow started — articles will appear shortly"); } catch {} } });
 
@@ -52,6 +52,9 @@ export default function TenantWorkflow() {
             </button>
             {runNowMut.isSuccess && <p style={{ fontSize: 12, color: "#22c55e", marginBottom: 8 }}>Workflow started — check Articles in 3-5 minutes</p>}
             {runNowMut.isError && <p style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>Failed to start workflow</p>}
+            <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: "#0369a1" }}>
+              Looking for writing style, AI model, or article settings? They have moved to <a href="/admin/content-engine" style={{ color: "#0284c7", fontWeight: 600, textDecoration: "underline" }}>Settings → Content Engine</a>.
+            </div>
             <button onClick={() => update("workflow_enabled", isEnabled ? "false" : "true")}
               style={{ width: "100%", height: 36, background: "#fff", color: isEnabled ? "#ef4444" : "#22c55e", border: "1px solid", borderColor: isEnabled ? "#ef4444" : "#22c55e", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               {isEnabled ? "Pause Workflow" : "Resume Workflow"}

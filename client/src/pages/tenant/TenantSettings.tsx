@@ -12,7 +12,7 @@ import {
 const CARDS = [
   { icon: Palette, title: "Branding", desc: "Site name, logo, colors, fonts, favicon, and publication identity.", tags: ["name", "logo", "colors"], route: "/admin/branding" },
   { icon: Layout, title: "Design & Theme", desc: "Publication template, masthead layout, and homepage sections.", tags: ["template", "masthead", "layout"], route: "/admin/branding" },
-  { icon: Bot, title: "Content Engine", desc: "Article volume, AI model, writing style, and custom instructions.", tags: ["AI model", "articles", "tone"], route: "/admin/workflow" },
+  { icon: Bot, title: "Content Engine", desc: "Article volume, AI model, writing style, and custom instructions.", tags: ["AI model", "articles", "tone"], route: "/admin/content-engine" },
   { icon: CalendarClock, title: "Publishing", desc: "Auto-publish rules, approval workflow, schedule times, and timezone.", tags: ["schedule", "approval", "timezone"], route: "/admin/workflow" },
   { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/workflow" },
   { icon: Share2, title: "Social Distribution", desc: "Blotato connection, platform accounts, posting schedule, and rules.", tags: ["blotato", "social", "schedule"], route: "/admin/distribution" },
