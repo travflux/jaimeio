@@ -92,6 +92,12 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "setup_not_complete" };
   }
 
+  // Check workflow_enabled — tenant can pause via portal
+  const workflowSetting = await getLicenseSetting(licenseId, "workflow_enabled");
+  if (workflowSetting?.value === "false") {
+    return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "workflow_paused" };
+  }
+
   const config = await getLoopConfig(licenseId);
   if (!config.enabled) return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "disabled" };
 

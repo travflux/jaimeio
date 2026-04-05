@@ -544,9 +544,9 @@ function guessCategory(
   if (Object.keys(scores).length > 0) {
     return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
   }
-  // Default: first DB category slug or weird-news
-  if (dbCategories && dbCategories.length > 0) return dbCategories[0].slug;
-  return "weird-news";
+  // No keyword match found — return empty string (article gets categoryId=null)
+  // This is better than defaulting to the first category which causes mis-categorization
+  return "";
 }
 
 // ─── Social Media Posts ─────────────────────────────────────────────────────
