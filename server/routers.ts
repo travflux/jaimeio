@@ -339,7 +339,7 @@ export const appRouter = router({
       
       return { articles, total: result.total, hasMore, nextCursor };
     }),
-    mostRead: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input }) => db.getMostReadArticles(input?.limit ?? 5)),
+    mostRead: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input, ctx }) => db.getMostReadArticles(input?.limit ?? 5, ctx.licenseId)),
     fromArchive: publicProcedure.input(z.object({ limit: z.number().optional(), minDaysOld: z.number().optional() }).optional()).query(async ({ input }) => {
       const limit = input?.limit ?? 5;
       const minDaysOld = input?.minDaysOld ?? 30;
@@ -356,13 +356,15 @@ export const appRouter = router({
       const limit = input?.limit ?? 5;
       return db.getTrendingArticles(hoursAgo, limit);
     }),
-    editorsPicks: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ input }) => {
+    editorsPicks: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ input, ctx }) => {
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { articles: articlesTable } = await import("../drizzle/schema");
-      const { desc, eq: eqOp } = await import("drizzle-orm");
+      const { desc, eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const conditions = [eqOp(articlesTable.isEditorsPick, true)];
+      if (ctx.licenseId) conditions.push(eqOp(articlesTable.licenseId, ctx.licenseId));
       return dbConn.select().from(articlesTable)
-        .where(eqOp(articlesTable.isEditorsPick, true))
+        .where(andOp(...conditions))
         .orderBy(desc(articlesTable.publishedAt))
         .limit(input?.limit ?? 20);
     }),
