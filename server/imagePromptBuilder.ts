@@ -8,7 +8,7 @@
  */
 
 import * as db from "./db";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 
 export async function buildImagePrompt(
   headline: string,

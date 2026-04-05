@@ -15,7 +15,7 @@
 import RSSParser from "rss-parser";
 import slugify from "slugify";
 import * as db from "./db";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import { generateVideo } from "./_core/videoGeneration";
 import { extractVideoThumbnail } from "./_core/videoThumbnail";
 import { generateImage } from "./_core/imageGeneration";

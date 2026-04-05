@@ -745,6 +745,12 @@ export async function getBlotatoAccountForPlatform(
 
 // ─── Blotato Schedule Slots ───────────────────────────────────────────────────
 
+
+export async function getLLMProvider(licenseId: number): Promise<"auto" | "groq" | "anthropic" | "openai" | "gemini"> {
+  const setting = await getLicenseSetting(licenseId, "llm_provider");
+  const valid = ["auto", "groq", "anthropic", "openai", "gemini"];
+  return valid.includes(setting?.value ?? "") ? setting!.value as any : "auto";
+}
 export interface ScheduleSlotConfig {
   platform: string;
   day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";

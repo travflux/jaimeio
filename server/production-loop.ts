@@ -23,7 +23,7 @@
 import cron from "node-cron";
 import slugify from "slugify";
 import * as db from "./db";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import { generateImage } from "./_core/imageGeneration";
 import { buildImagePrompt } from "./imagePromptBuilder";
 import { buildSystemPrompt } from "./workflow";

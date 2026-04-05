@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router, tenantOrAdminProcedure } from "./_core/trpc";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import { generateImage } from "./_core/imageGeneration";
 import { generateVideo } from "./_core/videoGeneration";
 import { bulkGenerateVideos } from "./bulk-video-generation";

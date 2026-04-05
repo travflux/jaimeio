@@ -75,7 +75,7 @@ export const systemRouter = router({
 
   testLlmConnection: adminProcedure.mutation(async () => {
     try {
-      const { invokeLLM } = await import("./llm");
+      const { invokeLLMWithFallback: invokeLLM } = await import("./llmRouter");
       const result = await invokeLLM({
         messages: [{ role: "user", content: "Reply with exactly: OK" }],
         maxTokens: 10,
@@ -150,6 +150,24 @@ export const systemRouter = router({
         model: "gemini-2.5-flash",
         costPer1k: 0.002,
       },
+    };
+  }),
+
+  testLLMRouting: adminProcedure.mutation(async () => {
+    const { invokeLLMWithFallback, getLastUsedProvider } = await import("./llmRouter");
+    const result = await invokeLLMWithFallback({
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: "Say hello in exactly 5 words." },
+      ],
+    });
+    const text = typeof result.choices?.[0]?.message?.content === "string"
+      ? result.choices[0].message.content
+      : JSON.stringify(result.choices?.[0]?.message?.content);
+    return {
+      provider: getLastUsedProvider(),
+      response: text.substring(0, 200),
+      success: true,
     };
   }),
 

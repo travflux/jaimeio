@@ -177,7 +177,7 @@ export const setupRouter = router({
     .input(z.object({ model: z.string().optional() }))
     .mutation(async () => {
       try {
-        const { invokeLLM } = await import("../_core/llm");
+        const { invokeLLMWithFallback: invokeLLM } = await import("../_core/llmRouter");
         const result = await invokeLLM({
           messages: [
             { role: "system", content: "You are a news headline writer." },
