@@ -2,17 +2,18 @@ import React, { useState, useEffect, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useBranding } from "@/hooks/useBranding";
-import { useTheme } from "@/contexts/ThemeContext";
 import CommandPalette from "@/components/CommandPalette";
 import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
-  LayoutDashboard, Palette, CreditCard, Users, Mail, Bell, Key, ExternalLink,
-  GitBranch, FileText, PenSquare, CalendarDays, LayoutTemplate, FolderOpen,
-  Tag, FileStack, Rss, BarChart2, Database, Image, Search, Globe2, Sparkles,
-  Share2, List, TrendingUp, DollarSign, Megaphone, ShoppingCart, Star, BarChart,
-  Store, Package, Ticket, BookOpen, ChevronRight, X, Menu,
-  Twitter, Youtube, Inbox, Moon, Sun
+  LayoutDashboard, FileText, PenLine, Sparkles, Inbox, CalendarDays, Image,
+  Rss, Share2, Send, Mail, BarChart2, TrendingUp, DollarSign,
+  Settings, Users, CreditCard, LifeBuoy, ExternalLink, Search,
+  ChevronRight, X, Menu, Moon, Sun, MessageCircle, PieChart
 } from "lucide-react";
+
+// Platform icons not in lucide — use generic
+const Twitter = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>;
+const Youtube = (props: any) => <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.6 9.5.6 9.5.6s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>;
 
 interface TenantLayoutProps {
   children: ReactNode;
@@ -23,24 +24,45 @@ interface TenantLayoutProps {
   headerActions?: ReactNode;
 }
 
-interface NavItem { icon: any; label: string; href: string; badge?: string; badgeColor?: string; external?: boolean; }
-interface NavSection { label: string; key: string; items: NavItem[]; }
+interface NavItem { icon: any; label: string; href: string; external?: boolean; }
+interface NavSection { label: string; key: string; icon: any; items: NavItem[]; }
 
-// Map each section key to its route prefixes
-const sectionRoutes: Record<string, string[]> = {
-  overview: ["/admin/dashboard", "/admin/branding", "/admin/billing", "/admin/users", "/admin/communications", "/admin/notifications", "/admin/api-access"],
-  content: ["/admin/workflow", "/admin/articles", "/admin/calendar", "/admin/templates", "/admin/categories", "/admin/tags", "/admin/pages", "/admin/source-feeds", "/admin/x-listening", "/admin/youtube-listening", "/admin/candidates", "/admin/media-library"],
-  seo: ["/admin/seo", "/admin/index-settings", "/admin/geo"],
-  social: ["/admin/distribution", "/admin/post-queue", "/admin/social-performance"],
-  monetization: ["/admin/revenue", "/admin/adsense", "/admin/amazon", "/admin/sponsorship", "/admin/sponsor-attribution", "/admin/merch-store", "/admin/merch-pipeline"],
-  support: ["/admin/ticket"],
-};
+const NAV_SECTIONS: NavSection[] = [
+  { label: "CONTENT", key: "content", icon: FileText, items: [
+    { icon: FileText, label: "Articles", href: "/admin/articles" },
+    { icon: PenLine, label: "Create Article", href: "/admin/articles/create" },
+    { icon: Sparkles, label: "Templates", href: "/admin/templates" },
+    { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
+    { icon: CalendarDays, label: "Calendar", href: "/admin/calendar" },
+    { icon: Image, label: "Media Library", href: "/admin/media-library" },
+  ]},
+  { label: "SOURCES", key: "sources", icon: Rss, items: [
+    { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
+    { icon: Twitter, label: "X Listening", href: "/admin/x-listening" },
+    { icon: Youtube, label: "YouTube", href: "/admin/youtube-listening" },
+  ]},
+  { label: "DISTRIBUTION", key: "distribution", icon: Share2, items: [
+    { icon: Send, label: "Social Queue", href: "/admin/distribution" },
+    { icon: Mail, label: "Newsletter", href: "/admin/communications" },
+  ]},
+  { label: "ANALYTICS", key: "analytics", icon: BarChart2, items: [
+    { icon: TrendingUp, label: "Performance", href: "/admin/social-performance" },
+    { icon: PieChart, label: "Categories", href: "/admin/categories" },
+    { icon: DollarSign, label: "Revenue", href: "/admin/revenue" },
+  ]},
+  { label: "ACCOUNT", key: "account", icon: Users, items: [
+    { icon: Users, label: "Users", href: "/admin/users" },
+    { icon: CreditCard, label: "Billing", href: "/admin/billing" },
+    { icon: LifeBuoy, label: "Support", href: "/admin/ticket" },
+  ]},
+];
 
 function getActiveSection(path: string): string {
-  for (const [section, routes] of Object.entries(sectionRoutes)) {
-    if (routes.some(r => path === r || path.startsWith(r + "/"))) return section;
+  for (const sec of NAV_SECTIONS) {
+    if (sec.items.some(item => path === item.href || path.startsWith(item.href + "/"))) return sec.key;
   }
-  return "overview";
+  if (path.startsWith("/admin/workflow") || path.startsWith("/admin/settings") || path.startsWith("/admin/branding") || path.startsWith("/admin/seo") || path.startsWith("/admin/geo")) return "settings";
+  return "";
 }
 
 export default function TenantLayout({ children, pageTitle, pageSubtitle, section, saveAction, headerActions }: TenantLayoutProps) {
@@ -49,13 +71,10 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
   const statsQuery = trpc.articles.stats.useQuery(undefined, { staleTime: 60000 });
   const pendingCount = statsQuery.data?.pending || 0;
   const pubName = branding.siteName || "Publication";
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const pubUrl = "https://" + hostname;
 
-  // Set browser tab title to "{Publication} Portal"
-  React.useEffect(() => {
-    document.title = pubName + " Portal";
-  }, [pubName]);
-
-  // Set favicon to tenant's favicon
+  React.useEffect(() => { document.title = pubName + " Portal"; }, [pubName]);
   React.useEffect(() => {
     const faviconUrl = branding.faviconUrl;
     if (faviconUrl) {
@@ -64,22 +83,23 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
       link.href = faviconUrl;
     }
   }, [branding.faviconUrl]);
-  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
-  const pubUrl = `https://${hostname}`;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // Smart accordion: only one section open, follows active route
-  const [expandedSection, setExpandedSection] = useState(() => getActiveSection(location));
-
-  useEffect(() => {
-    setExpandedSection(getActiveSection(location));
-  }, [location]);
-
-  // Command palette (Cmd+K / Ctrl+K)
   const [cmdOpen, setCmdOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  // Collapsible sections — open the one containing the active route
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const active = getActiveSection(location);
+    return active ? { [active]: true } : { content: true };
+  });
+
+  useEffect(() => {
+    const active = getActiveSection(location);
+    if (active) setOpenSections(prev => ({ ...prev, [active]: true }));
+  }, [location]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(o => !o); }
@@ -88,70 +108,11 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const handleSectionClick = (key: string) => {
-    // Can't collapse the active section; clicking collapsed section expands it
-    if (key !== expandedSection) setExpandedSection(key);
-  };
+  const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const isActive = (href: string) => location === href || (href !== "/admin/dashboard" && location.startsWith(href + "/"));
+  const initials = pubName.split(" ").map((w: string) => w[0]).join("").substring(0, 2).toUpperCase();
 
-  const navSections: NavSection[] = [
-    { label: "OVERVIEW", key: "overview", items: [
-      { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
-      { icon: Palette, label: "Branding", href: "/admin/branding" },
-      { icon: CreditCard, label: "Billing", href: "/admin/billing" },
-      { icon: Users, label: "Users", href: "/admin/users" },
-      { icon: Mail, label: "Communications", href: "/admin/communications" },
-      { icon: Bell, label: "Notifications", href: "/admin/notifications" },
-      { icon: Key, label: "API Access", href: "/admin/api-access" },
-      { icon: ExternalLink, label: "View Publication", href: pubUrl, external: true },
-    ]},
-    { label: "CONTENT", key: "content", items: [
-      { icon: GitBranch, label: "Workflow", href: "/admin/workflow" },
-      { icon: FileText, label: "Articles", href: "/admin/articles", badge: pendingCount > 0 ? String(pendingCount) : undefined, badgeColor: "#f59e0b" },
-      { icon: PenSquare, label: "Create Article", href: "/admin/articles/create" },
-      { icon: CalendarDays, label: "Content Calendar", href: "/admin/calendar" },
-      { icon: LayoutTemplate, label: "Article Templates", href: "/admin/templates" },
-      { icon: FolderOpen, label: "Categories", href: "/admin/categories" },
-      { icon: Tag, label: "Tags", href: "/admin/tags" },
-      { icon: FileStack, label: "Pages", href: "/admin/pages" },
-      { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
-      { icon: Twitter, label: "X Listening", href: "/admin/x-listening" },
-      { icon: Youtube, label: "YouTube Listening", href: "/admin/youtube-listening" },
-      { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
-      { icon: Image, label: "Media Library", href: "/admin/media-library" },
-    ]},
-    { label: "SEO & GEO", key: "seo", items: [
-      { icon: Search, label: "SEO Settings", href: "/admin/seo" },
-      { icon: Globe2, label: "Index Settings", href: "/admin/index-settings" },
-      { icon: Sparkles, label: "GEO Settings", href: "/admin/geo" },
-    ]},
-    { label: "SOCIAL MEDIA", key: "social", items: [
-      { icon: Share2, label: "Distribution", href: "/admin/distribution" },
-      { icon: List, label: "Post Queue", href: "/admin/post-queue" },
-      { icon: TrendingUp, label: "Performance", href: "/admin/social-performance" },
-    ]},
-    { label: "MONETIZATION", key: "monetization", items: [
-      { icon: DollarSign, label: "Revenue Dashboard", href: "/admin/revenue" },
-      { icon: Megaphone, label: "Google AdSense", href: "/admin/adsense" },
-      { icon: ShoppingCart, label: "Amazon Affiliate", href: "/admin/amazon" },
-      { icon: Star, label: "Sponsorship", href: "/admin/sponsorship" },
-      { icon: BarChart, label: "Sponsor Attribution", href: "/admin/sponsor-attribution" },
-      { icon: Store, label: "Merch Store", href: "/admin/merch-store" },
-      { icon: Package, label: "Merch Pipeline", href: "/admin/merch-pipeline" },
-    ]},
-    { label: "SUPPORT", key: "support", items: [
-      { icon: Ticket, label: "Open a Ticket", href: "/admin/ticket" },
-      { icon: BookOpen, label: "Knowledgebase", href: "https://knowledgebase.getjaime.io", external: true },
-    ]},
-  ];
-
-  const isActive = (href: string) => location === href || (href !== "/admin/dashboard" && location.startsWith(href));
-  const initials = pubName.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
-
-  const handleSave = async () => {
-    if (!saveAction) return;
-    setSaving(true);
-    try { await saveAction(); } finally { setSaving(false); }
-  };
+  const handleSave = async () => { if (!saveAction) return; setSaving(true); try { await saveAction(); } finally { setSaving(false); } };
 
   const sidebar = (
     <aside style={{ width: 240, background: "#111827", display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, color: "#9ca3af", fontSize: 12, overflowY: "auto" }}>
@@ -172,21 +133,39 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
         <div onClick={() => setCmdOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f2937", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
           <Search size={14} style={{ color: "#6b7280" }} />
           <span style={{ color: "#6b7280", flex: 1 }}>Search...</span>
-          <span style={{ fontSize: 9, color: "#4b5563", border: "1px solid #374151", borderRadius: 3, padding: "1px 4px" }}>⌘K</span>
+          <span style={{ fontSize: 9, color: "#4b5563", border: "1px solid #374151", borderRadius: 3, padding: "1px 4px" }}>&#8984;K</span>
         </div>
       </div>
 
-      {/* Nav Sections */}
+      {/* Nav */}
       <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
-        {navSections.map(sec => {
-          const isExpanded = expandedSection === sec.key;
+        {/* Dashboard — top-level link */}
+        <div style={{ padding: "0 6px", marginBottom: 4 }}>
+          <Link href="/admin/dashboard" style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, textDecoration: "none",
+            color: location === "/admin/dashboard" || location === "/admin" ? "#ffffff" : "#9ca3af",
+            background: location === "/admin/dashboard" || location === "/admin" ? "#1f2937" : "transparent",
+            borderLeft: location === "/admin/dashboard" || location === "/admin" ? "2px solid #2dd4bf" : "2px solid transparent",
+            fontSize: 13, fontWeight: 500, transition: "background 0.1s",
+          }}
+            onMouseEnter={e => { if (location !== "/admin/dashboard") e.currentTarget.style.background = "#1f2937"; }}
+            onMouseLeave={e => { if (location !== "/admin/dashboard") e.currentTarget.style.background = "transparent"; }}>
+            <LayoutDashboard size={15} /> Dashboard
+            {pendingCount > 0 && <span style={{ marginLeft: "auto", background: "#f59e0b", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>{pendingCount}</span>}
+          </Link>
+        </div>
+
+        {/* Collapsible sections */}
+        {NAV_SECTIONS.map(sec => {
+          const isOpen = openSections[sec.key] || false;
+          const SectionIcon = sec.icon;
           return (
-            <div key={sec.key} style={{ marginBottom: 4 }}>
-              <button onClick={() => handleSectionClick(sec.key)} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", border: "none", background: "none", cursor: "pointer", padding: "6px 14px", color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
-                <ChevronRight size={10} style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
+            <div key={sec.key} style={{ marginBottom: 2 }}>
+              <button onClick={() => toggleSection(sec.key)} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", border: "none", background: "none", cursor: "pointer", padding: "7px 14px", color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
+                <ChevronRight size={10} style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
                 {sec.label}
               </button>
-              {isExpanded && (
+              {isOpen && (
                 <div style={{ padding: "0 6px" }}>
                   {sec.items.map(item => {
                     const active = isActive(item.href);
@@ -204,7 +183,6 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#1f2937"; }} onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}>
                         <Icon size={14} style={{ color: active ? "#ffffff" : "#9ca3af" }} />
                         <span style={{ flex: 1 }}>{item.label}</span>
-                        {item.badge && <span style={{ background: item.badgeColor || "#6b7280", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>{item.badge}</span>}
                       </Link>
                     );
                   })}
@@ -213,6 +191,29 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
             </div>
           );
         })}
+
+        {/* Settings — single link */}
+        <div style={{ padding: "0 6px", marginTop: 4 }}>
+          <Link href="/admin/workflow" style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, textDecoration: "none",
+            color: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "#ffffff" : "#9ca3af",
+            background: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "#1f2937" : "transparent",
+            borderLeft: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "2px solid #2dd4bf" : "2px solid transparent",
+            fontSize: 13, fontWeight: 500,
+          }}
+            onMouseEnter={e => { if (!location.startsWith("/admin/workflow")) e.currentTarget.style.background = "#1f2937"; }}
+            onMouseLeave={e => { if (!location.startsWith("/admin/workflow")) e.currentTarget.style.background = "transparent"; }}>
+            <Settings size={15} /> Settings
+          </Link>
+        </div>
+
+        {/* View Publication */}
+        <div style={{ padding: "0 6px", marginTop: 4 }}>
+          <a href={pubUrl} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, textDecoration: "none", color: "#9ca3af", fontSize: 13, fontWeight: 500, transition: "background 0.1s" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#1f2937")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            <ExternalLink size={15} /> View Publication
+          </a>
+        </div>
       </nav>
 
       {/* Footer */}
@@ -237,7 +238,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
           <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12 }}>
             <span style={{ color: "#9ca3af" }}>{statsQuery.data?.total || 0} articles</span>
             <span style={{ color: "#9ca3af" }}>{statsQuery.data?.published || 0} published</span>
-            <button onClick={() => { try { const ctx = document.querySelector("[data-theme-toggle]"); if (ctx) (ctx as any).click(); } catch {} const root = document.documentElement; const isDark = root.classList.contains("dark"); root.classList.toggle("dark"); localStorage.setItem("jaime-theme", isDark ? "light" : "dark") }}
+            <button onClick={() => { const root = document.documentElement; const isDark = root.classList.contains("dark"); root.classList.toggle("dark"); localStorage.setItem("jaime-theme", isDark ? "light" : "dark"); }}
               style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: 4 }} title="Toggle dark mode">
               {typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? <Sun size={16} /> : <Moon size={16} />}
             </button>
@@ -275,6 +276,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
 
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
       <SetupWizardModal open={wizardOpen} onClose={() => setWizardOpen(false)} />
+
       <style>{`
         @media (max-width: 1024px) {
           .tenant-sidebar-desktop { display: none !important; }

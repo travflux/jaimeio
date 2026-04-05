@@ -24,7 +24,7 @@ export interface DeploymentInfo {
   licenseKey?: string;
 }
 
-const CURRENT_VERSION = "5.8.0";
+const CURRENT_VERSION = "5.9.0";
 
 const VERSION_HISTORY: EngineVersion[] = [
   {
@@ -521,6 +521,17 @@ const VERSION_HISTORY: EngineVersion[] = [
       "Pool-drain production loop: per-tenant hourly candidate processing",
       "SEO description generation and backfill for all articles",
       "LLM provider status card in Mission Control dashboard",
+    ],
+  },
+  {
+    version: "5.9.0",
+    releaseDate: new Date("2026-04-05"),
+    changelog: [
+      "New portal navigation: 36 items reorganized into 8 clean sections",
+      "Setup wizard modal with 7-step onboarding and KB links",
+      "6 publication templates: Editorial, Magazine, Modern, Minimal, Corporate, Creative",
+      "S3 tenant-scoped image paths, timezone-correct batch dates",
+      "Cross-tenant data isolation audit and fixes",
     ],
   },
 ];
