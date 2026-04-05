@@ -166,17 +166,22 @@ class ReplicateImageProvider implements ImageProvider {
   name = "replicate";
 
   async generate(options: ImageGenerationOptions): Promise<{ url: string }> {
-    const apiKey = await this.getApiKey();
+    const apiKey = await this.getApiKey(options.licenseId);
     const model = await this.getModel();
     
     if (!apiKey) {
       throw new Error("Replicate API key not configured");
     }
 
-    // Create prediction
-    // Pass aspect_ratio to Replicate models that support it (e.g., FLUX)
-    const aspectRatioSetting = await db.getSetting("image_aspect_ratio");
-    const aspectRatio = aspectRatioSetting?.value || "1:1";
+    // Create prediction — read aspect_ratio per-tenant if licenseId available
+    let aspectRatio = "16:9";
+    if (options.licenseId) {
+      const { getLicenseSettingOrGlobal } = await import("../db");
+      aspectRatio = await getLicenseSettingOrGlobal(options.licenseId, "image_aspect_ratio") || "16:9";
+    } else {
+      const aspectRatioSetting = await db.getSetting("image_aspect_ratio");
+      aspectRatio = aspectRatioSetting?.value || "16:9";
+    }
 
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
@@ -244,7 +249,16 @@ class ReplicateImageProvider implements ImageProvider {
     return { url };
   }
 
-  private async getApiKey(): Promise<string | null> {
+  private async getApiKey(licenseId?: number): Promise<string | null> {
+    // Per-tenant key first
+    if (licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const tenantKey = await getLicenseSetting(licenseId, "image_api_key");
+      if (tenantKey?.value) return tenantKey.value;
+      const altKey = await getLicenseSetting(licenseId, "replicate_api_key");
+      if (altKey?.value) return altKey.value;
+    }
+    // Global fallback
     const setting = await db.getSetting("image_provider_replicate_api_key");
     return setting?.value || null;
   }

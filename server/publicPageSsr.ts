@@ -9,6 +9,7 @@ import { generatePalette, generateCssVariables } from "./utils/colorSystem";
 interface BrandSsrData {
   cssVars: string;
   fontLink: string;
+  gaScript: string;
 }
 
 const DEFAULT_PRIMARY = "#2DD4BF";
@@ -57,19 +58,27 @@ export async function getBrandSsrData(hostname: string): Promise<BrandSsrData> {
       `  --brand-font-heading: '${headingFont}', Georgia, serif;\n  --brand-font-body: '${bodyFont}', -apple-system, BlinkMacSystemFont, sans-serif;\n}`
     );
 
-    return { cssVars, fontLink };
+    // Google Analytics injection
+    const gaId = settings.brand_analytics_id || settings.brand_gtag_id || settings.seo_ga_id || "";
+    let gaScript = "";
+    if (gaId) {
+      gaScript = '<script async src="https://www.googletagmanager.com/gtag/js?id=' + gaId + '"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date());gtag("config","' + gaId + '")</script>';
+    }
+
+    return { cssVars, fontLink, gaScript };
   } catch (e) {
     console.error("[BrandSSR] Error:", e);
-    return { cssVars: "", fontLink: "" };
+    return { cssVars: "", fontLink: "", gaScript: "" };
   }
 }
 
 export function injectBrandTheme(html: string, data: BrandSsrData): string {
-  if (!data.cssVars && !data.fontLink) return html;
+  if (!data.cssVars && !data.fontLink && !data.gaScript) return html;
 
   const injection = [
     data.fontLink,
     data.cssVars ? `<style id="brand-theme">${data.cssVars}</style>` : "",
+    data.gaScript || "",
   ].filter(Boolean).join("\n  ");
 
   return html.replace(/<head[^>]*>/i, `$&\n  ${injection}`);

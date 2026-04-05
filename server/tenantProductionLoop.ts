@@ -127,15 +127,33 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
           if (!db) continue;
           const { generateSatiricalArticle } = await import("./workflow");
           const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "" };
-          const writingStyle = (await getLicenseSetting(licenseId, "writing_style"))?.value || "Write in a professional editorial style.";
+          // Read per-tenant Content Engine settings
+          const writingTone = (await getLicenseSetting(licenseId, "writing_tone"))?.value
+            || (await getLicenseSetting(licenseId, "writing_style"))?.value
+            || "Write in a professional editorial style.";
           const targetWords = parseInt((await getLicenseSetting(licenseId, "target_article_length"))?.value || "800");
-          const article = await generateSatiricalArticle(event as any, writingStyle, targetWords);
+          const genre = (await getLicenseSetting(licenseId, "brand_genre"))?.value || "general";
+          const readingLevel = (await getLicenseSetting(licenseId, "reading_level"))?.value || "intermediate";
+          const headlineStyle = (await getLicenseSetting(licenseId, "headline_style"))?.value || "statement";
+          const includeStats = (await getLicenseSetting(licenseId, "include_statistics"))?.value !== "false";
+          const includeQuotes = (await getLicenseSetting(licenseId, "include_quotes"))?.value !== "false";
+          const includeCta = (await getLicenseSetting(licenseId, "include_cta"))?.value === "true";
+          const includeSubs = (await getLicenseSetting(licenseId, "include_subheadings"))?.value !== "false";
+          const customInstructions = (await getLicenseSetting(licenseId, "article_llm_system_prompt"))?.value || "";
+          const genrePrompt = genre !== "general" ? "Write for a " + genre + " publication. " : "";
+          const fullStyle = genrePrompt + writingTone + (customInstructions ? "\n\n" + customInstructions : "");
+          const article = await generateSatiricalArticle(event as any, fullStyle, targetWords, {
+            readingLevel, headlineStyle,
+            includeSubheadings: includeSubs, includeStatistics: includeStats,
+            includeQuotes, includeCta,
+          });
           const slugify = (await import("slugify")).default;
           const slug = slugify(article.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
           let body = article.body || "";
           if (!body.trim().startsWith("<")) body = body.split("\n\n").filter((p: string) => p.trim()).map((p: string) => "<p>" + p.trim() + "</p>").join("");
           const { createArticle } = await import("./db");
-          const articleId = await createArticle({ headline: article.headline || "Untitled", subheadline: article.subheadline || "", body, slug, status: "pending", licenseId, sourceEvent: candidate.title, sourceUrl: candidate.sourceUrl } as any);
+          const autoPublish = (await getLicenseSetting(licenseId, "auto_publish"))?.value === "true";
+          const articleId = await createArticle({ headline: article.headline || "Untitled", subheadline: article.subheadline || "", body, slug, status: autoPublish ? "published" : "pending", licenseId, sourceEvent: candidate.title, sourceUrl: candidate.sourceUrl } as any);
           await db.execute(sql.raw("UPDATE selector_candidates SET status = 'selected', article_id = " + articleId + " WHERE id = " + candidate.id));
         }
         articlesGenerated++;
@@ -158,9 +176,26 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
           if (!db) continue;
           const { generateSatiricalArticle } = await import("./workflow");
           const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "" };
-          const writingStyle = (await getLicenseSetting(licenseId, "writing_style"))?.value || "Write in a professional editorial style.";
+          // Read per-tenant Content Engine settings
+          const writingTone = (await getLicenseSetting(licenseId, "writing_tone"))?.value
+            || (await getLicenseSetting(licenseId, "writing_style"))?.value
+            || "Write in a professional editorial style.";
           const targetWords = parseInt((await getLicenseSetting(licenseId, "target_article_length"))?.value || "800");
-          const article = await generateSatiricalArticle(event as any, writingStyle, targetWords);
+          const genre = (await getLicenseSetting(licenseId, "brand_genre"))?.value || "general";
+          const readingLevel = (await getLicenseSetting(licenseId, "reading_level"))?.value || "intermediate";
+          const headlineStyle = (await getLicenseSetting(licenseId, "headline_style"))?.value || "statement";
+          const includeStats = (await getLicenseSetting(licenseId, "include_statistics"))?.value !== "false";
+          const includeQuotes = (await getLicenseSetting(licenseId, "include_quotes"))?.value !== "false";
+          const includeCta = (await getLicenseSetting(licenseId, "include_cta"))?.value === "true";
+          const includeSubs = (await getLicenseSetting(licenseId, "include_subheadings"))?.value !== "false";
+          const customInstructions = (await getLicenseSetting(licenseId, "article_llm_system_prompt"))?.value || "";
+          const genrePrompt = genre !== "general" ? "Write for a " + genre + " publication. " : "";
+          const fullStyle = genrePrompt + writingTone + (customInstructions ? "\n\n" + customInstructions : "");
+          const article = await generateSatiricalArticle(event as any, fullStyle, targetWords, {
+            readingLevel, headlineStyle,
+            includeSubheadings: includeSubs, includeStatistics: includeStats,
+            includeQuotes, includeCta,
+          });
           const slugify = (await import("slugify")).default;
           const slug = slugify(article.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
           let body = article.body || "";
