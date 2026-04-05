@@ -16,7 +16,7 @@ function ModernHome({ licenseSettings, articles, categories, mostRead }: Templat
         <div className="modern-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
           {articles.slice(0, 18).map(a => (
             <a key={a.id} href={"/article/" + a.slug} style={{ textDecoration: "none", color: "inherit", background: "var(--brand-surface)", borderRadius: 12, overflow: "hidden", border: "1px solid var(--brand-border)", transition: "box-shadow 0.2s" }}>
-              {a.featuredImage && <img src={a.featuredImage} alt="" style={{ width: "100%", height: 200, objectFit: "cover" }} />}
+              {a.featuredImage && <img src={a.featuredImage} alt="" style={{ width: "100%", height: 200, objectFit: "cover" }} onError={e => (e.currentTarget.style.display = "none")} />}
               <div style={{ padding: 20 }}>
                 {(() => { const cat = categories.find(c => c.id === a.categoryId); return cat ? <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--brand-primary)", fontWeight: 600, letterSpacing: "0.05em" }}>{cat.name}</span> : null; })()}
                 <h3 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 18, fontWeight: 700, color: "var(--brand-text-primary)", lineHeight: 1.3, margin: "6px 0 8px" }}>{a.headline}</h3>
