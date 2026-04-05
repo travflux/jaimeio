@@ -90,6 +90,10 @@ import TenantLogin from "./pages/TenantLogin";
 import TenantSetup from "./pages/TenantSetup";
 import TenantSettings from "./pages/tenant/TenantSettings";
 import TenantContentEngine from "./pages/tenant/TenantContentEngine";
+import TenantDesignTheme from "./pages/tenant/TenantDesignTheme";
+import TenantPublishing from "./pages/tenant/TenantPublishing";
+import TenantImageSettings from "./pages/tenant/TenantImageSettings";
+import TenantIntegrations from "./pages/tenant/TenantIntegrations";
 import SupportArticlePage from "./pages/SupportArticlePage";
 import AdminSupportArticles from "./pages/admin/AdminSupportArticles";
 import PerformanceDashboard from "./pages/admin/PerformanceDashboard";
@@ -224,6 +228,10 @@ function Router() {
           <Route path="/admin/articles/create" component={TenantCreateArticle} />
           <Route path="/admin/generator" component={TenantCreateArticle} />
           <Route path="/admin/content-engine" component={TenantContentEngine} />
+          <Route path="/admin/design" component={TenantDesignTheme} />
+          <Route path="/admin/publishing" component={TenantPublishing} />
+          <Route path="/admin/image-settings" component={TenantImageSettings} />
+          <Route path="/admin/integrations" component={TenantIntegrations} />
           <Route path="/admin/articles/:id" component={AdminArticleEditor} />
           <Route path="/admin/branding" component={TenantBranding} />
           <Route path="/admin/billing" component={TenantBilling} />
