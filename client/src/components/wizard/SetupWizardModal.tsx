@@ -240,7 +240,7 @@ export default function SetupWizardModal({ open, onClose }: Props) {
             <div style={{ background: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12 }}>
               <p style={{ fontWeight: 600, color: "#0d9488", marginBottom: 2 }}>What is Blotato?</p>
               <p style={{ color: "#6b7280" }}>A social scheduling platform. One API key connects all your accounts.</p>
-              <a href="https://blotato.com" target="_blank" rel="noopener noreferrer" style={{ color: "#0d9488", fontSize: 11, textDecoration: "underline" }}>Create a free account at blotato.com</a>
+              <a href="https://blotato.com/?ref=jaime" target="_blank" rel="noopener noreferrer" style={{ color: "#0d9488", fontSize: 11, textDecoration: "underline" }}>Create a free account at blotato.com</a>
             </div>
             <Field label="Blotato API Key" tooltip="Find at my.blotato.com > Settings > API > Generate Key.">
               <input type="password" style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }} placeholder="blt_xxxxxxxxxxxxxxxx" value={s.blotato_api_key || ""} onChange={e => upd("blotato_api_key", e.target.value)} />
