@@ -17,7 +17,7 @@
 import { getDb } from "../db.js";
 import { imageLibrary, imageSourceDomains } from "../../drizzle/schema.js";
 import { eq, and, lte, gte, sql, inArray } from "drizzle-orm";
-import { invokeLLM } from "../_core/llm.js";
+import { invokeLLMWithFallback as invokeLLM } from "../_core/llmRouter";
 import { storagePut } from "../storage.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

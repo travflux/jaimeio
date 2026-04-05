@@ -13,7 +13,7 @@
 import { getDb } from "./db";
 import { tags, articleTags, articles } from "../drizzle/schema";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import * as db from "./db";
 
 // ─── Types ──────────────────────────────────────────────────────────────────

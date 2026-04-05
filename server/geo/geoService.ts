@@ -5,7 +5,7 @@
  * Google AI Overviews) cite articles accurately.
  */
 
-import { invokeLLM } from "../_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "../_core/llmRouter";
 import * as db from "../db";
 import { articles } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";

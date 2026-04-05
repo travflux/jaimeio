@@ -15,7 +15,7 @@
 
 import * as db from "./db";
 import { xStandaloneTweets, articles } from "../drizzle/schema";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import { postTweet } from "./xTwitterService";
 import { desc, eq, and, gte, sql } from "drizzle-orm";
 import { getDb } from "./db";

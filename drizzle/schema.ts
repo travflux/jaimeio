@@ -63,6 +63,7 @@ export const articles = mysqlTable("articles", {
   // Article tags for Discover sections
   isEditorsPick: boolean("is_editors_pick").default(false).notNull(),
   isTrending: boolean("is_trending").default(false).notNull(),
+  seoDescription: varchar("seo_description", { length: 500 }),
   isFeatured: boolean("is_featured").default(false).notNull(),
 });
 

@@ -4,3 +4,8 @@
 [2026-04-04 21:21:47] Deploy started: production @ 226b6c6
 [2026-04-04 21:21:47] Deploy complete: production
 Sat Apr  4 09:22:22 PM UTC 2026: Promoted staging 2ef93d2 to production — Sprint 3.6 Batches A-F
+[2026-04-04 23:09:36] Deploy started: production @ 9434e06
+[2026-04-04 23:09:36] Deploy complete: production
+Sat Apr  4 11:12:25 PM UTC 2026: Promoted staging 45c1bd3 to production — Sprint 3.7 Blotato full integration
+[2026-04-04 23:31:22] Deploy started: staging @ dec4503
+[2026-04-04 23:31:22] Deploy complete: staging

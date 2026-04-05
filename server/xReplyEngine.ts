@@ -12,7 +12,7 @@
  *   - verifiedOnly: only engage with blue/business/government verified accounts
  */
 import { TwitterApi, TwitterApiReadWrite } from "twitter-api-v2";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMWithFallback as invokeLLM } from "./_core/llmRouter";
 import * as db from "./db";
 import { getXCredentials } from "./xTwitterService";
 

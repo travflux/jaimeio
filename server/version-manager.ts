@@ -24,7 +24,7 @@ export interface DeploymentInfo {
   licenseKey?: string;
 }
 
-const CURRENT_VERSION = "5.5.0";
+const CURRENT_VERSION = "5.8.0";
 
 const VERSION_HISTORY: EngineVersion[] = [
   {
@@ -510,6 +510,18 @@ const VERSION_HISTORY: EngineVersion[] = [
       "Duplicate social router removed: testConnection merged into primary social router at line 783",
     ],
     breaking: false,
+  },
+  {
+    version: "5.8.0",
+    releaseDate: new Date("2026-04-04"),
+    changelog: [
+      "Multi-provider LLM routing: Groq, OpenAI, Gemini, Anthropic with fallback chain",
+      "Exponential backoff retry per provider (3 attempts, 0s/5s/15s)",
+      "Per-tenant LLM preference in Workflow > AI tab",
+      "Pool-drain production loop: per-tenant hourly candidate processing",
+      "SEO description generation and backfill for all articles",
+      "LLM provider status card in Mission Control dashboard",
+    ],
   },
 ];
 

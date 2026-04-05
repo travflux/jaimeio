@@ -75,7 +75,7 @@ export const systemRouter = router({
 
   testLlmConnection: adminProcedure.mutation(async () => {
     try {
-      const { invokeLLM } = await import("./llm");
+      const { invokeLLMWithFallback: invokeLLM } = await import("./llmRouter");
       const result = await invokeLLM({
         messages: [{ role: "user", content: "Reply with exactly: OK" }],
         maxTokens: 10,
@@ -126,6 +126,49 @@ export const systemRouter = router({
       const log = fs.readFileSync("/var/www/jaimeio/deploy-log.txt", "utf8");
       return log.trim().split("\n").slice(-20);
     } catch { return []; }
+  }),
+
+  getLLMProviders: adminProcedure.query(() => {
+    return {
+      groq: {
+        available: !!process.env.GROQ_API_KEY,
+        model: "llama-3.3-70b-versatile",
+        costPer1k: 0.001,
+      },
+      anthropic: {
+        available: !!(process.env.ANTHROPIC_API_KEY || process.env.BUILT_IN_FORGE_API_KEY),
+        model: "claude-sonnet-4-20250514",
+        costPer1k: 0.10,
+      },
+      openai: {
+        available: !!process.env.OPENAI_API_KEY,
+        model: "gpt-4o",
+        costPer1k: 0.03,
+      },
+      gemini: {
+        available: !!process.env.GEMINI_API_KEY,
+        model: "gemini-2.5-flash",
+        costPer1k: 0.002,
+      },
+    };
+  }),
+
+  testLLMRouting: adminProcedure.mutation(async () => {
+    const { invokeLLMWithFallback, getLastUsedProvider } = await import("./llmRouter");
+    const result = await invokeLLMWithFallback({
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: "Say hello in exactly 5 words." },
+      ],
+    });
+    const text = typeof result.choices?.[0]?.message?.content === "string"
+      ? result.choices[0].message.content
+      : JSON.stringify(result.choices?.[0]?.message?.content);
+    return {
+      provider: getLastUsedProvider(),
+      response: text.substring(0, 200),
+      success: true,
+    };
   }),
 
 });

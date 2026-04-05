@@ -539,6 +539,21 @@ export async function initScheduler() {
       console.warn(`[Scheduler] [Blotato] Poll error: ${err.message}`);
     }
   });
+
+  // v5.6: Per-tenant production loop — pool-drain model every hour
+  cron.schedule("0 * * * *", async () => {
+    try {
+      const { getActiveLicenseIds } = await import("./db");
+      const { runTenantProductionLoopTick } = await import("./tenantProductionLoop");
+      const licenseIds = await getActiveLicenseIds();
+      for (const licenseId of licenseIds) {
+        try {
+          const result = await runTenantProductionLoopTick(licenseId);
+          if (result.articlesGenerated > 0) console.log(`[Scheduler] TenantLoop licenseId ${licenseId}: ${result.articlesGenerated} articles`);
+        } catch (e: any) { console.error(`[Scheduler] TenantLoop error licenseId ${licenseId}:`, e.message?.substring(0, 100)); }
+      }
+    } catch (e: any) { console.warn("[Scheduler] TenantLoop cron error:", e.message); }
+  });
 }
 
 export function getSchedulerStatus() {

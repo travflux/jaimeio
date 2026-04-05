@@ -745,6 +745,21 @@ export async function getBlotatoAccountForPlatform(
 
 // ─── Blotato Schedule Slots ───────────────────────────────────────────────────
 
+
+export async function getLLMProvider(licenseId: number): Promise<"auto" | "groq" | "anthropic" | "openai" | "gemini"> {
+  const setting = await getLicenseSetting(licenseId, "llm_provider");
+  const valid = ["auto", "groq", "anthropic", "openai", "gemini"];
+  return valid.includes(setting?.value ?? "") ? setting!.value as any : "auto";
+}
+
+export async function getActiveLicenseIds(): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const { licenses } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select({ id: licenses.id }).from(licenses).where(eq(licenses.status, "active"));
+  return result.map(r => r.id);
+}
 export interface ScheduleSlotConfig {
   platform: string;
   day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
