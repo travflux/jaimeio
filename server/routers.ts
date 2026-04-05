@@ -162,18 +162,20 @@ export const appRouter = router({
   }),
   selectorCandidates: router({
     list: tenantOrAdminProcedure
-      .input(z.object({ status: z.string().optional(), limit: z.number().optional() }).optional())
+      .input(z.object({ status: z.string().optional(), potential: z.string().optional(), source: z.string().optional(), limit: z.number().optional() }).optional())
       .query(async ({ input, ctx }) => {
         const dbConn = await db.getDb();
-        if (!dbConn) return [];
+        if (!dbConn) return { candidates: [], total: 0 };
         const { sql: sqlFn } = await import("drizzle-orm");
         const status = input?.status || "pending";
         const limit = input?.limit || 50;
-        const lid = ctx.licenseId;
-        const [rows] = lid
-          ? await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} AND license_id = ${lid} ORDER BY created_at DESC LIMIT ${limit}`)
-          : await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} ORDER BY created_at DESC LIMIT ${limit}`);
-        return rows as any[];
+        const lid = ctx.licenseId || 7;
+        let where = "status = '" + status + "' AND license_id = " + lid;
+        if (input?.potential) where += " AND article_potential = '" + input.potential + "'";
+        if (input?.source) where += " AND source_name = '" + input.source.replace(/'/g, "''") + "'";
+        const [rows] = await dbConn.execute(sqlFn.raw("SELECT id, title, summary, source_url, source_type, source_name, article_potential, status, created_at, score FROM selector_candidates WHERE " + where + " ORDER BY score DESC, created_at DESC LIMIT " + limit));
+        const [countRows] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as cnt FROM selector_candidates WHERE " + where));
+        return { candidates: rows as any[], total: (countRows as any[])[0]?.cnt || 0 };
       }),
     ignore: tenantOrAdminProcedure
       .input(z.object({ candidateId: z.number() }))
@@ -1306,6 +1308,27 @@ export const appRouter = router({
         return { licenseId: l.id, subdomain: l.subdomain, taskCount: s?.taskCount || 0, isRunning: s?.isRunning || false };
       });
     }),
+    generateFromTopic: tenantOrAdminProcedure
+      .input(z.object({
+        topic: z.string().min(10).max(500),
+        categoryId: z.number().optional(),
+        tone: z.string().optional(),
+        wordCount: z.number().optional(),
+        additionalInstructions: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+        const { generateArticleFromTopic } = await import("./workflow");
+        const result = await generateArticleFromTopic({
+          licenseId: ctx.licenseId,
+          topic: input.topic,
+          categoryId: input.categoryId,
+          toneOverride: input.tone,
+          wordCountOverride: input.wordCount,
+          additionalInstructions: input.additionalInstructions,
+        });
+        return { articleId: result.id, headline: result.headline };
+      }),
     // Per-tenant production loop
     getProductionLoopStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
       if (!ctx.licenseId) return { isRunning: false, lastRunAt: null, lastRunArticles: 0, totalToday: 0 };
