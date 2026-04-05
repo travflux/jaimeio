@@ -398,7 +398,7 @@ IMPORTANT RULES:
 - NEVER include real people saying things they didn't say. Instead, create obviously fictional characters when quotes are needed.`;
 }
 
-export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: string, targetWords: number, templateSettings?: any): Promise<GeneratedArticle> {
+export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: string, targetWords: number, templateSettings?: any, structureOpts?: { readingLevel?: string; headlineStyle?: string; includeSubheadings?: boolean; includeStatistics?: boolean; includeQuotes?: boolean; includeCta?: boolean }): Promise<GeneratedArticle> {
   // Apply template overrides if provided
   if (templateSettings?.targetWordCount) targetWords = templateSettings.targetWordCount;
   if (templateSettings?.tone) stylePrompt = `Write in a ${templateSettings.tone} tone. ${stylePrompt}`;
@@ -415,7 +415,7 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
         .replace("{LENGTH_INSTRUCTION}", lengthInstruction)
         .replace("{targetWords}", String(targetWords))
         .replace("{{targetWords}}", String(targetWords))
-    : `${buildSystemPrompt(targetWords)}\n\n${stylePrompt}`;
+    : `${buildSystemPrompt(targetWords, structureOpts)}\n\n${stylePrompt}`;
 
   // Check for a user message override stored in the DB (white-label support)
   const userMsgSetting = await db.getSetting("article_llm_user_prompt");
