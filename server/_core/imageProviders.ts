@@ -173,10 +173,15 @@ class ReplicateImageProvider implements ImageProvider {
       throw new Error("Replicate API key not configured");
     }
 
-    // Create prediction
-    // Pass aspect_ratio to Replicate models that support it (e.g., FLUX)
-    const aspectRatioSetting = await db.getSetting("image_aspect_ratio");
-    const aspectRatio = aspectRatioSetting?.value || "1:1";
+    // Create prediction — read aspect_ratio per-tenant if licenseId available
+    let aspectRatio = "16:9";
+    if (options.licenseId) {
+      const { getLicenseSettingOrGlobal } = await import("../db");
+      aspectRatio = await getLicenseSettingOrGlobal(options.licenseId, "image_aspect_ratio") || "16:9";
+    } else {
+      const aspectRatioSetting = await db.getSetting("image_aspect_ratio");
+      aspectRatio = aspectRatioSetting?.value || "16:9";
+    }
 
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",

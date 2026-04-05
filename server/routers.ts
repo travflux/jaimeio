@@ -67,7 +67,7 @@ async function runImageBackfillJob(articles: Array<{ id: number; headline: strin
       break;
     }
     try {
-      const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
+      const finalPrompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: (article as any)?.licenseId || (articleBefore as any)?.licenseId });
       const result = await generateImage({ prompt: finalPrompt, licenseId: (articleBefore as any)?.licenseId });
       if (result?.url) {
         await db.updateArticle(article.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
@@ -653,7 +653,7 @@ export const appRouter = router({
             // Fire-and-forget: generate image in background
             (async () => {
               try {
-                const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
+                const finalPrompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: (article as any)?.licenseId || (articleBefore as any)?.licenseId });
                 const result = await generateImage({ prompt: finalPrompt, licenseId: (article as any)?.licenseId });
                 if (result?.url) {
                   await db.updateArticle(input.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
@@ -701,7 +701,7 @@ export const appRouter = router({
           // Fire-and-forget: generate image in background
           (async () => {
             try {
-              const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
+              const finalPrompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: (article as any)?.licenseId || (articleBefore as any)?.licenseId });
               const result = await generateImage({ prompt: finalPrompt, licenseId: (article as any)?.licenseId });
               if (result?.url) {
                 await db.updateArticle(input.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
@@ -887,7 +887,7 @@ export const appRouter = router({
         try {
           const { buildImagePrompt } = await import("./imagePromptBuilder");
           const { generateImage } = await import("./_core/imageGeneration");
-          const prompt = await buildImagePrompt(article.headline, article.subheadline);
+          const prompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: article.licenseId ?? 7 });
           const result = await generateImage({ prompt, licenseId: article.licenseId ?? 7 });
           if (result?.url) {
             await dbConn.update(artTable).set({ featuredImage: result.url }).where(eq(artTable.id, article.id));

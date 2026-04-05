@@ -1338,7 +1338,7 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
             }
           }
           // ── LLM Image (default path, or fallback when real image fails) ──
-          const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
+          const finalPrompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: tenantId });
           const result = await generateImage({ prompt: finalPrompt, licenseId: tenantId });
           if (result?.url) {
             await db.updateArticle(articleId, { featuredImage: result.url });
