@@ -162,18 +162,20 @@ export const appRouter = router({
   }),
   selectorCandidates: router({
     list: tenantOrAdminProcedure
-      .input(z.object({ status: z.string().optional(), limit: z.number().optional() }).optional())
+      .input(z.object({ status: z.string().optional(), potential: z.string().optional(), source: z.string().optional(), limit: z.number().optional() }).optional())
       .query(async ({ input, ctx }) => {
         const dbConn = await db.getDb();
-        if (!dbConn) return [];
+        if (!dbConn) return { candidates: [], total: 0 };
         const { sql: sqlFn } = await import("drizzle-orm");
         const status = input?.status || "pending";
         const limit = input?.limit || 50;
-        const lid = ctx.licenseId;
-        const [rows] = lid
-          ? await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} AND license_id = ${lid} ORDER BY created_at DESC LIMIT ${limit}`)
-          : await dbConn.execute(sqlFn`SELECT id, title, summary, source_url, source_type, source_name, status, created_at, score FROM selector_candidates WHERE status = ${status} ORDER BY created_at DESC LIMIT ${limit}`);
-        return rows as any[];
+        const lid = ctx.licenseId || 7;
+        let where = "status = '" + status + "' AND license_id = " + lid;
+        if (input?.potential) where += " AND article_potential = '" + input.potential + "'";
+        if (input?.source) where += " AND source_name = '" + input.source.replace(/'/g, "''") + "'";
+        const [rows] = await dbConn.execute(sqlFn.raw("SELECT id, title, summary, source_url, source_type, source_name, article_potential, status, created_at, score FROM selector_candidates WHERE " + where + " ORDER BY score DESC, created_at DESC LIMIT " + limit));
+        const [countRows] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as cnt FROM selector_candidates WHERE " + where));
+        return { candidates: rows as any[], total: (countRows as any[])[0]?.cnt || 0 };
       }),
     ignore: tenantOrAdminProcedure
       .input(z.object({ candidateId: z.number() }))

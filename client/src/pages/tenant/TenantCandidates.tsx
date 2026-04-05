@@ -1,145 +1,164 @@
 import React, { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
-import { ExternalLink, X, Zap, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Sparkles, Loader2, ExternalLink, RefreshCw, Inbox } from "lucide-react";
 
-function CandidatePanel({ candidate, onClose, onAction }: { candidate: any; onClose: () => void; onAction: () => void }) {
-  const ignoreMut = trpc.selectorCandidates.ignore.useMutation({ onSuccess: onAction });
-  const generateMut = trpc.workflow.generateFromCandidate.useMutation({
-    onSuccess: () => { onAction(); },
-  });
-  const domain = candidate.source_url ? new URL(candidate.source_url).hostname.replace("www.", "").replace("news.google.com", "Google News") : "";
-  const summary = (candidate.summary || "").replace(/<[^>]+>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
+const potentialColors: Record<string, { bg: string; text: string; border: string }> = {
+  high: { bg: "#dcfce7", text: "#166534", border: "#bbf7d0" },
+  medium: { bg: "#fef3c7", text: "#92400e", border: "#fde68a" },
+  low: { bg: "#f3f4f6", text: "#6b7280", border: "#e5e7eb" },
+};
 
-  return (
-    <>
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 60 }} onClick={onClose} />
-      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 560, maxWidth: "100vw", background: "#fff", zIndex: 70, display: "flex", flexDirection: "column", boxShadow: "-4px 0 20px rgba(0,0,0,0.1)" }}>
-        <div style={{ padding: "12px 20px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Review Candidate</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: candidate.source_type === "rss" ? "#dbeafe" : candidate.source_type === "x" ? "#fce7f3" : candidate.source_type === "youtube" ? "#fee2e2" : "#f3f4f6", color: candidate.source_type === "rss" ? "#1e40af" : candidate.source_type === "x" ? "#9d174d" : candidate.source_type === "youtube" ? "#991b1b" : "#374151" }}>
-              {candidate.source_type === "rss" ? "RSS" : candidate.source_type === "x" ? "X/Twitter" : candidate.source_type === "youtube" ? "YouTube" : (candidate.source_type?.toUpperCase() || "RSS")}
-            </span>
-            <span style={{ fontSize: 12, color: "#6b7280" }}>{candidate.source_name || domain}</span>
-            <span style={{ fontSize: 12, color: "#9ca3af" }}>{candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : ""}</span>
-          </div>
-
-          <h3 style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, color: "#111827", marginBottom: 12 }}>
-            {candidate.title || "Untitled"}
-          </h3>
-
-          {candidate.source_url && (
-            <a href={candidate.source_url} target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "#2dd4bf", marginBottom: 16, textDecoration: "none" }}>
-              Read original article <ExternalLink size={12} />
-            </a>
-          )}
-
-          {summary && (
-            <div style={{ padding: 16, background: "#f9fafb", borderRadius: 8, fontSize: 14, color: "#374151", lineHeight: 1.6, marginBottom: 16 }}>
-              {summary.substring(0, 500)}{summary.length > 500 ? "..." : ""}
-            </div>
-          )}
-
-          {!summary && (
-            <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 16 }}>No summary available from this feed.</p>
-          )}
-
-          {candidate.score && (
-            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
-              Relevance Score: <strong>{Math.round(candidate.score * 100) / 100}</strong>
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8, flexShrink: 0 }}>
-          <button onClick={() => generateMut.mutate({ candidateId: candidate.id })}
-            disabled={generateMut.isPending}
-            style={{ flex: 1, height: 44, background: generateMut.isPending ? "#9ca3af" : "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: generateMut.isPending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            {generateMut.isPending ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : <><Zap size={16} /> Generate Article</>}
-          </button>
-          <button onClick={() => ignoreMut.mutate({ candidateId: candidate.id })} disabled={ignoreMut.isPending}
-            style={{ width: 120, height: 44, background: "#fff", color: "#6b7280", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-            {ignoreMut.isPending ? "Ignoring..." : "Ignore"}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
+function scoreColor(s: number) { return s >= 0.7 ? "#22c55e" : s >= 0.4 ? "#f59e0b" : "#d1d5db"; }
 
 export default function TenantCandidates() {
-  const [filter, setFilter] = useState("pending");
-  const [selected, setSelected] = useState<any>(null);
-  const candidatesQuery = trpc.selectorCandidates.list.useQuery({ status: filter, limit: 50 });
-  const candidates = candidatesQuery.data || [];
+  const [statusTab, setStatusTab] = useState("pending");
+  const [potentialFilter, setPotentialFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
+  const [bulkGenerating, setBulkGenerating] = useState(false);
 
-  const filters = ["pending", "selected", "rejected", "expired"];
+  const { data, refetch, isLoading } = trpc.selectorCandidates.list.useQuery(
+    { status: statusTab, potential: potentialFilter === "all" ? undefined : potentialFilter, limit: 50 },
+    { staleTime: 15000 }
+  );
+
+  const genMut = trpc.workflow.generateFromCandidate.useMutation({
+    onSuccess: (_: any, vars: any) => {
+      setGeneratingIds(p => { const n = new Set(p); n.delete(vars.candidateId); return n; });
+      toast.success("Article generated");
+      refetch();
+    },
+    onError: (err: any, vars: any) => {
+      setGeneratingIds(p => { const n = new Set(p); n.delete(vars.candidateId); return n; });
+      toast.error("Failed: " + err.message);
+    },
+  });
+
+  const rejectMut = trpc.selectorCandidates.ignore.useMutation({ onSuccess: () => refetch() });
+
+  const handleGen = (id: number) => { setGeneratingIds(p => new Set(p).add(id)); genMut.mutate({ candidateId: id }); };
+
+  const handleBulk = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm("Generate " + selectedIds.size + " article(s)? This may take several minutes.")) return;
+    setBulkGenerating(true);
+    for (const id of Array.from(selectedIds)) {
+      setGeneratingIds(p => new Set(p).add(id));
+      try { await genMut.mutateAsync({ candidateId: id }); } catch {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    setBulkGenerating(false);
+    setSelectedIds(new Set());
+    toast.success("Bulk generation complete");
+  };
+
+  const toggle = (id: number) => setSelectedIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const selectAll = () => { if (data?.candidates) setSelectedIds(new Set(data.candidates.map((c: any) => c.id))); };
+
+  const candidates = data?.candidates || [];
+  const total = data?.total || 0;
 
   return (
-    <TenantLayout pageTitle="Candidates" pageSubtitle={`${candidates.length} ${filter} candidates`} section="Content">
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {filters.map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
-            padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
-            borderColor: filter === f ? "#111827" : "#e5e7eb", background: filter === f ? "#111827" : "#fff", color: filter === f ? "#fff" : "#6b7280",
-          }}>{f}</button>
+    <TenantLayout pageTitle="Candidates" pageSubtitle={total + " " + statusTab + " candidates"} section="Content"
+      headerActions={<button onClick={() => refetch()} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer" }}><RefreshCw size={12} /> Refresh</button>}>
+
+      {/* Status Tabs */}
+      <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1px solid #e5e7eb" }}>
+        {["pending", "selected", "rejected", "expired"].map(tab => (
+          <button key={tab} onClick={() => { setStatusTab(tab); setSelectedIds(new Set()); }}
+            style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", textTransform: "capitalize", border: "none", background: "transparent", borderBottom: statusTab === tab ? "2px solid #2dd4bf" : "2px solid transparent", color: statusTab === tab ? "#111827" : "#9ca3af", marginBottom: -1 }}>
+            {tab}{tab === "pending" && total > 0 ? " (" + total + ")" : ""}
+          </button>
         ))}
       </div>
 
-      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-        {candidatesQuery.isLoading ? (
-          <p style={{ textAlign: "center", padding: 24, color: "#6b7280", fontSize: 13 }}>Loading candidates...</p>
-        ) : candidates.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
-            <p style={{ fontSize: 14, marginBottom: 4 }}>No {filter} candidates</p>
-            <p style={{ fontSize: 12 }}>Candidates are sourced from RSS feeds during workflow runs.</p>
+      {/* Filters + Bulk */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {["all", "high", "medium", "low"].map(f => (
+          <button key={f} onClick={() => setPotentialFilter(f)}
+            style={{ padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
+              borderColor: potentialFilter === f ? "#2dd4bf" : "#e5e7eb", background: potentialFilter === f ? "#f0fdfa" : "#fff", color: potentialFilter === f ? "#0d9488" : "#6b7280" }}>
+            {f === "all" ? "All Potential" : f}
+          </button>
+        ))}
+        {statusTab === "pending" && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+            {selectedIds.size > 0 ? (<>
+              <span style={{ fontSize: 11, color: "#6b7280" }}>{selectedIds.size} selected</span>
+              <button onClick={() => setSelectedIds(new Set())} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer" }}>Clear</button>
+              <button onClick={handleBulk} disabled={bulkGenerating}
+                style={{ padding: "4px 12px", borderRadius: 6, border: "none", background: "#111827", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                {bulkGenerating ? <><Loader2 size={11} className="animate-spin" /> Generating...</> : <><Sparkles size={11} /> Generate {selectedIds.size}</>}
+              </button>
+            </>) : (
+              <button onClick={selectAll} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer" }}>Select All</button>
+            )}
           </div>
-        ) : (
-          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-            <thead><tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 600, color: "#6b7280", fontSize: 11, width: 60 }}>Source</th>
-              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 600, color: "#6b7280", fontSize: 11 }}>Title</th>
-              <th style={{ textAlign: "left", padding: "10px 16px", fontWeight: 600, color: "#6b7280", fontSize: 11, width: 100 }}>Date</th>
-              <th style={{ textAlign: "right", padding: "10px 16px", fontWeight: 600, color: "#6b7280", fontSize: 11, width: 80 }}>Action</th>
-            </tr></thead>
-            <tbody>{candidates.map((c: any) => (
-              <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6", cursor: "pointer" }}
-                onClick={() => setSelected(c)}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                <td style={{ padding: "10px 16px" }}>
-                  <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600,
-                    background: c.source_type === "rss" ? "#dbeafe" : c.source_type === "x" ? "#fce7f3" : c.source_type === "youtube" ? "#fee2e2" : "#f3f4f6",
-                    color: c.source_type === "rss" ? "#1e40af" : c.source_type === "x" ? "#9d174d" : c.source_type === "youtube" ? "#991b1b" : "#374151" }}>
-                    {c.source_type === "rss" ? "RSS" : c.source_type === "x" ? "X" : c.source_type === "youtube" ? "YT" : (c.source_type?.toUpperCase() || "RSS")}
-                  </span>
-                </td>
-                <td style={{ padding: "10px 16px" }}>
-                  <div style={{ fontWeight: 500, color: "#111827" }}>{(c.title || "Untitled").substring(0, 70)}{(c.title || "").length > 70 ? "..." : ""}</div>
-                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{c.source_name || ""}</div>
-                </td>
-                <td style={{ padding: "10px 16px", color: "#6b7280", fontSize: 12 }}>
-                  {c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}
-                </td>
-                <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                  <button onClick={e => { e.stopPropagation(); setSelected(c); }}
-                    style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#374151" }}>
-                    Review
-                  </button>
-                </td>
-              </tr>
-            ))}</tbody>
-          </table>
         )}
       </div>
 
-      {selected && <CandidatePanel candidate={selected} onClose={() => setSelected(null)} onAction={() => { setSelected(null); candidatesQuery.refetch(); }} />}
+      {/* List */}
+      {isLoading ? (
+        <div style={{ textAlign: "center", padding: 60 }}><Loader2 size={24} className="animate-spin" style={{ color: "#9ca3af", margin: "0 auto" }} /></div>
+      ) : candidates.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 60, color: "#9ca3af" }}>
+          <Inbox size={40} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
+          <p style={{ fontSize: 14 }}>No {statusTab} candidates</p>
+          {statusTab === "pending" && <p style={{ fontSize: 12, marginTop: 4 }}>Run your workflow to fetch candidates from RSS feeds.</p>}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {candidates.map((c: any) => {
+            const isGen = generatingIds.has(c.id);
+            const isSel = selectedIds.has(c.id);
+            const score = c.score || 0;
+            const pot = c.article_potential || "low";
+            const pc = potentialColors[pot] || potentialColors.low;
+
+            return (
+              <div key={c.id} style={{ background: isSel ? "#f0fdfa" : "#fff", border: isSel ? "1px solid #2dd4bf" : "1px solid #e5e7eb", borderRadius: 8, padding: 16, opacity: isGen ? 0.6 : 1, transition: "border-color 0.15s" }}>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  {statusTab === "pending" && (
+                    <button onClick={() => toggle(c.id)} disabled={isGen} style={{ background: "none", border: "none", cursor: "pointer", marginTop: 2, flexShrink: 0 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 3, border: isSel ? "2px solid #2dd4bf" : "2px solid #d1d5db", background: isSel ? "#2dd4bf" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {isSel && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
+                      </div>
+                    </button>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: "#111827", lineHeight: 1.4, margin: "0 0 6px" }}>{c.title}</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: "#f3f4f6", color: "#6b7280" }}>{c.source_type || "RSS"} · {c.source_name || "Unknown"}</span>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: pc.bg, color: pc.text, border: "1px solid " + pc.border, fontWeight: 600, textTransform: "capitalize" }}>{pot}</span>
+                      <span style={{ fontSize: 10, color: "#9ca3af" }}>{c.created_at ? new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</span>
+                      {c.source_url && <a href={c.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#2dd4bf", textDecoration: "none", display: "flex", alignItems: "center", gap: 2 }} onClick={e => e.stopPropagation()}>Source <ExternalLink size={9} /></a>}
+                    </div>
+                    {/* Score bar */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 4, background: "#f3f4f6", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: 2, background: scoreColor(score), width: Math.round(score * 100) + "%", transition: "width 0.3s" }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: "#9ca3af", minWidth: 28, textAlign: "right" }}>{Math.round(score * 100)}%</span>
+                    </div>
+                  </div>
+                  {statusTab === "pending" && (
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                      <button onClick={() => rejectMut.mutate({ candidateId: c.id })} disabled={isGen}
+                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #fecaca", background: "#fff", fontSize: 11, cursor: "pointer", color: "#ef4444" }}>Dismiss</button>
+                      <button onClick={() => handleGen(c.id)} disabled={isGen}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "none", background: "#111827", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                        {isGen ? <Loader2 size={11} className="animate-spin" /> : <><Sparkles size={11} /> Generate</>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </TenantLayout>
   );
 }
