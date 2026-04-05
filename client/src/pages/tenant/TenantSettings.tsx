@@ -11,15 +11,15 @@ import {
 
 const CARDS = [
   { icon: Palette, title: "Branding", desc: "Site name, logo, colors, fonts, favicon, and publication identity.", tags: ["name", "logo", "colors"], route: "/admin/branding" },
-  { icon: Layout, title: "Design & Theme", desc: "Publication template, masthead layout, and homepage sections.", tags: ["template", "masthead", "layout"], route: "/admin/branding" },
+  { icon: Layout, title: "Design & Theme", desc: "Publication template, masthead layout, and homepage sections.", tags: ["template", "masthead", "layout"], route: "/admin/design" },
   { icon: Bot, title: "Content Engine", desc: "Article volume, AI model, writing style, and custom instructions.", tags: ["AI model", "articles", "tone"], route: "/admin/content-engine" },
-  { icon: CalendarClock, title: "Publishing", desc: "Auto-publish rules, approval workflow, schedule times, and timezone.", tags: ["schedule", "approval", "timezone"], route: "/admin/workflow" },
-  { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/workflow" },
+  { icon: CalendarClock, title: "Publishing", desc: "Auto-publish rules, approval workflow, schedule times, and timezone.", tags: ["schedule", "approval", "timezone"], route: "/admin/publishing" },
+  { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/image-settings" },
   { icon: Share2, title: "Social Distribution", desc: "Blotato connection, platform accounts, posting schedule, and rules.", tags: ["blotato", "social", "schedule"], route: "/admin/distribution" },
   { icon: Mail, title: "Newsletter", desc: "Email newsletter, Resend connection, templates, and subscribers.", tags: ["email", "resend", "template"], route: "/admin/communications" },
   { icon: Globe, title: "SEO & GEO", desc: "Meta defaults, IndexNow, Google Search Console, and GEO optimization.", tags: ["SEO", "GEO", "indexing"], route: "/admin/seo" },
   { icon: DollarSign, title: "Monetization", desc: "Google AdSense, Amazon Associates, sponsorship, and merch store.", tags: ["ads", "sponsors", "revenue"], route: "/admin/adsense" },
-  { icon: Plug, title: "Integrations", desc: "All API keys — AI providers, storage, analytics, and third-party services.", tags: ["API keys", "connections"], route: "/admin/api-access" },
+  { icon: Plug, title: "Integrations", desc: "All API keys — AI providers, storage, analytics, and third-party services.", tags: ["API keys", "connections"], route: "/admin/integrations" },
   { icon: Users, title: "Users & Access", desc: "Team members, invitations, roles, and access control.", tags: ["team", "invite", "roles"], route: "/admin/users" },
   { icon: CreditCard, title: "Billing", desc: "Subscription plan, usage limits, payment method, and upgrade options.", tags: ["plan", "billing", "upgrade"], route: "/admin/billing" },
 ];
