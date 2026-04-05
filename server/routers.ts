@@ -1306,6 +1306,27 @@ export const appRouter = router({
         return { licenseId: l.id, subdomain: l.subdomain, taskCount: s?.taskCount || 0, isRunning: s?.isRunning || false };
       });
     }),
+    generateFromTopic: tenantOrAdminProcedure
+      .input(z.object({
+        topic: z.string().min(10).max(500),
+        categoryId: z.number().optional(),
+        tone: z.string().optional(),
+        wordCount: z.number().optional(),
+        additionalInstructions: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+        const { generateArticleFromTopic } = await import("./workflow");
+        const result = await generateArticleFromTopic({
+          licenseId: ctx.licenseId,
+          topic: input.topic,
+          categoryId: input.categoryId,
+          toneOverride: input.tone,
+          wordCountOverride: input.wordCount,
+          additionalInstructions: input.additionalInstructions,
+        });
+        return { articleId: result.id, headline: result.headline };
+      }),
     // Per-tenant production loop
     getProductionLoopStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
       if (!ctx.licenseId) return { isRunning: false, lastRunAt: null, lastRunArticles: 0, totalToday: 0 };

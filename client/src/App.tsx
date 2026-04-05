@@ -90,6 +90,7 @@ import TenantLogin from "./pages/TenantLogin";
 import TenantSetup from "./pages/TenantSetup";
 import TenantSettings from "./pages/tenant/TenantSettings";
 import TenantContentEngine from "./pages/tenant/TenantContentEngine";
+import TenantAIGenerator from "./pages/tenant/TenantAIGenerator";
 import TenantDesignTheme from "./pages/tenant/TenantDesignTheme";
 import TenantPublishing from "./pages/tenant/TenantPublishing";
 import TenantImageSettings from "./pages/tenant/TenantImageSettings";
@@ -226,7 +227,7 @@ function Router() {
           <Route path="/admin/dashboard" component={TenantDashboardPage} />
           <Route path="/admin/articles" component={TenantArticles} />
           <Route path="/admin/articles/create" component={TenantCreateArticle} />
-          <Route path="/admin/generator" component={TenantCreateArticle} />
+          <Route path="/admin/generator" component={TenantAIGenerator} />
           <Route path="/admin/content-engine" component={TenantContentEngine} />
           <Route path="/admin/design" component={TenantDesignTheme} />
           <Route path="/admin/publishing" component={TenantPublishing} />

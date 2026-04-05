@@ -515,6 +515,93 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
   }
 }
 
+// ─── Manual Generation from Topic ──────────────────────────────────────────
+
+export async function generateArticleFromTopic(opts: {
+  licenseId: number;
+  topic: string;
+  categoryId?: number;
+  toneOverride?: string;
+  wordCountOverride?: number;
+  additionalInstructions?: string;
+}): Promise<{ id: number; headline: string; slug: string }> {
+  const { getLicenseSetting, getLicenseSettingOrGlobal, createArticle, listCategories } = await import("./db");
+  const lid = opts.licenseId;
+
+  // Read per-tenant settings
+  const writingTone = opts.toneOverride
+    || (await getLicenseSetting(lid, "writing_tone"))?.value
+    || (await getLicenseSetting(lid, "writing_style"))?.value
+    || "Write in a professional editorial style.";
+  const targetWords = opts.wordCountOverride
+    || parseInt((await getLicenseSetting(lid, "target_article_length"))?.value || "800");
+  const genre = (await getLicenseSetting(lid, "brand_genre"))?.value || "general";
+  const readingLevel = (await getLicenseSetting(lid, "reading_level"))?.value || "intermediate";
+  const headlineStyle = (await getLicenseSetting(lid, "headline_style"))?.value || "statement";
+  const customInstructions = (await getLicenseSetting(lid, "article_llm_system_prompt"))?.value || "";
+
+  const genrePrompt = genre !== "general" ? "Write for a " + genre + " publication. " : "";
+  const fullStyle = genrePrompt + writingTone + (opts.additionalInstructions ? "\n\n" + opts.additionalInstructions : "") + (customInstructions ? "\n\n" + customInstructions : "");
+
+  const event = { title: opts.topic, summary: opts.topic, source: "Manual", sourceUrl: "", publishedDate: new Date().toISOString(), feedSourceId: null } as any;
+
+  const article = await generateSatiricalArticle(event, fullStyle, targetWords, undefined, {
+    readingLevel, headlineStyle,
+    includeSubheadings: true, includeStatistics: true,
+    includeQuotes: true, includeCta: false,
+  });
+
+  const slugify = (await import("slugify")).default;
+  const slug = slugify(article.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
+
+  let body = article.body || "";
+  if (!body.trim().startsWith("<")) {
+    body = body.split("\n\n").filter((p: string) => p.trim()).map((p: string) => "<p>" + p.trim() + "</p>").join("");
+  }
+
+  // Guess category if not provided
+  let categoryId = opts.categoryId || null;
+  if (!categoryId) {
+    const categories = await listCategories(lid);
+    const catMap: Record<string, number> = {};
+    for (const cat of categories) catMap[cat.slug] = cat.id;
+    const guessedSlug = guessCategory(article.headline || "", (article.subheadline || "") + " " + opts.topic, categories);
+    if (guessedSlug && catMap[guessedSlug]) categoryId = catMap[guessedSlug];
+  }
+
+  const articleId = await createArticle({
+    headline: article.headline || "Untitled",
+    subheadline: article.subheadline || "",
+    body,
+    slug,
+    status: "pending",
+    categoryId,
+    licenseId: lid,
+    sourceEvent: "Manual: " + opts.topic.substring(0, 100),
+  } as any);
+
+  // Generate image in background
+  const autoImages = (await getLicenseSetting(lid, "auto_generate_images"))?.value;
+  if (autoImages !== "false") {
+    (async () => {
+      try {
+        const { buildImagePrompt } = await import("./imagePromptBuilder");
+        const { generateImage } = await import("./_core/imageGeneration");
+        const prompt = await buildImagePrompt(article.headline || opts.topic, article.subheadline, { licenseId: lid });
+        const result = await generateImage({ prompt, licenseId: lid });
+        if (result?.url) {
+          const { updateArticle } = await import("./db");
+          await updateArticle(articleId, { featuredImage: result.url } as any);
+          console.log("[ManualGen] Image generated for article " + articleId);
+        }
+      } catch (e) { console.error("[ManualGen] Image failed:", e); }
+    })();
+  }
+
+  return { id: articleId, headline: article.headline || "Untitled", slug };
+}
+
+
 // ─── Category Guessing ──────────────────────────────────────────────────────
 
 function guessCategory(
