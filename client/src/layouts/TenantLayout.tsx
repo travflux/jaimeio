@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useBranding } from "@/hooks/useBranding";
 import { useTheme } from "@/contexts/ThemeContext";
 import CommandPalette from "@/components/CommandPalette";
+import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
   LayoutDashboard, Palette, CreditCard, Users, Mail, Bell, Key, ExternalLink,
   GitBranch, FileText, PenSquare, CalendarDays, LayoutTemplate, FolderOpen,
@@ -78,6 +79,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
 
   // Command palette (Cmd+K / Ctrl+K)
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(o => !o); }
@@ -162,11 +164,11 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
             <div style={{ fontSize: 10, color: "#6b7280" }}>ADMIN</div>
           </div>
         </div>
-        <Link href="/admin/settings" style={{ display: "flex", alignItems: "center", gap: 8, background: "#1f2937", borderRadius: 6, padding: "8px 10px", textDecoration: "none", color: "#9ca3af", marginBottom: 8 }}>
+        <button onClick={() => setWizardOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, background: "#1f2937", borderRadius: 6, padding: "8px 10px", border: "none", color: "#9ca3af", marginBottom: 8, cursor: "pointer", width: "100%", fontSize: 12 }}>
           <CalendarDays size={14} />
-          <span style={{ flex: 1 }}>Setup Wizard</span>
+          <span style={{ flex: 1, textAlign: "left" }}>Setup Wizard</span>
           <span style={{ background: "#2dd4bf", color: "#0f2d5e", fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>START</span>
-        </Link>
+        </button>
         <div onClick={() => setCmdOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#1f2937", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
           <Search size={14} style={{ color: "#6b7280" }} />
           <span style={{ color: "#6b7280", flex: 1 }}>Search...</span>
@@ -272,6 +274,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
       </div>
 
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+      <SetupWizardModal open={wizardOpen} onClose={() => setWizardOpen(false)} />
       <style>{`
         @media (max-width: 1024px) {
           .tenant-sidebar-desktop { display: none !important; }
