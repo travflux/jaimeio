@@ -9,6 +9,7 @@ import { addWatermark } from "../watermark";
 
 export type ImageGenerationOptions = {
   prompt: string;
+  licenseId?: number;
   originalImages?: Array<{
     url?: string;
     b64Json?: string;
@@ -20,6 +21,16 @@ export type ImageGenerationResponse = {
   url: string;
   provider: string;
 };
+
+// Note: Images uploaded before Sprint 3.9 use legacy flat path "generated/".
+// All new uploads use "tenant-{licenseId}/images/" prefix for isolation.
+// Do not attempt to move legacy images — they still serve correctly from S3.
+
+function tenantImageKey(licenseId?: number): string {
+  const ts = Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+  const folder = licenseId ? "tenant-" + licenseId + "/images" : "tenant-shared/images";
+  return folder + "/" + ts + ".png";
+}
 
 // ─── Provider Interface ─────────────────────────────────────────────────────
 
@@ -74,7 +85,7 @@ class ManusImageProvider implements ImageProvider {
       buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
     }
     
-    const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, result.image.mimeType);
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, result.image.mimeType);
     return { url };
   }
 }
@@ -139,7 +150,7 @@ class OpenAIImageProvider implements ImageProvider {
       buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
     }
     
-    const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
     return { url };
   }
 
@@ -228,7 +239,7 @@ class ReplicateImageProvider implements ImageProvider {
     }
     
     const { storagePut } = await import("../storage");
-    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
     console.log("[ImageGen] Replicate image saved to S3:", url.substring(0, 80));
     return { url };
   }
@@ -303,7 +314,7 @@ class CustomAPIImageProvider implements ImageProvider {
       buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
     }
     
-    const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
     return { url };
   }
 
@@ -339,7 +350,7 @@ class GeminiImageProvider implements ImageProvider {
     const watermarkEnabled = await db.getSetting("watermark_enabled");
     if (watermarkEnabled?.value === "true") { try { const { addWatermark, getWatermarkSettings } = await import("../watermark"); buffer = Buffer.from(await addWatermark(buffer, await getWatermarkSettings())); } catch {} }
     const { storagePut } = await import("../storage");
-    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
     return { url };
   }
   private async getApiKey(): Promise<string | null> {
@@ -369,7 +380,7 @@ class GrokImageProvider implements ImageProvider {
     const watermarkEnabled = await db.getSetting("watermark_enabled");
     if (watermarkEnabled?.value === "true") { try { const { addWatermark, getWatermarkSettings } = await import("../watermark"); buffer = Buffer.from(await addWatermark(buffer, await getWatermarkSettings())); } catch {} }
     const { storagePut } = await import("../storage");
-    const { url } = await storagePut("generated/" + Date.now() + ".png", buffer, "image/png");
+    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
     return { url };
   }
   private async getApiKey(): Promise<string | null> {

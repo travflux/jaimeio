@@ -512,7 +512,7 @@ export async function initScheduler() {
   // v4.0: Social listener crons — X and Reddit every 30 minutes
   // Runs at :00 and :30 of every hour
   cron.schedule("0,30 * * * *", async () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
     try {
       const { fetchXCandidates } = await import("./sources/x-listener");
       const xInserted = await fetchXCandidates(today);

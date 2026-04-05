@@ -155,7 +155,10 @@ export function TemplateRenderer({ page, slug }: TemplateRendererProps) {
     page,
   };
 
-  const templateName = licenseSettings.brand_template || "editorial";
+  let templateName = licenseSettings.brand_template || "editorial";
+
+  // "bold" was a legacy alias — map to editorial
+  if (templateName === "bold") templateName = "editorial";
 
   switch (templateName) {
     case "magazine":

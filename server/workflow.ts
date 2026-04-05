@@ -644,7 +644,8 @@ Return ONLY the JSON object.`,
 // ─── Full Pipeline ──────────────────────────────────────────────────────────
 
 export async function runFullPipeline(batchDate?: string, licenseId?: number): Promise<WorkflowResult> {
-  const date = batchDate || new Date().toISOString().split("T")[0];
+  const { getTodayForTenant } = await import("./db");
+  const date = batchDate || await getTodayForTenant(licenseId);
   const tenantId = licenseId || 7; // Default to nikijames for backward compat
   console.log(`  License ID: ${tenantId}`);
 
@@ -1338,7 +1339,7 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
           }
           // ── LLM Image (default path, or fallback when real image fails) ──
           const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
-          const result = await generateImage({ prompt: finalPrompt });
+          const result = await generateImage({ prompt: finalPrompt, licenseId: tenantId });
           if (result?.url) {
             await db.updateArticle(articleId, { featuredImage: result.url });
             imagesGenerated++;

@@ -68,7 +68,7 @@ async function runImageBackfillJob(articles: Array<{ id: number; headline: strin
     }
     try {
       const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
-      const result = await generateImage({ prompt: finalPrompt });
+      const result = await generateImage({ prompt: finalPrompt, licenseId: (articleBefore as any)?.licenseId });
       if (result?.url) {
         await db.updateArticle(article.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
         imageBackfillState.succeeded++;
@@ -651,7 +651,7 @@ export const appRouter = router({
             (async () => {
               try {
                 const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
-                const result = await generateImage({ prompt: finalPrompt });
+                const result = await generateImage({ prompt: finalPrompt, licenseId: (article as any)?.licenseId });
                 if (result?.url) {
                   await db.updateArticle(input.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
                   console.log(`[AutoMedia] Generated image for article ${input.id}`);
@@ -699,7 +699,7 @@ export const appRouter = router({
           (async () => {
             try {
               const finalPrompt = await buildImagePrompt(article.headline, article.subheadline);
-              const result = await generateImage({ prompt: finalPrompt });
+              const result = await generateImage({ prompt: finalPrompt, licenseId: (article as any)?.licenseId });
               if (result?.url) {
                 await db.updateArticle(input.id, { featuredImage: result.url, llmImagePrompt: finalPrompt });
                 console.log(`[AutoMedia] Generated image for published article ${input.id}`);
