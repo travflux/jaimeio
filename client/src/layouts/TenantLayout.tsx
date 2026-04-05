@@ -31,7 +31,8 @@ const NAV_SECTIONS: NavSection[] = [
   { label: "CONTENT", key: "content", icon: FileText, items: [
     { icon: FileText, label: "Articles", href: "/admin/articles" },
     { icon: PenLine, label: "Create Article", href: "/admin/articles/create" },
-    { icon: Sparkles, label: "Templates", href: "/admin/templates" },
+    { icon: Sparkles, label: "AI Generator", href: "/admin/generator" },
+    { icon: CalendarDays, label: "Article Templates", href: "/admin/templates" },
     { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
     { icon: CalendarDays, label: "Calendar", href: "/admin/calendar" },
     { icon: Image, label: "Media Library", href: "/admin/media-library" },
@@ -194,15 +195,15 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
 
         {/* Settings — single link */}
         <div style={{ padding: "0 6px", marginTop: 4 }}>
-          <Link href="/admin/workflow" style={{
+          <Link href="/admin/settings" style={{
             display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, textDecoration: "none",
-            color: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "#ffffff" : "#9ca3af",
-            background: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "#1f2937" : "transparent",
-            borderLeft: location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") || location.startsWith("/admin/settings") ? "2px solid #2dd4bf" : "2px solid transparent",
+            color: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "#ffffff" : "#9ca3af",
+            background: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "#1f2937" : "transparent",
+            borderLeft: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "2px solid #2dd4bf" : "2px solid transparent",
             fontSize: 13, fontWeight: 500,
           }}
-            onMouseEnter={e => { if (!location.startsWith("/admin/workflow")) e.currentTarget.style.background = "#1f2937"; }}
-            onMouseLeave={e => { if (!location.startsWith("/admin/workflow")) e.currentTarget.style.background = "transparent"; }}>
+            onMouseEnter={e => { if (location !== "/admin/settings") e.currentTarget.style.background = "#1f2937"; }}
+            onMouseLeave={e => { if (location !== "/admin/settings") e.currentTarget.style.background = "transparent"; }}>
             <Settings size={15} /> Settings
           </Link>
         </div>
