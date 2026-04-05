@@ -802,6 +802,7 @@ export const selectorCandidates = mysqlTable("selector_candidates", {
   scoreBreakdown: text("score_breakdown"),                                         // JSON breakdown for debugging
   articlePotential: varchar("article_potential", { length: 10 }),                  // "high" | "medium" | "low" | "dead"
   // Lifecycle
+  licenseId: int("license_id"),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
