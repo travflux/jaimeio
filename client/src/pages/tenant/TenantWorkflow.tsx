@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export default function TenantWorkflow() {
   const { licenseId, settings: initSettings } = useTenantContext();
@@ -14,7 +16,7 @@ export default function TenantWorkflow() {
   const update = (k: string, v: string) => setS(p => ({ ...p, [k]: v }));
   const handleSave = async () => { if (licenseId) await saveMut.mutateAsync({ licenseId, settings: s }); };
 
-  const tabs = ["workflow", "generation", "publishing", "schedule", "distribution"];
+  const tabs = ["workflow", "generation", "ai", "publishing", "schedule", "distribution"];
   const isEnabled = s.workflow_enabled === "true";
   const runNowMut = trpc.workflow.triggerNow.useMutation({ onSuccess: () => { try { alert("Workflow started — articles will appear shortly"); } catch {} } });
 
@@ -207,6 +209,38 @@ export default function TenantWorkflow() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+
+      {tab === "ai" && (
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>AI Model</h3>
+          <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>Choose which AI model generates your articles. Auto uses the fastest available model with automatic fallback.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { value: "auto", label: "Auto (Recommended)", desc: "Fastest available model with automatic fallback", badge: "Smart", badgeColor: "#2dd4bf" },
+              { value: "groq", label: "Groq — Llama 3.3 70B", desc: "Fastest generation, lowest cost (~$0.001/article)", badge: "Fastest", badgeColor: "#3b82f6" },
+              { value: "anthropic", label: "Anthropic — Claude Sonnet", desc: "Highest quality output (~$0.10/article)", badge: "Best Quality", badgeColor: "#8b5cf6" },
+              { value: "openai", label: "OpenAI — GPT-4o", desc: "Balanced quality and cost (~$0.03/article)", badge: "Balanced", badgeColor: "#f59e0b" },
+              { value: "gemini", label: "Google — Gemini 2.5 Flash", desc: "Fast and affordable (~$0.002/article)", badge: "Affordable", badgeColor: "#22c55e" },
+            ].map(option => (
+              <div key={option.value} onClick={() => update("llm_provider", option.value)}
+                style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 14, borderRadius: 8, border: (s.llm_provider || "auto") === option.value ? "2px solid #2dd4bf" : "1px solid #e5e7eb", cursor: "pointer", background: (s.llm_provider || "auto") === option.value ? "#f0fdfa" : "#fff" }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid", borderColor: (s.llm_provider || "auto") === option.value ? "#2dd4bf" : "#d1d5db", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  {(s.llm_provider || "auto") === option.value && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2dd4bf" }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{option.label}</span>
+                    <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: option.badgeColor + "20", color: option.badgeColor }}>{option.badge}</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>{option.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 12 }}>Changes take effect on the next article generation. Click Save at the top to apply.</p>
         </div>
       )}
 

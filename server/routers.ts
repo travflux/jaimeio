@@ -1242,6 +1242,17 @@ export const appRouter = router({
         return { licenseId: l.id, subdomain: l.subdomain, taskCount: s?.taskCount || 0, isRunning: s?.isRunning || false };
       });
     }),
+    // Per-tenant production loop
+    getProductionLoopStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      if (!ctx.licenseId) return { isRunning: false, lastRunAt: null, lastRunArticles: 0, totalToday: 0 };
+      const { getTenantProductionLoopStatus } = await import("./tenantProductionLoop");
+      return getTenantProductionLoopStatus(ctx.licenseId);
+    }),
+    runProductionLoop: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
+      const { runTenantProductionLoopTick } = await import("./tenantProductionLoop");
+      return runTenantProductionLoopTick(ctx.licenseId);
+    }),
     generateFromCandidate: tenantOrAdminProcedure
       .input(z.object({ candidateId: z.number(), categoryId: z.number().optional(), tags: z.array(z.string()).optional(), imageUrl: z.string().optional(), templateId: z.number().optional() }))
       .mutation(async ({ input }) => {
