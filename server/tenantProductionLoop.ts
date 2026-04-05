@@ -86,6 +86,12 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
   const state = loopState.get(licenseId) ?? { isRunning: false, lastRunAt: null, lastRunArticles: 0, totalToday: 0 };
   if (state.isRunning) return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "already_running" };
 
+  // Check setup_complete gate
+  const setupSetting = await getLicenseSetting(licenseId, "setup_complete");
+  if (setupSetting?.value !== "true") {
+    return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "setup_not_complete" };
+  }
+
   const config = await getLoopConfig(licenseId);
   if (!config.enabled) return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "disabled" };
 
