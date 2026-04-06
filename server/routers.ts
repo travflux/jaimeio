@@ -42,6 +42,31 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   return next({ ctx });
 });
+async function generateGeoSummary(headline: string, body: string): Promise<string> {
+  const plainText = body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+  const result = await invokeLLM({
+    messages: [
+      { role: "system", content: "You are an SEO specialist. Generate 3-5 concise key takeaways from the article that would help AI search engines understand and cite this content. Return them as a bulleted list. No preamble." },
+      { role: "user", content: `Headline: ${headline}\n\nArticle:\n${plainText}` },
+    ],
+  });
+  const msg = result.choices?.[0]?.message?.content;
+  return typeof msg === "string" ? msg : "";
+}
+
+async function generateGeoFaq(headline: string, body: string): Promise<string> {
+  const plainText = body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
+  const result = await invokeLLM({
+    messages: [
+      { role: "system", content: "You are an SEO specialist. Generate 3 FAQ question-and-answer pairs that readers might ask about this article. Format as JSON array: [{\"q\":\"...\",\"a\":\"...\"}]. No preamble, just valid JSON." },
+      { role: "user", content: `Headline: ${headline}\n\nArticle:\n${plainText}` },
+    ],
+  });
+  const msg = result.choices?.[0]?.message?.content;
+  return typeof msg === "string" ? msg : "[]";
+}
+
+
 
 // ─── Image Backfill Job State (module-level singleton) ─────────────────────────
 type BackfillLogEntry = { articleId: number; headline: string; status: "ok" | "failed"; error?: string; timestamp: string };
@@ -487,7 +512,7 @@ export const appRouter = router({
 
   // ─── Articles ────────────────────────────────────────
   articles: router({
-    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional() }).optional()).query(async ({ input, ctx }) => {
+    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional(), missingGeo: z.boolean().optional(), missingImage: z.boolean().optional() }).optional()).query(async ({ input, ctx }) => {
       const params = input ?? {};
       const limit = params.limit ?? 20;
       const offset = params.cursor ? undefined : params.offset;
@@ -1152,6 +1177,46 @@ export const appRouter = router({
       
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Video generation failed" });
     }),
+
+    generateGeoForArticle: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const article = await db.getArticleById(input.id);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        const [geoSummary, geoFaq] = await Promise.all([
+          generateGeoSummary(article.headline, article.body),
+          generateGeoFaq(article.headline, article.body),
+        ]);
+        await db.updateArticle(input.id, { geoSummary, geoFaq } as any);
+        return { success: true, geoSummary, geoFaq };
+      }),
+
+    generateGeoForDraft: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const article = await db.getArticleById(input.id);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        const [geoSummary, geoFaq] = await Promise.all([
+          generateGeoSummary(article.headline, article.body),
+          generateGeoFaq(article.headline, article.body),
+        ]);
+        await db.updateArticle(input.id, { geoSummary, geoFaq } as any);
+        return { success: true, geoSummary, geoFaq };
+      }),
+
+    generateImageForDraft: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const article = await db.getArticleById(input.id);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        const prompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId: article.licenseId || undefined });
+        const result = await generateImage({ prompt, licenseId: article.licenseId || undefined });
+        if (result?.url) {
+          await db.updateArticle(input.id, { featuredImage: result.url } as any);
+          return { success: true, url: result.url };
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Image generation failed" });
+      }),
   }),
 
   // ─── Enhanced Search ─────────────────────────────────
@@ -3276,11 +3341,29 @@ export const appRouter = router({
 
     // ── Candidate Review ─────────────────────────────────────────────────────
 
-    // List candidates with filtering for the review interface
+    getCandidateCounts: adminProcedure.query(async () => {
+      const { getDb } = await import("./db");
+      const { selectorCandidates } = await import("../drizzle/schema");
+      const { sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { byStatus: [], bySources: 0 };
+      const byStatus = await dbConn
+        .select({ status: selectorCandidates.status, count: sql<number>`count(*)` })
+        .from(selectorCandidates)
+        .groupBy(selectorCandidates.status);
+      const [sourceCountResult] = await dbConn
+        .select({ count: sql<number>`count(distinct ${selectorCandidates.sourceType})` })
+        .from(selectorCandidates);
+      return { byStatus, bySources: Number(sourceCountResult?.count ?? 0) };
+    }),
+
+        // List candidates with filtering for the review interface
     listCandidates: adminProcedure
       .input(z.object({
         status: z.enum(["pending", "selected", "rejected", "expired", "all"]).default("pending"),
         sourceType: z.string().optional(),
+        source: z.string().optional(),
+        potential: z.string().optional(),
         limit: z.number().min(1).max(200).default(50),
         offset: z.number().min(0).default(0),
       }).optional())
@@ -3296,9 +3379,13 @@ export const appRouter = router({
         const limit = input?.limit ?? 50;
         const offset = input?.offset ?? 0;
 
+        const source = input?.source;
+        const potential = input?.potential;
         const conditions = [];
         if (status !== "all") conditions.push(eq(selectorCandidates.status, status as any));
         if (sourceType) conditions.push(eq(selectorCandidates.sourceType, sourceType as any));
+        if (source) conditions.push(eq(selectorCandidates.sourceType, source as any));
+        if (potential) conditions.push(eq(selectorCandidates.articlePotential, potential as any));
 
         const where = conditions.length > 0 ? and(...conditions) : undefined;
 

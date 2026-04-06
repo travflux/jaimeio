@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft, Save, Sparkles, Eye, Code, FileText, Loader2,
-  CheckCircle, XCircle, Send, Wand2, RotateCcw, ImageIcon, Video
+  CheckCircle, XCircle, Send, Wand2, RotateCcw, ImageIcon, Video, MapPin, Link2
 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { Link } from "wouter";
@@ -24,11 +24,14 @@ interface FormState {
   categoryId: number | undefined;
   featuredImage: string;
   videoUrl: string;
+  geoSummary: string;
+  geoFaq: string;
 }
 
 const EMPTY_FORM: FormState = {
   headline: "", subheadline: "", body: "", slug: "", status: "draft",
   categoryId: undefined, featuredImage: "", videoUrl: "",
+  geoSummary: "", geoFaq: "",
 };
 
 export default function AdminArticleEditor() {
@@ -69,6 +72,8 @@ export default function AdminArticleEditor() {
         categoryId: article.categoryId ?? undefined,
         featuredImage: article.featuredImage ?? "",
         videoUrl: article.videoUrl ?? "",
+        geoSummary: (article as any).geoSummary ?? "",
+        geoFaq: (article as any).geoFaq ?? "",
       };
       setForm(loaded);
       setOriginalForm(loaded);
@@ -140,6 +145,26 @@ export default function AdminArticleEditor() {
       }
     },
     onError: (e: any) => toast.error(`Video regeneration failed: ${e.message}`),
+  });
+
+  const generateImageForDraft = trpc.ai.generateImageForDraft.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        updateForm(f => ({ ...f, featuredImage: data.url! }));
+        toast.success("Draft image generated!");
+        utils.articles.getById.invalidate();
+      }
+    },
+    onError: (e: any) => toast.error(),
+  });
+
+  const generateGeoForDraft = trpc.ai.generateGeoForDraft.useMutation({
+    onSuccess: (data) => {
+      updateForm(f => ({ ...f, geoSummary: data.geoSummary ?? "", geoFaq: data.geoFaq ?? "" }));
+      toast.success("GEO content generated!");
+      utils.articles.getById.invalidate();
+    },
+    onError: (e: any) => toast.error(),
   });
 
   // Handlers
@@ -765,6 +790,62 @@ export default function AdminArticleEditor() {
               )}
             </CardContent>
           </Card>
+
+          {/* GEO Optimization */}
+          {!isNew && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  GEO Optimization
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Generate AI-optimized GEO summary and FAQ for search visibility
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {form.geoSummary && (
+                  <div className="p-2 bg-muted rounded text-xs text-muted-foreground max-h-24 overflow-y-auto">
+                    {form.geoSummary}
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateGeoForDraft.mutate({ id: articleId! })}
+                  disabled={generateGeoForDraft.isPending}
+                  className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  {generateGeoForDraft.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generating GEO...</>
+                  ) : (
+                    <><MapPin className="w-4 h-4 mr-1" /> {form.geoSummary ? "Regenerate GEO" : "Generate GEO"}</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Generator link for new articles */}
+          {isNew && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Link2 className="w-4 h-4 text-purple-600" />
+                  AI Generator
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Use the AI Generator to automatically write a full article from a topic prompt.
+                </p>
+                <a href="/admin/ai-generator" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors w-full justify-center">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Open AI Generator
+                </a>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Source info (for workflow-imported articles) */}
           {!isNew && article?.sourceEvent && (

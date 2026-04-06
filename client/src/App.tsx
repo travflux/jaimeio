@@ -62,6 +62,7 @@ import AdminMigration from "./pages/admin/AdminMigration";
 import AdminDeploymentUpdates from "./pages/admin/AdminDeploymentUpdates";
 import AdminSources from "./pages/admin/AdminSources";
 import AdminCandidates from "./pages/admin/AdminCandidates";
+import AdminMonetization from "./pages/admin/AdminMonetization";
 import AdminTags from "./pages/admin/AdminTags";
 import AdminImageLicenses from "./pages/admin/AdminImageLicenses";
 import AdminSponsorAttribution from "./pages/admin/AdminSponsorAttribution";
@@ -327,6 +328,7 @@ function Router() {
           <Route path="/admin/deployment-updates" component={AdminDeploymentUpdates} />
           <Route path="/admin/sources" component={AdminSources} />
           <Route path="/admin/candidates" component={AdminCandidates} />
+          <Route path="/admin/monetization" component={AdminMonetization} />
           <Route path="/admin/tags" component={AdminTags} />
           <Route path="/admin/image-licenses" component={AdminImageLicenses} />
           <Route path="/admin/sponsor-attribution" component={AdminSponsorAttribution} />

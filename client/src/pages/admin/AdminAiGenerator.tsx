@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Image, Loader2, Info } from "lucide-react";
+import { Sparkles, Image, Loader2, Info, CheckCircle, ChevronRight, ImageIcon } from "lucide-react";
 import { WRITING_STYLES } from "../../../../shared/writingStyles";
 
 export default function AdminAiGenerator() {
@@ -15,6 +15,9 @@ export default function AdminAiGenerator() {
   const [generatedArticle, setGeneratedArticle] = useState<{ headline: string; subheadline: string; body: string; slug: string } | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
+  const [lastSavedId, setLastSavedId] = useState<number | null>(null);
+  const [imageGenerated, setImageGenerated] = useState(false);
+  const [geoGenerated, setGeoGenerated] = useState(false);
 
   const { data: cats } = trpc.categories.list.useQuery();
   const utils = trpc.useUtils();
@@ -30,8 +33,26 @@ export default function AdminAiGenerator() {
   });
 
   const createArticle = trpc.articles.create.useMutation({
-    onSuccess: () => { toast.success("Article saved!"); setGeneratedArticle(null); setTopic(""); utils.articles.list.invalidate(); },
+    onSuccess: (data) => {
+      toast.success("Article saved!");
+      setLastSavedId(data.id);
+      setGeneratedArticle(null);
+      setTopic("");
+      setImageGenerated(false);
+      setGeoGenerated(false);
+      utils.articles.list.invalidate();
+    },
     onError: (e) => toast.error(e.message),
+  });
+
+  const regenerateImage = trpc.ai.generateImageForDraft.useMutation({
+    onSuccess: () => { setImageGenerated(true); toast.success("Image generated for article!"); utils.articles.list.invalidate(); },
+    onError: (e) => toast.error(),
+  });
+
+  const generateGeoForArticle = trpc.ai.generateGeoForArticle.useMutation({
+    onSuccess: () => { setGeoGenerated(true); toast.success("GEO content generated!"); },
+    onError: (e) => toast.error(),
   });
 
   const handleSaveArticle = () => {
@@ -122,6 +143,49 @@ export default function AdminAiGenerator() {
             )}
           </CardContent>
         </Card>
+
+        {/* Post-save success banner */}
+        {lastSavedId && !generatedArticle && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              <span className="font-medium text-sm">Article saved! Next steps:</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => regenerateImage.mutate({ id: lastSavedId })}
+                disabled={regenerateImage.isPending || imageGenerated}
+                className={"flex items-center justify-between px-3 py-2 rounded border text-sm transition-colors " + (imageGenerated ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-green-200 text-green-800 hover:bg-green-50")}
+              >
+                <span className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  {imageGenerated ? "Image generated" : regenerateImage.isPending ? "Generating image..." : "Generate featured image"}
+                </span>
+                {!imageGenerated && <ChevronRight className="w-4 h-4" />}
+                {imageGenerated && <CheckCircle className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => generateGeoForArticle.mutate({ id: lastSavedId })}
+                disabled={generateGeoForArticle.isPending || geoGenerated}
+                className={"flex items-center justify-between px-3 py-2 rounded border text-sm transition-colors " + (geoGenerated ? "bg-blue-100 border-blue-300 text-blue-700" : "bg-white border-blue-200 text-blue-800 hover:bg-blue-50")}
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  {geoGenerated ? "GEO content generated" : generateGeoForArticle.isPending ? "Generating GEO..." : "Generate GEO content"}
+                </span>
+                {!geoGenerated && <ChevronRight className="w-4 h-4" />}
+                {geoGenerated && <CheckCircle className="w-4 h-4" />}
+              </button>
+              <a
+                href={"/admin/articles/" + lastSavedId}
+                className="flex items-center justify-between px-3 py-2 rounded border bg-white border-gray-200 text-gray-800 hover:bg-gray-50 text-sm transition-colors"
+              >
+                <span>Open in editor</span>
+                <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Image generator */}
         <Card>
