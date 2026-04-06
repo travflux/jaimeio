@@ -397,6 +397,54 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Revenue ──────────────────────────────────────
+  revenue: router({
+    getOverview: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { publishedArticles: 0, totalViews: 0, subscribers: 0, socialPostsSent: 0, adsenseEnabled: false, sponsorEnabled: false, amazonEnabled: false };
+      const { articles: artTable, distributionQueue: dq } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [pubCount] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
+      const [viewsResult] = await dbConn.select({ total: sqlFn<number>`COALESCE(SUM(views), 0)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
+      const [subCount] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as c FROM newsletter_subscribers WHERE license_id = " + lid));
+      const [socialCount] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as c FROM distribution_queue WHERE license_id = " + lid + " AND status = 'sent'"));
+      const adsense = await db.getLicenseSetting(lid, "adsense_enabled");
+      const sponsor = await db.getLicenseSetting(lid, "sponsor_enabled");
+      const amazon = await db.getLicenseSetting(lid, "amazon_affiliate_tag");
+      return { publishedArticles: Number(pubCount?.count || 0), totalViews: Number(viewsResult?.total || 0), subscribers: Number((subCount as any[])?.[0]?.c || 0), socialPostsSent: Number((socialCount as any[])?.[0]?.c || 0), adsenseEnabled: adsense?.value === "true", sponsorEnabled: sponsor?.value === "true", amazonEnabled: !!(amazon?.value) };
+    }),
+    getTopArticles: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { articles: [] };
+      const { articles: artTable, categories: catTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, desc } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const top = await dbConn.select({ id: artTable.id, headline: artTable.headline, slug: artTable.slug, views: artTable.views, publishedAt: artTable.publishedAt, categoryId: artTable.categoryId }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).orderBy(desc(artTable.views)).limit(10);
+      const withCats = await Promise.all(top.map(async a => {
+        if (!a.categoryId) return { ...a, categoryName: null };
+        const [cat] = await dbConn.select({ name: catTable.name }).from(catTable).where(eqOp(catTable.id, a.categoryId)).limit(1);
+        return { ...a, categoryName: cat?.name || null };
+      }));
+      return { articles: withCats };
+    }),
+    getDistributionStats: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { stats: [] };
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [rows] = await dbConn.execute(sqlFn.raw("SELECT platform, status, COUNT(*) as cnt FROM distribution_queue WHERE license_id = " + lid + " GROUP BY platform, status"));
+      const map = new Map<string, { sent: number; failed: number }>();
+      for (const r of (rows as any[])) {
+        const ex = map.get(r.platform) || { sent: 0, failed: 0 };
+        if (r.status === "sent") ex.sent += Number(r.cnt);
+        if (r.status === "failed") ex.failed += Number(r.cnt);
+        map.set(r.platform, ex);
+      }
+      return { stats: Array.from(map.entries()).map(([platform, counts]) => ({ platform, ...counts })) };
+    }),
+  }),
+
   // ─── Billing ──────────────────────────────────────
   billing: router({
     getStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
