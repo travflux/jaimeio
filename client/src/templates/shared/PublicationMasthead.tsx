@@ -89,7 +89,7 @@ export function PublicationMasthead({ licenseSettings, categories }: Publication
         <div style={{
           maxWidth: 1280, margin: "0 auto", padding: "0 24px",
           display: "flex", justifyContent: "center", alignItems: "center",
-          overflowX: "auto", gap: 0,
+          overflowX: "auto", gap: 0, scrollbarWidth: "none" as any, msOverflowStyle: "none" as any,
         }}>
           {categories.map(c => {
             const href = `/category/${c.slug}`;
@@ -141,6 +141,7 @@ export function PublicationMasthead({ licenseSettings, categories }: Publication
           .pub-masthead-date { display: none !important; }
           .pub-masthead-inner { grid-template-columns: 1fr auto !important; }
         }
+        nav div::-webkit-scrollbar { display: none; }
       `}</style>
     </>
   );
