@@ -54,6 +54,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [panelTab, setPanelTab] = useState<"review" | "geo">("review");
+  const deleteMut = trpc.articles.permanentDelete.useMutation({ onSuccess: () => { toast.success("Article deleted"); onAction(); } });
   const [editedHeadline, setEditedHeadline] = useState(article.headline || "");
   const [editedSubheadline, setEditedSubheadline] = useState(article.subheadline || "");
   const [dirty, setDirty] = useState(false);
@@ -280,6 +281,10 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
             )}
           </div>
           <a href={"/admin/articles/" + article.id} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, color: "#9ca3af", textDecoration: "none", padding: "4px 0" }}>Edit full article body \u2192</a>
+          <button onClick={() => { if (confirm("Permanently delete this article? This cannot be undone.")) deleteMut.mutate({ articleId: article.id }); }} disabled={deleteMut.isPending}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6 }}>
+            <TrashIcon size={11} /> {deleteMut.isPending ? "Deleting..." : "Permanently Delete Article"}
+          </button>
         </div>
       </div>
     </>
@@ -360,7 +365,13 @@ export default function TenantArticles() {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       {a.featuredImage ? <img src={a.featuredImage} style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 48, height: 48, borderRadius: 6, background: "#f3f4f6", flexShrink: 0 }} />}
                       <div><div style={{ fontWeight: 500, color: "#111827" }}>{a.headline?.substring(0, 60)}{a.headline?.length > 60 ? "..." : ""}</div>
-                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ""}</div></div>
+                        <div style={{ display: "flex", gap: 3, marginTop: 2, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 10, color: "#9ca3af" }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ""}</span>
+                          {a.isEditorsPick && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }}>Pick</span>}
+                          {a.isTrending && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>Trending</span>}
+                          {a.isFeatured && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe" }}>Featured</span>}
+                          {a.isBreaking && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca" }}>Breaking</span>}
+                        </div></div>
                     </div>
                   </td>
                   <td style={{ padding: "10px 16px" }}>{cat ? <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: (cat.color || "#6b7280") + "20", color: cat.color || "#6b7280" }}>{cat.name}</span> : <span style={{ fontSize: 11, color: "#9ca3af" }}>—</span>}</td>
