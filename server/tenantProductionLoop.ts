@@ -165,7 +165,7 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
           const db = await getDb();
           if (!db) continue;
           const { generateSatiricalArticle } = await import("./workflow");
-          const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "" };
+          const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "", source: candidate.sourceName || "RSS", licenseId };
           // Read per-tenant Content Engine settings
           const writingTone = (await getLicenseSetting(licenseId, "writing_tone"))?.value
             || (await getLicenseSetting(licenseId, "writing_style"))?.value
@@ -216,7 +216,7 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
           const db = await getDb();
           if (!db) continue;
           const { generateSatiricalArticle } = await import("./workflow");
-          const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "" };
+          const event = { title: candidate.title, summary: candidate.summary || "", sourceUrl: candidate.sourceUrl || "", source: candidate.sourceName || "RSS", licenseId };
           // Read per-tenant Content Engine settings
           const writingTone = (await getLicenseSetting(licenseId, "writing_tone"))?.value
             || (await getLicenseSetting(licenseId, "writing_style"))?.value
