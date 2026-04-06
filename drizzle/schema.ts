@@ -83,6 +83,37 @@ export const newsletterSubscribers = mysqlTable("newsletter_subscribers", {
 
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 
+export const newsletterSends = mysqlTable("newsletter_sends", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  previewText: varchar("preview_text", { length: 255 }),
+  htmlContent: text("html_content"),
+  articleIds: text("article_ids"), // JSON array of article IDs
+  recipientCount: int("recipient_count").default(0),
+  openCount: int("open_count").default(0),
+  clickCount: int("click_count").default(0),
+  resendBroadcastId: varchar("resend_broadcast_id", { length: 255 }),
+  status: mysqlEnum("status", ["draft", "sending", "sent", "failed"]).default("draft"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type NewsletterSend = typeof newsletterSends.$inferSelect;
+
+export const smsTemplates = mysqlTable("sms_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  templateText: text("template_text").notNull(),
+  templateType: mysqlEnum("template_type", ["newsletter_url", "breaking_news", "custom"]).default("custom"),
+  isActive: boolean("is_active").default(true),
+  sendDelayMinutes: int("send_delay_minutes").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SmsTemplate = typeof smsTemplates.$inferSelect;
+
 export const socialPosts = mysqlTable("social_posts", {
   id: int("id").autoincrement().primaryKey(),
   articleId: int("articleId").notNull(),

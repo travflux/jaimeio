@@ -47,7 +47,8 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
   { label: "DISTRIBUTION", key: "distribution", icon: Share2, items: [
     { icon: Send, label: "Social Queue", href: "/admin/distribution" },
-    { icon: Mail, label: "Newsletter", href: "/admin/communications" },
+    { icon: Mail, label: "Newsletter", href: "/admin/newsletter" },
+    { icon: MessageCircle, label: "SMS Templates", href: "/admin/sms-templates" },
   ]},
   { label: "ACCOUNT", key: "account", icon: Users, items: [
     { icon: Users, label: "Users", href: "/admin/users" },
