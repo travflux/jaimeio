@@ -11,3 +11,8 @@ Sat Apr  4 11:12:25 PM UTC 2026: Promoted staging 45c1bd3 to production — Spri
 [2026-04-04 23:31:22] Deploy complete: staging
 [2026-04-06 19:44:43] Deploy started: production @ bbaa695
 Mon Apr  6 07:45:21 PM UTC 2026: Promoted — Content quality fix, source attribution, article tags, filter counts, delete button, candidates counts, nav fixes
+[2026-04-06 20:34:33] Deploy started: production @ 8d16352
+[2026-04-06 20:34:33] Deploy complete: production
+Mon Apr  6 08:35:17 PM UTC 2026: Promoted — Hotfix Batch B: Candidates UI, GEO/image filters, Create Article improvements, AI Generator, Settings fixes
+[2026-04-06 20:35:37] Deploy started: staging @ e86ea18
+[2026-04-06 20:35:37] Deploy complete: staging
