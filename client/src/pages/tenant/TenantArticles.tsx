@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
-import { X, Loader2, Share2, RefreshCw, Trash2 as TrashIcon } from "lucide-react";
+import { X, Loader2, Share2, RefreshCw, Trash2 as TrashIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 
 function ReviewPanel({ article, categories, onClose, onAction }: { article: any; categories: any[]; onClose: () => void; onAction: () => void }) {
@@ -258,8 +258,18 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
 export default function TenantArticles() {
   const { licenseId, settings } = useTenantContext();
   const [filter, setFilter] = useState("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<number | undefined>();
   const [reviewArticle, setReviewArticle] = useState<any>(null);
-  const { data, isLoading, refetch } = trpc.articles.list.useQuery(filter === "all" ? { limit: 50 } : { status: filter, limit: 50 });
+
+  useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
+
+  const queryParams: any = { limit: 50 };
+  if (filter !== "all") queryParams.status = filter;
+  if (search) queryParams.search = search;
+  if (catFilter) queryParams.categoryId = catFilter;
+  const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
   const catsQuery = trpc.categories.list.useQuery();
   const articles = data?.articles || [];
   let licenseCategories = catsQuery.data || [];
@@ -269,13 +279,35 @@ export default function TenantArticles() {
   return (
     <TenantLayout pageTitle="Articles" pageSubtitle={`${data?.total || 0} total articles`} section="Content"
       headerActions={<a href="/admin/articles/create" style={{ height: 34, padding: "0 14px", background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>+ Create Article</a>}>
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {filters.map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
-            borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
-            {f}{(() => { const c = f === "all" ? (data?.total || 0) : articles.filter((x: any) => x.status === f).length; return c > 0 ? " (" + c + ")" : ""; })()}
-          </button>
-        ))}
+      {/* Search + Filters */}
+      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 12, marginBottom: 16 }}>
+        <div style={{ position: "relative", marginBottom: 8 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: 9, color: "#9ca3af" }} />
+          <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
+            placeholder="Search articles by headline..."
+            style={{ width: "100%", padding: "7px 12px 7px 32px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, outline: "none" }} />
+          {searchInput && <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{ position: "absolute", right: 8, top: 8, background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={14} /></button>}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {filters.map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
+              borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
+              {f}
+            </button>
+          ))}
+          <select value={catFilter ?? ""} onChange={e => setCatFilter(e.target.value ? Number(e.target.value) : undefined)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }}>
+            <option value="">All Categories</option>
+            {licenseCategories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+          </select>
+          {(search || catFilter) && (
+            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); }}
+              style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#9ca3af" }}>
+              Clear
+            </button>
+          )}
+          {(search || catFilter) && <span style={{ fontSize: 11, color: "#9ca3af" }}>{data?.total || 0} results</span>}
+        </div>
       </div>
       {isLoading ? <p style={{ color: "#6b7280", padding: 40, textAlign: "center" }}>Loading...</p> : articles.length === 0 ? (
         <div style={{ textAlign: "center", padding: 60, color: "#6b7280" }}><p style={{ fontSize: 16 }}>No articles found</p></div>
