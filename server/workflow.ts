@@ -398,41 +398,124 @@ IMPORTANT RULES:
 - NEVER include real people saying things they didn't say. Instead, create obviously fictional characters when quotes are needed.`;
 }
 
+// ─── HTML Stripping Helper ──────────────────────────────────────────────────
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
+}
+
+// ─── Per-Tenant System Prompt Builder ──────────────────────────────────────
+export async function buildTenantSystemPrompt(licenseId: number): Promise<string> {
+  const { getLicenseSetting } = await import("./db");
+  const get = async (key: string, fallback: string) => (await getLicenseSetting(licenseId, key))?.value || fallback;
+
+  const siteName = await get("brand_site_name", "this publication");
+  const tagline = await get("brand_tagline", "");
+  const genre = await get("brand_genre", "general");
+  const tone = await get("writing_tone", "") || await get("writing_style", "professional");
+  const targetWords = await get("target_article_length", await get("target_word_count", "800"));
+  const readingLevel = await get("reading_level", "intermediate");
+  const headlineStyle = await get("headline_style", "statement");
+  const includeStats = await get("include_statistics", "true");
+  const includeQuotes = await get("include_quotes", "true");
+  const includeCta = await get("include_cta", "true");
+  const includeSubs = await get("include_subheadings", "true");
+  const custom = await get("article_llm_system_prompt", "");
+
+  const toneMap: Record<string, string> = {
+    professional: "authoritative, credible, and professional",
+    conversational: "conversational, approachable, and engaging",
+    analytical: "analytical, data-driven, and evidence-based",
+    inspirational: "inspirational, motivating, and empowering",
+    educational: "educational, clear, and explanatory",
+    bold: "bold, opinionated, and direct",
+    luxury: "sophisticated, premium, and refined",
+    satirical: "witty, satirical, and sharp",
+    investigative: "investigative, critical, and thorough",
+    friendly: "friendly, casual, and warm",
+  };
+  const toneDesc = toneMap[tone] || tone;
+
+  const rlMap: Record<string, string> = {
+    beginner: "Write for a general audience. Use simple, clear language. Explain all technical terms.",
+    intermediate: "Write for an informed reader. Balance accessibility with depth.",
+    expert: "Write for industry professionals. Use technical terminology freely.",
+  };
+
+  const hsMap: Record<string, string> = {
+    statement: "Write headlines as declarative statements.",
+    question: "Write headlines as engaging questions.",
+    "how-to": "Write headlines in How-To format.",
+    listicle: "Write headlines as numbered lists.",
+    news: "Write headlines in journalistic news style.",
+  };
+
+  const structure = [
+    includeSubs !== "false" ? "Use H2 section subheadings." : "Write as flowing prose.",
+    includeStats !== "false" ? "Include statistics and data points where relevant." : "",
+    includeQuotes !== "false" ? "Include attributed expert quotes where relevant." : "",
+    includeCta !== "false" ? "End with a brief call-to-action for readers." : "",
+  ].filter(Boolean).join(" ");
+
+  return `You are an expert writer for ${siteName}${tagline ? " — " + tagline : ""}.
+
+PUBLICATION: ${siteName} is a ${genre} publication.
+
+TONE: Write in a ${toneDesc} voice. Every sentence must feel native to ${siteName}.
+
+READING LEVEL: ${rlMap[readingLevel] || rlMap.intermediate}
+
+HEADLINES: ${hsMap[headlineStyle] || hsMap.statement} Headlines must be completely original — never copy the source headline.
+
+STRUCTURE: ${structure}
+
+LENGTH: Write approximately ${targetWords} words.
+
+ORIGINALITY (CRITICAL):
+- The source topic is INSPIRATION ONLY — do not reproduce source content
+- Write a completely original article from ${siteName}'s unique perspective
+- Add analysis, context, and angles the source did not cover
+- NEVER copy sentences or phrases from the source
+- The reader should feel they are getting ${siteName}'s original take
+
+${custom ? "EDITOR INSTRUCTIONS:\n" + custom : ""}`;
+}
+
+// ─── User Prompt Builder ──────────────────────────────────────────────────
+function buildArticleUserPrompt(
+  candidate: { title: string; summary?: string | null; source?: string | null },
+  targetWords: string
+): string {
+  const cleanSummary = candidate.summary ? stripHtml(candidate.summary) : "";
+  const hasSummary = cleanSummary.length > 50 && !cleanSummary.startsWith("http");
+  return `Write an original article about:
+
+TOPIC: ${candidate.title}
+${hasSummary ? "CONTEXT: " + cleanSummary.slice(0, 500) : ""}
+${candidate.source ? "SOURCE: " + candidate.source + " (topic reference only)" : ""}
+
+Write a completely original article from this publication's perspective.
+The headline MUST be different from the topic above.
+
+Return ONLY valid JSON:
+{"headline":"original headline","subheadline":"one sentence deck","body":"full article with \\n\\n paragraph breaks","category":"best fitting category name"}`;
+}
+
 export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: string, targetWords: number, templateSettings?: any, structureOpts?: { readingLevel?: string; headlineStyle?: string; includeSubheadings?: boolean; includeStatistics?: boolean; includeQuotes?: boolean; includeCta?: boolean }): Promise<GeneratedArticle> {
   // Apply template overrides if provided
   if (templateSettings?.targetWordCount) targetWords = templateSettings.targetWordCount;
   if (templateSettings?.tone) stylePrompt = `Write in a ${templateSettings.tone} tone. ${stylePrompt}`;
   if (templateSettings?.userMessage) stylePrompt = templateSettings.userMessage;
 
-  // Check for a full system prompt override stored in the DB (white-label support)
-  const overrideSetting = await db.getSetting("article_llm_system_prompt");
-  const lengthInstruction = `Target approximately ${targetWords} words for the article body.`;
-  const systemPrompt = overrideSetting?.value
-    ? overrideSetting.value
-        .replace("{{STYLE}}", stylePrompt)
-        .replace("{{LENGTH_INSTRUCTION}}", lengthInstruction)
-        .replace("{STYLE}", stylePrompt)
-        .replace("{LENGTH_INSTRUCTION}", lengthInstruction)
-        .replace("{targetWords}", String(targetWords))
-        .replace("{{targetWords}}", String(targetWords))
-    : `${buildSystemPrompt(targetWords, structureOpts)}\n\n${stylePrompt}`;
-
-  // Check for a user message override stored in the DB (white-label support)
-  const userMsgSetting = await db.getSetting("article_llm_user_prompt");
-  const defaultUserMsg = `Write a new article based on this real news event:\n\nHEADLINE: ${event.title}\nSUMMARY: ${event.summary || "No summary available"}\nSOURCE: ${event.source}\n\nReturn your response as a JSON object with these fields:\n- "headline": A compelling headline (different from the original)\n- "subheadline": A subheadline or deck (one sentence)\n- "body": The full article (approximately ${targetWords} words, in plain text with paragraph breaks using \\n\\n)\n\nReturn ONLY the JSON object, no other text.`;
-  const userMessage = userMsgSetting?.value
-    ? userMsgSetting.value
-        .replace("{{HEADLINE}}", event.title)
-        .replace("{HEADLINE}", event.title)
-        .replace("{{SUMMARY}}", event.summary || "No summary available")
-        .replace("{SUMMARY}", event.summary || "No summary available")
-        .replace("{{SOURCE}}", event.source)
-        .replace("{SOURCE}", event.source)
-        .replace("{{TARGET_WORDS}}", String(targetWords))
-        .replace("{TARGET_WORDS}", String(targetWords))
-        .replace("{{targetWords}}", String(targetWords))
-        .replace("{targetWords}", String(targetWords))
-    : defaultUserMsg;
+  // Build prompts — per-tenant if licenseId available, otherwise legacy
+  let systemPrompt: string;
+  let userMessage: string;
+  if ((event as any).licenseId) {
+    systemPrompt = await buildTenantSystemPrompt((event as any).licenseId);
+    userMessage = buildArticleUserPrompt({ title: event.title, summary: event.summary, source: event.source }, String(targetWords));
+  } else {
+    systemPrompt = `${buildSystemPrompt(targetWords, structureOpts)}\n\n${stylePrompt}`;
+    userMessage = buildArticleUserPrompt({ title: event.title, summary: event.summary, source: event.source }, String(targetWords));
+  }
 
   const response = await invokeLLM({
     messages: [
@@ -508,9 +591,9 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
     const genre = genreSetting?.value || "Analysis";
     const genreLabel = genre.charAt(0).toUpperCase() + genre.slice(1);
     return {
-      headline: `${genreLabel}: ${event.title.slice(0, 60)}`,
-      subheadline: "",  // No placeholder — empty is better than misleading
-      body: fallbackBody,
+      headline: event.title.slice(0, 80),
+      subheadline: "",
+      body: fallbackBody.length > 100 ? fallbackBody : "This article is being prepared. Please check back shortly.",
     };
   }
 }
@@ -543,7 +626,7 @@ export async function generateArticleFromTopic(opts: {
   const genrePrompt = genre !== "general" ? "Write for a " + genre + " publication. " : "";
   const fullStyle = genrePrompt + writingTone + (opts.additionalInstructions ? "\n\n" + opts.additionalInstructions : "") + (customInstructions ? "\n\n" + customInstructions : "");
 
-  const event = { title: opts.topic, summary: opts.topic, source: "Manual", sourceUrl: "", publishedDate: new Date().toISOString(), feedSourceId: null } as any;
+  const event = { title: opts.topic, summary: opts.topic, source: "Manual", sourceUrl: "", publishedDate: new Date().toISOString(), feedSourceId: null, licenseId: lid } as any;
 
   const article = await generateSatiricalArticle(event, fullStyle, targetWords, undefined, {
     readingLevel, headlineStyle,

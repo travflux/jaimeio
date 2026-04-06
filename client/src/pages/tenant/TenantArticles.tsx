@@ -14,6 +14,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
     onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
   });
   const updateImageMut = trpc.articles.updateImage.useMutation();
+  const toggleTagMut = trpc.articles.toggleTag.useMutation({ onSuccess: () => onAction() });
   const regenImageMut = trpc.articles.regenerateImage.useMutation({
     onSuccess: (r: any) => { if (r?.url) setImageUrl(r.url); toast.success("New image generated"); },
     onError: () => toast.error("Image generation failed"),
@@ -53,6 +54,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [panelTab, setPanelTab] = useState<"review" | "geo">("review");
+  const deleteMut = trpc.articles.permanentDelete.useMutation({ onSuccess: () => { toast.success("Article deleted"); onAction(); } });
   const [editedHeadline, setEditedHeadline] = useState(article.headline || "");
   const [editedSubheadline, setEditedSubheadline] = useState(article.subheadline || "");
   const [dirty, setDirty] = useState(false);
@@ -104,11 +106,41 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                 onFocus={e => (e.currentTarget.style.borderBottomColor = "#2dd4bf")}
                 onBlur={e => (e.currentTarget.style.borderBottomColor = "transparent")}
                 placeholder="Subheadline (optional)..." />
-              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>
                 <span>{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</span>
                 <span>{readTime} min read</span>
                 <span>{wordCount} words</span>
               </div>
+              {(article.sourceUrl || article.sourceName) && (
+                <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontWeight: 500 }}>Source:</span>
+                  {article.sourceUrl ? (
+                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf", textDecoration: "none" }}>
+                      {article.sourceName || "View source"}
+                    </a>
+                  ) : <span>{article.sourceName}</span>}
+                </div>
+              )}
+              {/* Tags */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                {[
+                  { key: "editors_pick", label: "Editor\'s Pick", field: "isEditorsPick", color: "#8b5cf6" },
+                  { key: "trending", label: "Trending", field: "isTrending", color: "#f59e0b" },
+                  { key: "featured", label: "Featured", field: "isFeatured", color: "#3b82f6" },
+                  { key: "sponsored", label: "Sponsored", field: "isSponsored", color: "#22c55e" },
+                  { key: "breaking", label: "Breaking", field: "isBreaking", color: "#ef4444" },
+                ].map(tag => {
+                  const active = !!(article as any)[tag.field];
+                  return (
+                    <button key={tag.key} onClick={() => toggleTagMut.mutate({ articleId: article.id, tag: tag.key as any })}
+                      style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid",
+                        borderColor: active ? tag.color : "#e5e7eb", background: active ? tag.color + "15" : "#fff", color: active ? tag.color : "#9ca3af" }}>
+                      {active ? "✓ " : ""}{tag.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Category</label>
                 <select value={selectedCat || ""} onChange={e => { setSelectedCat(Number(e.target.value)); updateMut.mutate({ id: article.id, categoryId: Number(e.target.value) }); }}
@@ -249,6 +281,10 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
             )}
           </div>
           <a href={"/admin/articles/" + article.id} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, color: "#9ca3af", textDecoration: "none", padding: "4px 0" }}>Edit full article body \u2192</a>
+          <button onClick={() => { if (confirm("Permanently delete this article? This cannot be undone.")) deleteMut.mutate({ articleId: article.id }); }} disabled={deleteMut.isPending}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6 }}>
+            <TrashIcon size={11} /> {deleteMut.isPending ? "Deleting..." : "Permanently Delete Article"}
+          </button>
         </div>
       </div>
     </>
@@ -329,7 +365,13 @@ export default function TenantArticles() {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       {a.featuredImage ? <img src={a.featuredImage} style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} /> : <div style={{ width: 48, height: 48, borderRadius: 6, background: "#f3f4f6", flexShrink: 0 }} />}
                       <div><div style={{ fontWeight: 500, color: "#111827" }}>{a.headline?.substring(0, 60)}{a.headline?.length > 60 ? "..." : ""}</div>
-                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ""}</div></div>
+                        <div style={{ display: "flex", gap: 3, marginTop: 2, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 10, color: "#9ca3af" }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ""}</span>
+                          {a.isEditorsPick && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }}>Pick</span>}
+                          {a.isTrending && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>Trending</span>}
+                          {a.isFeatured && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe" }}>Featured</span>}
+                          {a.isBreaking && <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 3, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca" }}>Breaking</span>}
+                        </div></div>
                     </div>
                   </td>
                   <td style={{ padding: "10px 16px" }}>{cat ? <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: (cat.color || "#6b7280") + "20", color: cat.color || "#6b7280" }}>{cat.name}</span> : <span style={{ fontSize: 11, color: "#9ca3af" }}>—</span>}</td>

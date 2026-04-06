@@ -116,6 +116,23 @@ export function MagazineArticle({ licenseSettings, categories, currentArticle, a
           <p style={{ fontSize: 13, color: "var(--brand-text-secondary)", lineHeight: 1.5 }}>{licenseSettings.brand_site_description || licenseSettings.brand_tagline || ""}</p>
         </div>
 
+        {/* Source Attribution */}
+        {(article.sourceUrl || (article as any).sourceName) && (
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--brand-border)" }}>
+            <p style={{ fontSize: 12, color: "var(--brand-text-secondary)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 500 }}>Source:</span>
+              {article.sourceUrl ? (
+                <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--brand-link)", textDecoration: "none" }}>
+                  {(article as any).sourceName || "View original"}
+                </a>
+              ) : <span>{(article as any).sourceName}</span>}
+              <span style={{ color: "var(--brand-text-secondary)", opacity: 0.5 }}>
+                — Written by {licenseSettings.brand_site_name || "our editorial team"} based on publicly available information.
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* You might also like */}
         {related.length > 0 && (
           <div style={{ marginTop: 48 }}>

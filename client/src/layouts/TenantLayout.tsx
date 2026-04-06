@@ -36,9 +36,11 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
     { icon: CalendarDays, label: "Calendar", href: "/admin/calendar" },
     { icon: Image, label: "Media Library", href: "/admin/media-library" },
+    { icon: PieChart, label: "Categories", href: "/admin/categories" },
   ]},
   { label: "SOURCES", key: "sources", icon: Rss, items: [
     { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
+    { icon: BarChart2, label: "Feed Performance", href: "/admin/feed-performance" },
     { icon: Twitter, label: "X Listening", href: "/admin/x-listening" },
     { icon: Youtube, label: "YouTube", href: "/admin/youtube-listening" },
   ]},
@@ -48,7 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
   { label: "ANALYTICS", key: "analytics", icon: BarChart2, items: [
     { icon: TrendingUp, label: "Performance", href: "/admin/social-performance" },
-    { icon: PieChart, label: "Categories", href: "/admin/categories" },
+    { icon: PieChart, label: "Category Balance", href: "/admin/category-balance" },
     { icon: DollarSign, label: "Revenue", href: "/admin/revenue" },
   ]},
   { label: "ACCOUNT", key: "account", icon: Users, items: [

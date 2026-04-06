@@ -161,6 +161,18 @@ export const appRouter = router({
       }),
   }),
   selectorCandidates: router({
+    getCounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { pending: 0, selected: 0, rejected: 0, expired: 0, high: 0, medium: 0, low: 0, sources: [] };
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [statusRows] = await dbConn.execute(sqlFn.raw("SELECT status, COUNT(*) as cnt FROM selector_candidates WHERE license_id = " + lid + " GROUP BY status"));
+      const [potRows] = await dbConn.execute(sqlFn.raw("SELECT article_potential, COUNT(*) as cnt FROM selector_candidates WHERE license_id = " + lid + " AND status = 'pending' GROUP BY article_potential"));
+      const [srcRows] = await dbConn.execute(sqlFn.raw("SELECT DISTINCT source_name FROM selector_candidates WHERE license_id = " + lid + " AND source_name IS NOT NULL LIMIT 50"));
+      const sm = Object.fromEntries((statusRows as any[]).map(r => [r.status, Number(r.cnt)]));
+      const pm = Object.fromEntries((potRows as any[]).map(r => [r.article_potential || "unknown", Number(r.cnt)]));
+      return { pending: sm.pending || 0, selected: sm.selected || 0, rejected: sm.rejected || 0, expired: sm.expired || 0, high: pm.high || 0, medium: pm.medium || 0, low: pm.low || 0, sources: (srcRows as any[]).map(r => r.source_name).filter(Boolean) };
+    }),
     list: tenantOrAdminProcedure
       .input(z.object({ status: z.string().optional(), potential: z.string().optional(), source: z.string().optional(), limit: z.number().optional() }).optional())
       .query(async ({ input, ctx }) => {
@@ -585,8 +597,27 @@ export const appRouter = router({
         await db.updateArticle(input.articleId, { featuredImage: null } as any);
         return { success: true };
       }),
+    getCounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { all: 0, published: 0, pending: 0, approved: 0, draft: 0, rejected: 0 };
+      const { articles: at } = await import("../drizzle/schema");
+      const { eq: eqOp, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [rows] = await dbConn.execute(sqlFn.raw("SELECT status, COUNT(*) as cnt FROM articles WHERE license_id = " + lid + " GROUP BY status"));
+      const map = Object.fromEntries((rows as any[]).map(r => [r.status, Number(r.cnt)]));
+      const total = Object.values(map).reduce((s: number, v) => s + (v as number), 0);
+      return { all: total, published: map.published || 0, pending: map.pending || 0, approved: map.approved || 0, draft: map.draft || 0, rejected: map.rejected || 0 };
+    }),
+    permanentDelete: tenantOrAdminProcedure.input(z.object({ articleId: z.number() })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { articles: at } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      await dbConn.delete(at).where(andOp(eqOp(at.id, input.articleId), eqOp(at.licenseId, ctx.licenseId || 7)));
+      return { success: true };
+    }),
     toggleTag: protectedProcedure
-      .input(z.object({ articleId: z.number(), tag: z.enum(["editors_pick", "trending", "featured"]) }))
+      .input(z.object({ articleId: z.number(), tag: z.enum(["editors_pick", "trending", "featured", "sponsored", "breaking"]) }))
       .mutation(async ({ input }) => {
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -594,7 +625,7 @@ export const appRouter = router({
         const { eq: eqOp } = await import("drizzle-orm");
         const [article] = await dbConn.select().from(at).where(eqOp(at.id, input.articleId)).limit(1);
         if (!article) throw new TRPCError({ code: "NOT_FOUND" });
-        const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured" };
+        const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured", sponsored: "isSponsored", breaking: "isBreaking" };
         const field = fieldMap[input.tag] as keyof typeof article;
         const current = article[field] as boolean;
         await dbConn.update(at).set({ [field]: !current } as any).where(eqOp(at.id, input.articleId));

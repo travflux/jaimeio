@@ -49,6 +49,7 @@ export const articles = mysqlTable("articles", {
   batchDate: varchar("batchDate", { length: 10 }),
   sourceEvent: text("sourceEvent"),
   sourceUrl: text("sourceUrl"),
+  sourceName: varchar("sourceName", { length: 255 }),
   feedSourceId: int("feedSourceId"), // FK to rssFeedWeights.id — tracks which feed produced this article
   views: int("views").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -66,6 +67,8 @@ export const articles = mysqlTable("articles", {
   isTrending: boolean("is_trending").default(false).notNull(),
   seoDescription: varchar("seo_description", { length: 500 }),
   isFeatured: boolean("is_featured").default(false).notNull(),
+  isSponsored: boolean("is_sponsored").default(false).notNull(),
+  isBreaking: boolean("is_breaking").default(false).notNull(),
 });
 
 export type Article = typeof articles.$inferSelect;
@@ -329,6 +332,7 @@ export const blockedSources = mysqlTable("blocked_sources", {
   id: int("id").autoincrement().primaryKey(),
   sourceName: varchar("sourceName", { length: 255 }).notNull().unique(), // e.g., "CNN", "Fox News"
   sourceUrl: text("sourceUrl"), // Optional: the base URL of the source
+  sourceName: varchar("sourceName", { length: 255 }),
   reason: text("reason"), // Optional: why it was blocked
   blockedAt: timestamp("blockedAt").defaultNow().notNull(),
 });
