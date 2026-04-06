@@ -340,6 +340,63 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── X Replies ─────────────────────────────────────
+  xReplies: router({
+    getPending: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { replies: [] };
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp, desc } = await import("drizzle-orm");
+      const rows = await dbConn.select().from(xReplies).where(eqOp(xReplies.status, "pending")).orderBy(desc(xReplies.createdAt)).limit(20);
+      return { replies: rows.map(r => ({ id: r.id, originalAuthor: r.tweetAuthorHandle || r.tweetAuthor, originalTweetText: r.tweetText, originalTweetUrl: null, originalTweetDate: r.createdAt, draftText: r.replyContent || "" })) };
+    }),
+    approve: tenantOrAdminProcedure.input(z.object({ replyId: z.number(), finalText: z.string().max(280) })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      await dbConn.update(xReplies).set({ replyContent: input.finalText, status: "approved" }).where(eqOp(xReplies.id, input.replyId));
+      console.log("[X Replies] Reply " + input.replyId + " approved");
+      return { success: true };
+    }),
+    reject: tenantOrAdminProcedure.input(z.object({ replyId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      await dbConn.update(xReplies).set({ status: "skipped" }).where(eqOp(xReplies.id, input.replyId));
+      return { success: true };
+    }),
+  }),
+
+  // ─── Sponsors ─────────────────────────────────────
+  sponsors: router({
+    getSchedule: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { slots: [] };
+      try {
+        const { sponsorSchedules } = await import("../drizzle/schema");
+        const { eq: eqOp } = await import("drizzle-orm");
+        const slots = await dbConn.select().from(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, ctx.licenseId || 7));
+        return { slots };
+      } catch { return { slots: [] }; }
+    }),
+    saveSchedule: tenantOrAdminProcedure.input(z.object({
+      slots: z.array(z.object({ dayOfWeek: z.number(), sponsorName: z.string(), sponsorUrl: z.string(), sponsorTagline: z.string(), logoUrl: z.string(), isActive: z.boolean() }))
+    })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sponsorSchedules } = await import("../drizzle/schema");
+      const { eq: eqOp, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      await dbConn.delete(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, lid));
+      if (input.slots.length > 0) {
+        await dbConn.insert(sponsorSchedules).values(input.slots.map(s => ({ licenseId: lid, dayOfWeek: s.dayOfWeek, sponsorName: s.sponsorName, sponsorUrl: s.sponsorUrl, sponsorTagline: s.sponsorTagline, logoUrl: s.logoUrl, isActive: s.isActive })));
+      }
+      return { success: true };
+    }),
+  }),
+
   // ─── Billing ──────────────────────────────────────
   billing: router({
     getStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {

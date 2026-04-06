@@ -1057,3 +1057,16 @@ export const publicationPages = mysqlTable("publication_pages", {
 }));
 export type PublicationPage = typeof publicationPages.$inferSelect;
 export type InsertPublicationPage = typeof publicationPages.$inferInsert;
+
+// sponsor_schedules: day-by-day sponsor bar assignments
+export const sponsorSchedules = mysqlTable("sponsor_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  dayOfWeek: int("day_of_week").notNull(),
+  sponsorName: varchar("sponsor_name", { length: 255 }).notNull(),
+  sponsorUrl: varchar("sponsor_url", { length: 500 }),
+  sponsorTagline: text("sponsor_tagline"),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

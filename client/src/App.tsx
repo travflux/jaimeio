@@ -92,6 +92,8 @@ import TenantSettings from "./pages/tenant/TenantSettings";
 import TenantContentEngine from "./pages/tenant/TenantContentEngine";
 import TenantAIGenerator from "./pages/tenant/TenantAIGenerator";
 import TenantCategoryBalance from "./pages/tenant/TenantCategoryBalance";
+import TenantXReplyQueue from "./pages/tenant/TenantXReplyQueue";
+import TenantSponsorSchedule from "./pages/tenant/TenantSponsorSchedule";
 import TenantSocialQueue from "./pages/tenant/TenantSocialQueue";
 import TenantDesignTheme from "./pages/tenant/TenantDesignTheme";
 import TenantPublishing from "./pages/tenant/TenantPublishing";
@@ -247,6 +249,8 @@ function Router() {
           <Route path="/admin/templates" component={TenantTemplates} />
           <Route path="/admin/categories" component={TenantCategories} />
           <Route path="/admin/category-balance" component={TenantCategoryBalance} />
+          <Route path="/admin/x-replies" component={TenantXReplyQueue} />
+          <Route path="/admin/sponsor-schedule" component={TenantSponsorSchedule} />
           <Route path="/admin/tags" component={TenantTags} />
           <Route path="/admin/pages" component={TenantPages} />
           <Route path="/admin/source-feeds" component={TenantSourceFeeds} />
