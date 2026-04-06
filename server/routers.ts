@@ -3713,6 +3713,117 @@ export const appRouter = router({
         return { library: libStatsResult[0] ?? null, domains: domainStatsResult[0] ?? null };
       }),
   }),
+  // ─── Dashboard ──────────────────────────────────────
+  dashboard: router({
+    getSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { articles, distributionQueue, newsletterSubscribers } = await import("../drizzle/schema");
+      const { eq, and, or, isNull, desc, gte, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return null;
+
+      const licenseId = ctx.licenseId;
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [
+        articleCounts,
+        missingImageCount,
+        missingGeoCount,
+        totalViews,
+        topArticles,
+        articlesThisMonth,
+        articlesByDay,
+        socialStats,
+        subscriberCount,
+        trendingArticles,
+        editorPicksCount,
+      ] = await Promise.all([
+        dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` })
+          .from(articles).where(eq(articles.licenseId, licenseId)).groupBy(articles.status),
+
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles)
+          .where(and(eq(articles.licenseId, licenseId), eq(articles.status, "published"),
+            or(isNull(articles.featuredImage), eq(articles.featuredImage, "")))),
+
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles)
+          .where(and(eq(articles.licenseId, licenseId), eq(articles.status, "published"),
+            or(isNull(articles.geoSummary), eq(articles.geoSummary, "")))),
+
+        dbConn.select({ total: sql<number>`COALESCE(SUM(${articles.views}), 0)` }).from(articles)
+          .where(and(eq(articles.licenseId, licenseId), eq(articles.status, "published"))),
+
+        dbConn.select({ id: articles.id, headline: articles.headline, slug: articles.slug,
+          views: articles.views, publishedAt: articles.publishedAt, featuredImage: articles.featuredImage })
+          .from(articles).where(and(eq(articles.licenseId, licenseId), eq(articles.status, "published")))
+          .orderBy(desc(articles.views)).limit(5),
+
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles)
+          .where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, startOfMonth))),
+
+        dbConn.select({ date: sql<string>`DATE(created_at)`, count: sql<number>`COUNT(*)` })
+          .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, thirtyDaysAgo)))
+          .groupBy(sql`DATE(created_at)`).orderBy(sql`DATE(created_at)`),
+
+        // distributionQueue has no licenseId column — join through articles to scope by license
+        dbConn.select({ platform: distributionQueue.platform, status: distributionQueue.status,
+          count: sql<number>`COUNT(*)` })
+          .from(distributionQueue)
+          .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+          .where(and(eq(articles.licenseId, licenseId), gte(distributionQueue.createdAt, thirtyDaysAgo)))
+          .groupBy(distributionQueue.platform, distributionQueue.status)
+          .catch(() => []),
+
+        // newsletterSubscribers has no licenseId — count all active subscribers globally
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(newsletterSubscribers)
+          .where(eq(newsletterSubscribers.status, "active"))
+          .catch(() => [{ count: 0 }]),
+
+        dbConn.select({ id: articles.id, headline: articles.headline, slug: articles.slug, views: articles.views })
+          .from(articles).where(and(eq(articles.licenseId, licenseId), eq(articles.isTrending, true)))
+          .orderBy(desc(articles.views)).limit(5),
+
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles)
+          .where(and(eq(articles.licenseId, licenseId), eq(articles.isEditorsPick, true))),
+      ]);
+
+      const statusMap: Record<string, number> = {};
+      for (const r of articleCounts) statusMap[r.status] = Number(r.count);
+      const totalArticles = articleCounts.reduce((sum, r) => sum + Number(r.count), 0);
+
+      const socialMap: Record<string, { sent: number; failed: number; pending: number }> = {};
+      for (const row of (socialStats as any[])) {
+        if (!socialMap[row.platform]) socialMap[row.platform] = { sent: 0, failed: 0, pending: 0 };
+        if (row.status === "sent" || row.status === "posted") socialMap[row.platform].sent += Number(row.count);
+        else if (row.status === "failed") socialMap[row.platform].failed += Number(row.count);
+        else socialMap[row.platform].pending += Number(row.count);
+      }
+
+      return {
+        articles: {
+          total: totalArticles,
+          published: statusMap.published ?? 0,
+          pending: statusMap.pending ?? 0,
+          approved: statusMap.approved ?? 0,
+          draft: statusMap.draft ?? 0,
+          rejected: statusMap.rejected ?? 0,
+          thisMonth: Number(articlesThisMonth[0]?.count ?? 0),
+          missingImage: Number(missingImageCount[0]?.count ?? 0),
+          missingGeo: Number(missingGeoCount[0]?.count ?? 0),
+          editorsPicks: Number(editorPicksCount[0]?.count ?? 0),
+          byDay: articlesByDay,
+        },
+        views: { total: Number(totalViews[0]?.total ?? 0) },
+        topArticles,
+        trendingArticles,
+        social: socialMap,
+        newsletter: { subscribers: Number(subscriberCount[0]?.count ?? 0) },
+      };
+    }),
+  }),
+
 });
 
 export type AppRouter = typeof appRouter;

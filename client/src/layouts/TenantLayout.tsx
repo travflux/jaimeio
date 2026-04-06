@@ -37,6 +37,7 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: CalendarDays, label: "Calendar", href: "/admin/calendar" },
     { icon: Image, label: "Media Library", href: "/admin/media-library" },
     { icon: PieChart, label: "Categories", href: "/admin/categories" },
+    { icon: PieChart, label: "Category Balance", href: "/admin/category-balance" },
   ]},
   { label: "SOURCES", key: "sources", icon: Rss, items: [
     { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
@@ -48,17 +49,14 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: Send, label: "Social Queue", href: "/admin/distribution" },
     { icon: Mail, label: "Newsletter", href: "/admin/communications" },
   ]},
-  { label: "ANALYTICS", key: "analytics", icon: BarChart2, items: [
-    { icon: TrendingUp, label: "Performance", href: "/admin/social-performance" },
-    { icon: PieChart, label: "Category Balance", href: "/admin/category-balance" },
-    { icon: DollarSign, label: "Revenue", href: "/admin/revenue" },
-  ]},
   { label: "ACCOUNT", key: "account", icon: Users, items: [
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: CreditCard, label: "Billing", href: "/admin/billing" },
+    { icon: DollarSign, label: "Revenue", href: "/admin/revenue" },
     { icon: LifeBuoy, label: "Support", href: "/admin/ticket" },
   ]},
 ];
+
 
 function getActiveSection(path: string): string {
   for (const sec of NAV_SECTIONS) {
