@@ -23,6 +23,7 @@ export const categories = mysqlTable("categories", {
   description: text("description"),
   color: varchar("color", { length: 7 }).default("#6366f1"),
   keywords: text("keywords"),
+  targetPercentage: int("target_percentage"),
   licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

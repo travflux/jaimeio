@@ -91,6 +91,7 @@ import TenantSetup from "./pages/TenantSetup";
 import TenantSettings from "./pages/tenant/TenantSettings";
 import TenantContentEngine from "./pages/tenant/TenantContentEngine";
 import TenantAIGenerator from "./pages/tenant/TenantAIGenerator";
+import TenantCategoryBalance from "./pages/tenant/TenantCategoryBalance";
 import TenantSocialQueue from "./pages/tenant/TenantSocialQueue";
 import TenantDesignTheme from "./pages/tenant/TenantDesignTheme";
 import TenantPublishing from "./pages/tenant/TenantPublishing";
@@ -245,6 +246,7 @@ function Router() {
           <Route path="/admin/calendar" component={TenantCalendar} />
           <Route path="/admin/templates" component={TenantTemplates} />
           <Route path="/admin/categories" component={TenantCategories} />
+          <Route path="/admin/category-balance" component={TenantCategoryBalance} />
           <Route path="/admin/tags" component={TenantTags} />
           <Route path="/admin/pages" component={TenantPages} />
           <Route path="/admin/source-feeds" component={TenantSourceFeeds} />

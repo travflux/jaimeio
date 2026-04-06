@@ -310,6 +310,29 @@ export const appRouter = router({
     create: adminProcedure.input(z.object({ name: z.string(), slug: z.string(), description: z.string().optional(), color: z.string().optional() })).mutation(({ input }) => db.createCategory(input)),
     update: adminProcedure.input(z.object({ id: z.number(), name: z.string().optional(), slug: z.string().optional(), description: z.string().optional(), color: z.string().optional(), keywords: z.string().optional() })).mutation(({ input }) => { const { id, ...data } = input; return db.updateCategory(id, data); }),
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteCategory(input.id)),
+    getBalance: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { categories: [], totalArticles: 0 };
+      const { sql: sqlFn, eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const { categories: catTable, articles: artTable } = await import("../drizzle/schema");
+      const lid = ctx.licenseId || 7;
+      const cats = await dbConn.select({ id: catTable.id, name: catTable.name, targetPercentage: catTable.targetPercentage }).from(catTable).where(eqOp(catTable.licenseId, lid));
+      const counts = await dbConn.select({ categoryId: artTable.categoryId, count: sqlFn`COUNT(*)` as any }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).groupBy(artTable.categoryId);
+      const countMap = new Map(counts.map((c: any) => [c.categoryId, Number(c.count)]));
+      const total = counts.reduce((s: number, c: any) => s + Number(c.count), 0);
+      return { categories: cats.map(cat => ({ ...cat, articleCount: countMap.get(cat.id) ?? 0, currentPercentage: total > 0 ? Math.round((countMap.get(cat.id) ?? 0) * 100 / total) : 0 })), totalArticles: total };
+    }),
+    saveTargets: tenantOrAdminProcedure.input(z.object({ targets: z.record(z.string(), z.number()) })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { categories: catTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      for (const [catId, pct] of Object.entries(input.targets)) {
+        await dbConn.update(catTable).set({ targetPercentage: pct } as any).where(andOp(eqOp(catTable.id, parseInt(catId)), eqOp(catTable.licenseId, lid)));
+      }
+      return { success: true };
+    }),
     recategorizeUncategorized: adminProcedure.mutation(async () => {
       // Re-run guessCategory on all articles with null categoryId or no category
       const { guessAndAssignCategories } = await import('./workflow');
