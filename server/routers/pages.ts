@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { router, publicProcedure, protectedProcedure, tenantOrAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { publicationPages } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -83,11 +83,43 @@ export const pagesRouter = router({
       return { success: true };
     }),
 
-  list: publicProcedure
-    .input(z.object({ licenseId: z.number() }))
-    .query(async ({ input }) => {
+  list: tenantOrAdminProcedure.query(async ({ ctx }) => {
       const db = await getDb();
-      if (!db) return [];
-      return db.select().from(publicationPages).where(eq(publicationPages.licenseId, input.licenseId));
+      if (!db) return { pages: [] };
+      const lid = ctx.licenseId || 7;
+      const rows = await db.select().from(publicationPages).where(eq(publicationPages.licenseId, lid));
+      return { pages: rows.map(r => ({ id: r.id, title: r.title || r.pageSlug, slug: r.pageSlug, content: r.content || "", isPublished: true })) };
+    }),
+
+  // Tenant-aware save (create or update)
+  save: tenantOrAdminProcedure
+    .input(z.object({ id: z.number().optional(), title: z.string(), slug: z.string(), content: z.string(), isPublished: z.boolean().default(true) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const lid = ctx.licenseId || 7;
+      const [existing] = await db.select().from(publicationPages)
+        .where(and(eq(publicationPages.licenseId, lid), eq(publicationPages.pageSlug, input.slug)))
+        .limit(1);
+      if (existing) {
+        await db.update(publicationPages).set({ title: input.title, content: input.content }).where(eq(publicationPages.id, existing.id));
+      } else {
+        await db.insert(publicationPages).values({ licenseId: lid, pageSlug: input.slug, title: input.title, content: input.content });
+      }
+      return { success: true };
+    }),
+
+  // Delete (custom pages only)
+  deletePage: tenantOrAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const lid = ctx.licenseId || 7;
+      const DEFAULT_SLUGS = ["advertise", "privacy", "contact", "sitemap-page", "about"];
+      const [page] = await db.select().from(publicationPages).where(and(eq(publicationPages.id, input.id), eq(publicationPages.licenseId, lid))).limit(1);
+      if (page && DEFAULT_SLUGS.includes(page.pageSlug)) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete default pages" });
+      await db.delete(publicationPages).where(and(eq(publicationPages.id, input.id), eq(publicationPages.licenseId, lid)));
+      return { success: true };
     }),
 });
