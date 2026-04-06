@@ -121,6 +121,67 @@ export const appRouter = router({
   attribution: attributionRouter,
   distribution: distributionRouter,
   sms: smsRouter,
+  smsTemplates: router({
+    getTemplates: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { smsTemplates } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 0;
+      return dbConn.select().from(smsTemplates).where(eq(smsTemplates.licenseId, lid));
+    }),
+    saveTemplate: tenantOrAdminProcedure
+      .input(z.object({
+        id: z.number().optional(),
+        name: z.string().min(1),
+        templateText: z.string().min(1),
+        templateType: z.enum(["newsletter_url", "breaking_news", "custom"]).default("custom"),
+        isActive: z.boolean().default(true),
+        sendDelayMinutes: z.number().default(0),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const { smsTemplates } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const lid = ctx.licenseId || 0;
+        if (input.id) {
+          await dbConn.update(smsTemplates)
+            .set({
+              name: input.name,
+              templateText: input.templateText,
+              templateType: input.templateType,
+              isActive: input.isActive,
+              sendDelayMinutes: input.sendDelayMinutes,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(smsTemplates.id, input.id), eq(smsTemplates.licenseId, lid)));
+          return { success: true, id: input.id };
+        } else {
+          const result = await dbConn.insert(smsTemplates).values({
+            licenseId: lid,
+            name: input.name,
+            templateText: input.templateText,
+            templateType: input.templateType,
+            isActive: input.isActive,
+            sendDelayMinutes: input.sendDelayMinutes,
+          });
+          return { success: true, id: (result as any).insertId };
+        }
+      }),
+    deleteTemplate: tenantOrAdminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const { smsTemplates } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const lid = ctx.licenseId || 0;
+        await dbConn.delete(smsTemplates)
+          .where(and(eq(smsTemplates.id, input.id), eq(smsTemplates.licenseId, lid)));
+        return { success: true };
+      }),
+  }),
   setup: setupRouter,
   domains: domainsRouter,
   tenantAuth: tenantAuthRouter,
@@ -1420,6 +1481,83 @@ export const appRouter = router({
         await db.upsertSetting({ key: "newsletter_template", value: input.template, category: "newsletter", type: "string" });
         return { success: true };
       }),
+    getSends: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await (await import("./db")).getDb();
+      if (!dbConn) return [];
+      const { newsletterSends } = await import("../drizzle/schema");
+      const { eq, desc } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 0;
+      return dbConn.select().from(newsletterSends)
+        .where(eq(newsletterSends.licenseId, lid))
+        .orderBy(desc(newsletterSends.sentAt))
+        .limit(20);
+    }),
+    send: tenantOrAdminProcedure
+      .input(z.object({
+        subject: z.string().min(1),
+        previewText: z.string().optional(),
+        html: z.string().min(1),
+        articleIds: z.array(z.number()),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const lid = ctx.licenseId || 0;
+        const { getResendClient } = await import("./communications/emailService");
+        const { getLicenseSetting } = await import("./db");
+        const dbConn = await (await import("./db")).getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const { newsletterSubscribers, newsletterSends } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+
+        // Get from name/email from license settings
+        const fromName = (await getLicenseSetting(lid, "newsletter_from_name")) || "Newsletter";
+        const fromEmail = (await getLicenseSetting(lid, "newsletter_from_email")) || "newsletter@getjaime.io";
+
+        // Get active subscribers
+        const subscribers = await dbConn.select({ email: newsletterSubscribers.email })
+          .from(newsletterSubscribers)
+          .where(eq(newsletterSubscribers.status, "active"));
+
+        const recipientCount = subscribers.length;
+        let successCount = 0;
+        let failCount = 0;
+
+        // Get Resend client
+        const resend = await getResendClient(lid);
+
+        if (resend && subscribers.length > 0) {
+          // Send in batches of 50
+          const batchSize = 50;
+          for (let i = 0; i < subscribers.length; i += batchSize) {
+            const batch = subscribers.slice(i, i + batchSize);
+            try {
+              await resend.batch.send(batch.map((s: { email: string }) => ({
+                from: `${fromName} <${fromEmail}>`,
+                to: s.email,
+                subject: input.subject,
+                html: input.html,
+              })));
+              successCount += batch.length;
+            } catch {
+              failCount += batch.length;
+            }
+          }
+        }
+
+        // Record the send in newsletter_sends
+        await dbConn.insert(newsletterSends).values({
+          licenseId: lid,
+          subject: input.subject,
+          previewText: input.previewText,
+          htmlContent: input.html,
+          articleIds: JSON.stringify(input.articleIds),
+          recipientCount,
+          status: (failCount === recipientCount && recipientCount > 0) ? "failed" : "sent",
+          sentAt: new Date(),
+        });
+
+        return { success: true, recipientCount, successCount, failCount };
+      }),
+    getSubscriberCount: tenantOrAdminProcedure.query(({ ctx }) => db.countNewsletterSubscribers("active", ctx.licenseId || undefined)),
   }),
   // ─── Social Posts ────────────────────────────────────
   social: router({

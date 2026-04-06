@@ -113,6 +113,8 @@ import TenantBranding from "./pages/tenant/TenantBranding";
 import TenantBilling from "./pages/tenant/TenantBilling";
 import TenantUsers from "./pages/tenant/TenantUsers";
 import TenantCommunications from "./pages/tenant/TenantCommunications";
+import TenantNewsletter from "./pages/tenant/TenantNewsletter";
+import TenantSMS from "./pages/tenant/TenantSMS";
 import TenantNotifications from "./pages/tenant/TenantNotifications";
 import TenantApiAccess from "./pages/tenant/TenantApiAccess";
 import TenantWorkflow from "./pages/tenant/TenantWorkflow";
@@ -243,6 +245,8 @@ function Router() {
           <Route path="/admin/billing" component={TenantBilling} />
           <Route path="/admin/users" component={TenantUsers} />
           <Route path="/admin/communications" component={TenantCommunications} />
+          <Route path="/admin/newsletter" component={TenantNewsletter} />
+          <Route path="/admin/sms-templates" component={TenantSMS} />
           <Route path="/admin/notifications" component={TenantNotifications} />
           <Route path="/admin/api-access" component={TenantApiAccess} />
           <Route path="/admin/workflow" component={TenantWorkflow} />
