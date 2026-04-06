@@ -91,6 +91,7 @@ import TenantSetup from "./pages/TenantSetup";
 import TenantSettings from "./pages/tenant/TenantSettings";
 import TenantContentEngine from "./pages/tenant/TenantContentEngine";
 import TenantAIGenerator from "./pages/tenant/TenantAIGenerator";
+import TenantSocialQueue from "./pages/tenant/TenantSocialQueue";
 import TenantDesignTheme from "./pages/tenant/TenantDesignTheme";
 import TenantPublishing from "./pages/tenant/TenantPublishing";
 import TenantImageSettings from "./pages/tenant/TenantImageSettings";
@@ -256,7 +257,8 @@ function Router() {
           <Route path="/admin/seo" component={TenantSEO} />
           <Route path="/admin/index-settings" component={TenantIndexSettings} />
           <Route path="/admin/geo" component={TenantGEO} />
-          <Route path="/admin/distribution" component={TenantDistribution} />
+          <Route path="/admin/distribution" component={TenantSocialQueue} />
+          <Route path="/admin/distribution-settings" component={TenantDistribution} />
           <Route path="/admin/post-queue" component={TenantPostQueue} />
           <Route path="/admin/social-performance" component={TenantSocialPerformance} />
           <Route path="/admin/revenue" component={TenantRevenue} />

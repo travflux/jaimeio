@@ -400,4 +400,62 @@ export const distributionRouter = router({
     return { items };
   }),
 
+  // Queue management
+  getQueue: tenantOrAdminProcedure
+    .input(z.object({ status: z.array(z.string()).default(["pending", "sending"]), limit: z.number().default(50) }))
+    .query(async ({ input, ctx }) => {
+      if (!ctx.licenseId) return { items: [], total: 0 };
+      const database = await db.getDb();
+      if (!database) return { items: [], total: 0 };
+      const { distributionQueue, articles } = await import("../../drizzle/schema");
+      const { desc, sql } = await import("drizzle-orm");
+      const statusList = input.status.map(s => "'" + s + "'").join(",");
+      const rows = await database
+        .select({
+          id: distributionQueue.id, platform: distributionQueue.platform,
+          status: distributionQueue.status, postUrl: distributionQueue.postUrl,
+          sentAt: distributionQueue.sentAt, errorMessage: distributionQueue.errorMessage,
+          articleId: distributionQueue.articleId, createdAt: distributionQueue.createdAt,
+        })
+        .from(distributionQueue)
+        .where(sql.raw("distribution_queue.license_id = " + ctx.licenseId + " AND distribution_queue.status IN (" + statusList + ")"))
+        .orderBy(desc(distributionQueue.createdAt))
+        .limit(input.limit);
+      const items = await Promise.all(rows.map(async (row) => {
+        let headline = null;
+        if (row.articleId) {
+          const { eq } = await import("drizzle-orm");
+          const [art] = await database.select({ headline: articles.headline }).from(articles).where(eq(articles.id, row.articleId)).limit(1);
+          if (art) headline = art.headline;
+        }
+        return { ...row, articleHeadline: headline };
+      }));
+      return { items, total: items.length };
+    }),
+
+  cancelPost: tenantOrAdminProcedure
+    .input(z.object({ queueId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { distributionQueue } = await import("../../drizzle/schema");
+      const { eq, sql } = await import("drizzle-orm");
+      await database.update(distributionQueue).set({ status: "skipped" }).where(sql.raw("id = " + input.queueId + " AND license_id = " + ctx.licenseId + " AND status IN ('pending', 'sending')"));
+      return { success: true };
+    }),
+
+  retryPost: tenantOrAdminProcedure
+    .input(z.object({ queueId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { distributionQueue } = await import("../../drizzle/schema");
+      const { eq, sql } = await import("drizzle-orm");
+      // Reset failed post back to pending for retry
+      await database.update(distributionQueue).set({ status: "pending", errorMessage: null, retryCount: 0 }).where(sql.raw("id = " + input.queueId + " AND license_id = " + ctx.licenseId + " AND status = 'failed'"));
+      return { success: true };
+    }),
+
 });
