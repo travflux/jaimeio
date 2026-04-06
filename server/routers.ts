@@ -340,6 +340,34 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Billing ──────────────────────────────────────
+  billing: router({
+    getStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { plan: "professional", articlesUsedThisMonth: 0, articlesLimit: 500 };
+      const { licenses, articles: artTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, gte, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [license] = await dbConn.select({ tier: licenses.tier }).from(licenses).where(eqOp(licenses.id, lid)).limit(1);
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      const [countResult] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), gte(artTable.createdAt, startOfMonth)));
+      const tier = license?.tier || "professional";
+      const limits: Record<string, number> = { starter: 100, professional: 500, enterprise: 1000 };
+      return { plan: tier, articlesUsedThisMonth: Number(countResult?.count || 0), articlesLimit: limits[tier] || 500 };
+    }),
+    changePlan: tenantOrAdminProcedure.input(z.object({ planKey: z.string(), stripeProductId: z.string() })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenses } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      const validTiers = ["starter", "professional", "enterprise"];
+      if (!validTiers.includes(input.planKey)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid plan" });
+      await dbConn.update(licenses).set({ tier: input.planKey as any }).where(eqOp(licenses.id, ctx.licenseId || 7));
+      console.log("[Billing] licenseId " + (ctx.licenseId || 7) + " changed to " + input.planKey);
+      return { success: true, plan: input.planKey };
+    }),
+  }),
+
   // ─── Articles ────────────────────────────────────────
   articles: router({
     list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional() }).optional()).query(async ({ input, ctx }) => {
