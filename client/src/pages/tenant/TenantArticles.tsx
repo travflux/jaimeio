@@ -104,11 +104,21 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                 onFocus={e => (e.currentTarget.style.borderBottomColor = "#2dd4bf")}
                 onBlur={e => (e.currentTarget.style.borderBottomColor = "transparent")}
                 placeholder="Subheadline (optional)..." />
-              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#9ca3af", marginBottom: 8 }}>
                 <span>{article.createdAt ? new Date(article.createdAt).toLocaleDateString() : ""}</span>
                 <span>{readTime} min read</span>
                 <span>{wordCount} words</span>
               </div>
+              {(article.sourceUrl || article.sourceName) && (
+                <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontWeight: 500 }}>Source:</span>
+                  {article.sourceUrl ? (
+                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf", textDecoration: "none" }}>
+                      {article.sourceName || "View source"}
+                    </a>
+                  ) : <span>{article.sourceName}</span>}
+                </div>
+              )}
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Category</label>
                 <select value={selectedCat || ""} onChange={e => { setSelectedCat(Number(e.target.value)); updateMut.mutate({ id: article.id, categoryId: Number(e.target.value) }); }}
