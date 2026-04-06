@@ -586,7 +586,7 @@ export const appRouter = router({
         return { success: true };
       }),
     toggleTag: protectedProcedure
-      .input(z.object({ articleId: z.number(), tag: z.enum(["editors_pick", "trending", "featured"]) }))
+      .input(z.object({ articleId: z.number(), tag: z.enum(["editors_pick", "trending", "featured", "sponsored", "breaking"]) }))
       .mutation(async ({ input }) => {
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -594,7 +594,7 @@ export const appRouter = router({
         const { eq: eqOp } = await import("drizzle-orm");
         const [article] = await dbConn.select().from(at).where(eqOp(at.id, input.articleId)).limit(1);
         if (!article) throw new TRPCError({ code: "NOT_FOUND" });
-        const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured" };
+        const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured", sponsored: "isSponsored", breaking: "isBreaking" };
         const field = fieldMap[input.tag] as keyof typeof article;
         const current = article[field] as boolean;
         await dbConn.update(at).set({ [field]: !current } as any).where(eqOp(at.id, input.articleId));

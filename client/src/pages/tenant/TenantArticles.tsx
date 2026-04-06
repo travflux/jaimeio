@@ -14,6 +14,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
     onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
   });
   const updateImageMut = trpc.articles.updateImage.useMutation();
+  const toggleTagMut = trpc.articles.toggleTag.useMutation({ onSuccess: () => onAction() });
   const regenImageMut = trpc.articles.regenerateImage.useMutation({
     onSuccess: (r: any) => { if (r?.url) setImageUrl(r.url); toast.success("New image generated"); },
     onError: () => toast.error("Image generation failed"),
@@ -119,6 +120,26 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                   ) : <span>{article.sourceName}</span>}
                 </div>
               )}
+              {/* Tags */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                {[
+                  { key: "editors_pick", label: "Editor\'s Pick", field: "isEditorsPick", color: "#8b5cf6" },
+                  { key: "trending", label: "Trending", field: "isTrending", color: "#f59e0b" },
+                  { key: "featured", label: "Featured", field: "isFeatured", color: "#3b82f6" },
+                  { key: "sponsored", label: "Sponsored", field: "isSponsored", color: "#22c55e" },
+                  { key: "breaking", label: "Breaking", field: "isBreaking", color: "#ef4444" },
+                ].map(tag => {
+                  const active = !!(article as any)[tag.field];
+                  return (
+                    <button key={tag.key} onClick={() => toggleTagMut.mutate({ articleId: article.id, tag: tag.key as any })}
+                      style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid",
+                        borderColor: active ? tag.color : "#e5e7eb", background: active ? tag.color + "15" : "#fff", color: active ? tag.color : "#9ca3af" }}>
+                      {active ? "✓ " : ""}{tag.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Category</label>
                 <select value={selectedCat || ""} onChange={e => { setSelectedCat(Number(e.target.value)); updateMut.mutate({ id: article.id, categoryId: Number(e.target.value) }); }}

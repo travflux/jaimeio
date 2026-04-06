@@ -67,6 +67,8 @@ export const articles = mysqlTable("articles", {
   isTrending: boolean("is_trending").default(false).notNull(),
   seoDescription: varchar("seo_description", { length: 500 }),
   isFeatured: boolean("is_featured").default(false).notNull(),
+  isSponsored: boolean("is_sponsored").default(false).notNull(),
+  isBreaking: boolean("is_breaking").default(false).notNull(),
 });
 
 export type Article = typeof articles.$inferSelect;
