@@ -9,7 +9,7 @@ import {
   Filter, Send, Search, Newspaper, HelpCircle,
   Timer, Zap, Rss, Image, Video, Share2, Globe, Calendar, ShoppingCart, Scale,
   Package, Database, Palette, MessageSquareReply, ClipboardList, Twitter, ShoppingBag, BarChart2,
-  ExternalLink, MessageSquare, CheckCircle2, ChevronDown, Layers, ListChecks, Hash, MousePointerClick, Building2, Eye } from "lucide-react";
+  ExternalLink, MessageSquare, CheckCircle2, ChevronDown, Layers, ListChecks, Hash, MousePointerClick, Building2, Eye, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import CommandPalette from "@/components/CommandPalette";
@@ -71,6 +71,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Monetization",
     items: [
+      { href: "/admin/monetization", icon: DollarSign, label: "Overview" },
       { href: "/admin/settings/amazon", icon: ShoppingCart, label: "Amazon Ads" },
       { href: "/admin/settings/sponsor", icon: Zap, label: "Sponsor Settings" },
       { href: "/admin/sponsor-attribution", icon: MousePointerClick, label: "Sponsor Attribution" },

@@ -1,31 +1,24 @@
 /**
- * AdminCandidates — v4.0 Candidate Review Interface
+ * AdminCandidates — v4.1 Candidate Review Interface
  *
- * Shows the selector_candidates pool with filtering by status and source type.
- * Allows manual approve (mark as selected) and reject per candidate,
- * plus bulk approve/reject actions.
+ * Shows the selector_candidates pool with filtering by status (with counts),
+ * source dropdown, and potential filter pills.
  */
 
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, CheckCircle2, XCircle, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Zap, TrendingUp } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Zap, TrendingUp, Inbox } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CandidateStatus = "pending" | "selected" | "rejected" | "expired" | "all";
+type PotentialFilter = "all" | "high" | "medium" | "low";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -53,6 +46,7 @@ interface CandidateItem {
   title: string;
   source?: string | null;
   sourceType?: string | null;
+  sourceName?: string | null;
   sourceUrl?: string | null;
   priority?: number | null;
   status: string;
@@ -125,8 +119,8 @@ function CandidateRow({ candidate, selected, onSelect, onApprove, onReject, isUp
           <Badge variant="outline" className="text-[10px] h-4 px-1.5">
             {sourceLabel}
           </Badge>
-          {candidate.source && (
-            <span className="truncate max-w-[180px]">{candidate.source}</span>
+          {(candidate.sourceName || candidate.source) && (
+            <span className="truncate max-w-[180px]">{candidate.sourceName || candidate.source}</span>
           )}
           {candidate.priority != null && (
             <span className="text-muted-foreground">P{candidate.priority}</span>
@@ -169,17 +163,29 @@ function CandidateRow({ candidate, selected, onSelect, onApprove, onReject, isUp
 
 export default function AdminCandidates() {
   const [statusFilter, setStatusFilter] = useState<CandidateStatus>("pending");
-  const [sourceTypeFilter, setSourceTypeFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [potentialFilter, setPotentialFilter] = useState<PotentialFilter>("all");
   const [page, setPage] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
 
+  // Independent counts query (not affected by filters)
+  const { data: counts } = trpc.sources.getCandidateCounts.useQuery(undefined, {
+    refetchInterval: 30000,
+  });
+
+  const byStatus: Record<string, number> = useMemo(() => {
+    if (!counts?.byStatus) return {};
+    return Object.fromEntries(counts.byStatus.map((r: any) => [r.status, Number(r.count)]));
+  }, [counts]);
+
   const queryInput = useMemo(() => ({
     status: statusFilter,
-    sourceType: sourceTypeFilter === "all" ? undefined : sourceTypeFilter,
+    source: sourceFilter === "all" ? undefined : sourceFilter,
+    potential: potentialFilter === "all" ? undefined : potentialFilter,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
-  }), [statusFilter, sourceTypeFilter, page]);
+  }), [statusFilter, sourceFilter, potentialFilter, page]);
 
   const { data, isLoading, refetch } = trpc.sources.listCandidates.useQuery(queryInput);
   const approveMutation = trpc.sources.approveCandidate.useMutation();
@@ -257,46 +263,73 @@ export default function AdminCandidates() {
   const pendingItems = items.filter(i => i.status === "pending");
   const allPendingSelected = pendingItems.length > 0 && pendingItems.every(i => selectedIds.has(i.id));
 
+  const pendingCount = byStatus["pending"] ?? 0;
+  const selectedCount = byStatus["selected"] ?? 0;
+  const rejectedCount = byStatus["rejected"] ?? 0;
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-4 max-w-5xl">
-        <div>
-          <h1 className="text-2xl font-bold">Candidates</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review the v4.0 selector candidate pool. Approve candidates to prioritize them for article generation, or reject to exclude them.
-          </p>
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Inbox className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Candidates</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {pendingCount} pending · {selectedCount} selected · {rejectedCount} rejected
+            </p>
+          </div>
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as CandidateStatus); setPage(0); setSelectedIds(new Set()); }}>
-            <SelectTrigger className="w-36 h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="selected">Selected</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-              <SelectItem value="all">All</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Status dropdown with counts */}
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value as CandidateStatus); setPage(0); setSelectedIds(new Set()); }}
+            className="h-8 text-xs px-2 border border-input rounded bg-background"
+          >
+            <option value="pending">Pending ({pendingCount})</option>
+            <option value="selected">Selected ({selectedCount})</option>
+            <option value="rejected">Rejected ({rejectedCount})</option>
+            <option value="expired">Expired ({byStatus["expired"] ?? 0})</option>
+            <option value="all">All</option>
+          </select>
 
-          <Select value={sourceTypeFilter} onValueChange={(v) => { setSourceTypeFilter(v); setPage(0); setSelectedIds(new Set()); }}>
-            <SelectTrigger className="w-40 h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="rss">RSS</SelectItem>
-              <SelectItem value="google_news">Google News</SelectItem>
-              <SelectItem value="x">X / Twitter</SelectItem>
-              <SelectItem value="reddit">Reddit</SelectItem>
-              <SelectItem value="youtube">YouTube</SelectItem>
-              <SelectItem value="scraper">Web Scraper</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Source dropdown */}
+          <select
+            value={sourceFilter}
+            onChange={e => { setSourceFilter(e.target.value); setPage(0); setSelectedIds(new Set()); }}
+            className="h-8 text-xs px-2 border border-input rounded bg-background"
+          >
+            <option value="all">All Sources</option>
+            <option value="rss">RSS</option>
+            <option value="google_news">Google News</option>
+            <option value="x">X / Twitter</option>
+            <option value="reddit">Reddit</option>
+            <option value="youtube">YouTube</option>
+            <option value="scraper">Web Scraper</option>
+            <option value="manual">Manual</option>
+          </select>
+
+          {/* Potential filter pills */}
+          <div className="flex items-center gap-1">
+            {(["all", "high", "medium", "low"] as PotentialFilter[]).map(p => (
+              <button
+                key={p}
+                onClick={() => { setPotentialFilter(p); setPage(0); }}
+                className={`px-2.5 py-1 text-xs rounded-full font-medium transition-colors ${
+                  potentialFilter === p
+                    ? p === "high" ? "bg-emerald-600 text-white" : p === "medium" ? "bg-blue-600 text-white" : p === "low" ? "bg-gray-500 text-white" : "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
 
           <span className="text-xs text-muted-foreground">{total} result{total !== 1 ? "s" : ""}</span>
 
@@ -364,6 +397,7 @@ export default function AdminCandidates() {
             </span>
           </div>
         )}
+
         {/* Candidate list */}
         <Card>
           {statusFilter === "pending" && pendingItems.length > 0 && (

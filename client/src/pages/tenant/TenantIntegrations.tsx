@@ -46,10 +46,6 @@ const GROUPS: Array<{ title: string; desc: string; fields: KeyField[] }> = [
     { key: "google_analytics_id", label: "Google Analytics ID", tooltip: "GA4 measurement ID (G-XXXXXXXX).", getUrl: "https://analytics.google.com", getLabel: "Set up Analytics", placeholder: "G-XXXXXXXXXX" },
     { key: "indexnow_key", label: "IndexNow API Key", tooltip: "Instant search engine notification on publish.", placeholder: "UUID format" },
   ]},
-  { title: "Monetization", desc: "Revenue-generating integrations.", fields: [
-    { key: "adsense_publisher_id", label: "AdSense Publisher ID", tooltip: "Google AdSense (ca-pub-XXXX).", getUrl: "https://adsense.google.com", getLabel: "Set up AdSense", placeholder: "ca-pub-XXXXXXXXX" },
-    { key: "amazon_associate_tag", label: "Amazon Associates Tag", tooltip: "Affiliate tracking tag.", getUrl: "https://affiliate-program.amazon.com", getLabel: "Join Amazon Associates", placeholder: "yoursite-20" },
-  ]},
 ];
 
 export default function TenantIntegrations() {
@@ -85,6 +81,9 @@ export default function TenantIntegrations() {
           ))}
         </Section>
       ))}
+      <div style={{ marginTop: 24, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16 }}>
+        <p style={{ fontSize: 13, color: "#6b7280" }}>Looking for monetization settings?{" "}<a href="/admin/monetization" style={{ color: "#2dd4bf", textDecoration: "underline" }}>Go to Settings → Monetization</a></p>
+      </div>
     </TenantLayout>
   );
 }

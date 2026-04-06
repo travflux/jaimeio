@@ -5,7 +5,7 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { useLocation } from "wouter";
 import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
-  Palette, Layout, Bot, CalendarClock, Image, Share2, Mail, Globe,
+  Palette, Layout, Bot, CalendarClock, Image, Share2, Mail, Globe, FileText,
   DollarSign, Plug, Users, CreditCard, ChevronRight, ExternalLink
 } from "lucide-react";
 
@@ -18,10 +18,11 @@ const CARDS = [
   { icon: Share2, title: "Social Distribution", desc: "Blotato connection, platform accounts, posting schedule, and rules.", tags: ["blotato", "social", "schedule"], route: "/admin/distribution" },
   { icon: Mail, title: "Newsletter", desc: "Email newsletter, Resend connection, templates, and subscribers.", tags: ["email", "resend", "template"], route: "/admin/communications" },
   { icon: Globe, title: "SEO & GEO", desc: "Meta defaults, IndexNow, Google Search Console, and GEO optimization.", tags: ["SEO", "GEO", "indexing"], route: "/admin/seo" },
-  { icon: DollarSign, title: "Monetization", desc: "Google AdSense, Amazon Associates, sponsorship, and merch store.", tags: ["ads", "sponsors", "revenue"], route: "/admin/adsense" },
+  { icon: DollarSign, title: "Monetization", desc: "Google AdSense, Amazon Associates, sponsorship, and merch store.", tags: ["ads", "sponsors", "revenue"], route: "/admin/monetization" },
   { icon: Plug, title: "Integrations", desc: "All API keys — AI providers, storage, analytics, and third-party services.", tags: ["API keys", "connections"], route: "/admin/integrations" },
   { icon: Users, title: "Users & Access", desc: "Team members, invitations, roles, and access control.", tags: ["team", "invite", "roles"], route: "/admin/users" },
   { icon: CreditCard, title: "Billing", desc: "Subscription plan, usage limits, payment method, and upgrade options.", tags: ["plan", "billing", "upgrade"], route: "/admin/billing" },
+  { icon: FileText, title: "Pages", desc: "Edit your static pages (Advertise, Privacy, Contact, Sitemap) and create new custom pages.", tags: ["pages", "content", "static"], route: "/admin/pages" },
 ];
 
 export default function TenantSettings() {

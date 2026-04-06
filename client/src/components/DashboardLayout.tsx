@@ -71,7 +71,7 @@ const settingsSubNav: NavItem[] = [
   { icon: Share2,       label: "Social",         path: "/admin/settings/social" },
   { icon: Home,         label: "Homepage",       path: "/admin/settings/homepage" },
   { icon: Globe,        label: "Branding",       path: "/admin/settings/branding" },
-  { icon: DollarSign,   label: "Monetization",   path: "/admin/settings/amazon" },
+  { icon: DollarSign,   label: "Monetization",   path: "/admin/monetization" },
   { icon: BookOpen,     label: "Category Balance",path: "/admin/settings/category-balance" },
 ];
 

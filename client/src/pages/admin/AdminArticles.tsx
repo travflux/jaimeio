@@ -34,6 +34,8 @@ export default function AdminArticles() {
   const urlStatus = new URLSearchParams(searchParams).get("status");
   const [statusFilter, setStatusFilter] = useState(urlStatus || "all");
   const [noImageFilter, setNoImageFilter] = useState(false);
+  const [missingGeo, setMissingGeo] = useState(false);
+  const [missingImage, setMissingImage] = useState(false);
   const [search, setSearch] = useState("");
   
   // Update filter when URL changes
@@ -46,6 +48,8 @@ export default function AdminArticles() {
     status: statusFilter === "all" ? undefined : statusFilter,
     search: search || undefined,
     noImage: noImageFilter || undefined,
+    missingGeo: missingGeo || undefined,
+    missingImage: missingImage || undefined,
     limit: 200,
   });
   const utils = trpc.useUtils();
@@ -135,6 +139,26 @@ export default function AdminArticles() {
           >
             <ImagePlus className="w-3 h-3" />
             No Image{missingCount > 0 && !noImageFilter ? ` (${missingCount})` : ""}
+          </button>
+          <button
+            onClick={() => { setMissingGeo(v => !v); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 ${
+              missingGeo
+                ? "bg-amber-500 text-white shadow-sm"
+                : "bg-card border border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400"
+            }`}
+          >
+            Missing GEO
+          </button>
+          <button
+            onClick={() => { setMissingImage(v => !v); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 ${
+              missingImage
+                ? "bg-amber-500 text-white shadow-sm"
+                : "bg-card border border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400"
+            }`}
+          >
+            Missing Image
           </button>
         </div>
         <input type="text" placeholder="Search articles..." value={search} onChange={e => setSearch(e.target.value)} className="sm:ml-auto px-3 py-2 text-sm border border-input rounded-lg bg-background w-full sm:w-56 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />

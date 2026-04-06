@@ -195,7 +195,7 @@ export async function seedDefaultCategories() {
 }
 
 // ─── Articles ────────────────────────────────────────────
-export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; licenseId?: number } = {}) {
+export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; missingGeo?: boolean; missingImage?: boolean; licenseId?: number } = {}) {
   const db = await getDb();
   if (!db) return { articles: [], total: 0 };
   
@@ -208,6 +208,8 @@ export async function listArticles(opts: { status?: string; categoryId?: number;
   if (opts.categoryId) conditions.push(eq(articles.categoryId, opts.categoryId));
   if (opts.search) conditions.push(like(articles.headline, `%${opts.search}%`));
   if (opts.noImage) conditions.push(sql`(${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '')`);
+  if (opts.missingImage) conditions.push(sql`(${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '')`);
+  if (opts.missingGeo) conditions.push(sql`(${articles.geoSummary} IS NULL OR ${articles.geoSummary} = '')`);
   if (opts.licenseId) conditions.push(eq(articles.licenseId, opts.licenseId));
 
   
