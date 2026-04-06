@@ -53,6 +53,11 @@ function EmptyState({ licenseSettings }: Pick<TemplateProps, "licenseSettings">)
 }
 
 function EditorialHomepage({ licenseSettings, articles, categories, mostRead }: TemplateProps) {
+  const showTicker = licenseSettings.breaking_ticker_enabled !== "false";
+  const showHero = licenseSettings.homepage_show_hero !== "false";
+  const showGrid = licenseSettings.homepage_show_grid !== "false";
+  const showSidebar = licenseSettings.homepage_show_sidebar !== "false";
+  const showNewsletter = licenseSettings.homepage_show_newsletter_bar !== "false";
   const latestArticles = articles.slice(0, 5);
   const featured = articles[0];
   const sideArticles = articles.slice(1, 4);
@@ -73,7 +78,7 @@ function EditorialHomepage({ licenseSettings, articles, categories, mostRead }: 
       <PublicationMasthead licenseSettings={licenseSettings} categories={categories} />
       
       
-      <BreakingTicker articles={latestArticles} />
+      {showTicker && <BreakingTicker articles={latestArticles} />}
       <SponsorBar licenseSettings={licenseSettings} />
 
       {articles.length === 0 ? (
@@ -156,9 +161,9 @@ function EditorialHomepage({ licenseSettings, articles, categories, mostRead }: 
         </>
       )}
 
-      <div id="newsletter">
+      {showNewsletter && <div id="newsletter">
         <NewsletterBar licenseSettings={licenseSettings} />
-      </div>
+      </div>}
       <PublicationFooter licenseSettings={licenseSettings} categories={categories} />
 
       <style>{`

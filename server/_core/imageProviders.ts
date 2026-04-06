@@ -77,12 +77,28 @@ class ManusImageProvider implements ImageProvider {
     let buffer = Buffer.from(result.image.b64Json, "base64");
     
     // Add watermark if enabled
-    const watermarkEnabled = await db.getSetting("watermark_enabled");
-    console.log('[Image Provider] Watermark enabled check:', watermarkEnabled?.value);
-    if (watermarkEnabled?.value === "true") {
-      const { getWatermarkSettings } = await import("../watermark");
-      const watermarkOptions = await getWatermarkSettings();
-      buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+    // Per-tenant watermark check
+    if (options.licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const wmEnabled = await getLicenseSetting(options.licenseId, "image_watermark_enabled");
+      if (wmEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          const wmText = await getLicenseSetting(options.licenseId, "image_watermark_text");
+          if (wmText?.value) watermarkOptions.text = wmText.value;
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
+    } else {
+      const watermarkEnabled = await db.getSetting("watermark_enabled");
+      if (watermarkEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
     }
     
     const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, result.image.mimeType);
@@ -142,12 +158,28 @@ class OpenAIImageProvider implements ImageProvider {
     let buffer = Buffer.from(await imageResp.arrayBuffer());
     
     // Add watermark if enabled
-    const watermarkEnabled = await db.getSetting("watermark_enabled");
-    console.log('[Image Provider] Watermark enabled check:', watermarkEnabled?.value);
-    if (watermarkEnabled?.value === "true") {
-      const { getWatermarkSettings } = await import("../watermark");
-      const watermarkOptions = await getWatermarkSettings();
-      buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+    // Per-tenant watermark check
+    if (options.licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const wmEnabled = await getLicenseSetting(options.licenseId, "image_watermark_enabled");
+      if (wmEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          const wmText = await getLicenseSetting(options.licenseId, "image_watermark_text");
+          if (wmText?.value) watermarkOptions.text = wmText.value;
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
+    } else {
+      const watermarkEnabled = await db.getSetting("watermark_enabled");
+      if (watermarkEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
     }
     
     const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");
@@ -234,13 +266,18 @@ class ReplicateImageProvider implements ImageProvider {
     if (!imageResp.ok) throw new Error("Failed to download Replicate image: " + imageResp.status);
     let buffer = Buffer.from(await imageResp.arrayBuffer());
     
-    const watermarkEnabled = await db.getSetting("watermark_enabled");
-    if (watermarkEnabled?.value === "true") {
-      try {
-        const { addWatermark, getWatermarkSettings } = await import("../watermark");
-        const watermarkOptions = await getWatermarkSettings();
-        buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
-      } catch { /* watermark optional */ }
+    if (options.licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const wmEnabled = await getLicenseSetting(options.licenseId, "image_watermark_enabled");
+      if (wmEnabled?.value === "true") {
+        try {
+          const { addWatermark, getWatermarkSettings } = await import("../watermark");
+          const opts = await getWatermarkSettings();
+          const wmText = await getLicenseSetting(options.licenseId, "image_watermark_text");
+          if (wmText?.value) opts.text = wmText.value;
+          buffer = Buffer.from(await addWatermark(buffer, opts));
+        } catch {}
+      }
     }
     
     const { storagePut } = await import("../storage");
@@ -320,12 +357,28 @@ class CustomAPIImageProvider implements ImageProvider {
     let buffer = Buffer.from(await imageResp.arrayBuffer());
     
     // Add watermark if enabled
-    const watermarkEnabled = await db.getSetting("watermark_enabled");
-    console.log('[Image Provider] Watermark enabled check:', watermarkEnabled?.value);
-    if (watermarkEnabled?.value === "true") {
-      const { getWatermarkSettings } = await import("../watermark");
-      const watermarkOptions = await getWatermarkSettings();
-      buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+    // Per-tenant watermark check
+    if (options.licenseId) {
+      const { getLicenseSetting } = await import("../db");
+      const wmEnabled = await getLicenseSetting(options.licenseId, "image_watermark_enabled");
+      if (wmEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          const wmText = await getLicenseSetting(options.licenseId, "image_watermark_text");
+          if (wmText?.value) watermarkOptions.text = wmText.value;
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
+    } else {
+      const watermarkEnabled = await db.getSetting("watermark_enabled");
+      if (watermarkEnabled?.value === "true") {
+        try {
+          const { getWatermarkSettings } = await import("../watermark");
+          const watermarkOptions = await getWatermarkSettings();
+          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
+        } catch { /* watermark optional */ }
+      }
     }
     
     const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, "image/png");

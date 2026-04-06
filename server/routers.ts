@@ -310,10 +310,166 @@ export const appRouter = router({
     create: adminProcedure.input(z.object({ name: z.string(), slug: z.string(), description: z.string().optional(), color: z.string().optional() })).mutation(({ input }) => db.createCategory(input)),
     update: adminProcedure.input(z.object({ id: z.number(), name: z.string().optional(), slug: z.string().optional(), description: z.string().optional(), color: z.string().optional(), keywords: z.string().optional() })).mutation(({ input }) => { const { id, ...data } = input; return db.updateCategory(id, data); }),
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteCategory(input.id)),
+    getBalance: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { categories: [], totalArticles: 0 };
+      const { sql: sqlFn, eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const { categories: catTable, articles: artTable } = await import("../drizzle/schema");
+      const lid = ctx.licenseId || 7;
+      const cats = await dbConn.select({ id: catTable.id, name: catTable.name, targetPercentage: catTable.targetPercentage }).from(catTable).where(eqOp(catTable.licenseId, lid));
+      const counts = await dbConn.select({ categoryId: artTable.categoryId, count: sqlFn`COUNT(*)` as any }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).groupBy(artTable.categoryId);
+      const countMap = new Map(counts.map((c: any) => [c.categoryId, Number(c.count)]));
+      const total = counts.reduce((s: number, c: any) => s + Number(c.count), 0);
+      return { categories: cats.map(cat => ({ ...cat, articleCount: countMap.get(cat.id) ?? 0, currentPercentage: total > 0 ? Math.round((countMap.get(cat.id) ?? 0) * 100 / total) : 0 })), totalArticles: total };
+    }),
+    saveTargets: tenantOrAdminProcedure.input(z.object({ targets: z.record(z.string(), z.number()) })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { categories: catTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      for (const [catId, pct] of Object.entries(input.targets)) {
+        await dbConn.update(catTable).set({ targetPercentage: pct } as any).where(andOp(eqOp(catTable.id, parseInt(catId)), eqOp(catTable.licenseId, lid)));
+      }
+      return { success: true };
+    }),
     recategorizeUncategorized: adminProcedure.mutation(async () => {
       // Re-run guessCategory on all articles with null categoryId or no category
       const { guessAndAssignCategories } = await import('./workflow');
       return guessAndAssignCategories();
+    }),
+  }),
+
+  // ─── X Replies ─────────────────────────────────────
+  xReplies: router({
+    getPending: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { replies: [] };
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp, desc } = await import("drizzle-orm");
+      const rows = await dbConn.select().from(xReplies).where(eqOp(xReplies.status, "pending")).orderBy(desc(xReplies.createdAt)).limit(20);
+      return { replies: rows.map(r => ({ id: r.id, originalAuthor: r.tweetAuthorHandle || r.tweetAuthor, originalTweetText: r.tweetText, originalTweetUrl: null, originalTweetDate: r.createdAt, draftText: r.replyContent || "" })) };
+    }),
+    approve: tenantOrAdminProcedure.input(z.object({ replyId: z.number(), finalText: z.string().max(280) })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      await dbConn.update(xReplies).set({ replyContent: input.finalText, status: "approved" }).where(eqOp(xReplies.id, input.replyId));
+      console.log("[X Replies] Reply " + input.replyId + " approved");
+      return { success: true };
+    }),
+    reject: tenantOrAdminProcedure.input(z.object({ replyId: z.number() })).mutation(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { xReplies } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      await dbConn.update(xReplies).set({ status: "skipped" }).where(eqOp(xReplies.id, input.replyId));
+      return { success: true };
+    }),
+  }),
+
+  // ─── Sponsors ─────────────────────────────────────
+  sponsors: router({
+    getSchedule: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { slots: [] };
+      try {
+        const { sponsorSchedules } = await import("../drizzle/schema");
+        const { eq: eqOp } = await import("drizzle-orm");
+        const slots = await dbConn.select().from(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, ctx.licenseId || 7));
+        return { slots };
+      } catch { return { slots: [] }; }
+    }),
+    saveSchedule: tenantOrAdminProcedure.input(z.object({
+      slots: z.array(z.object({ dayOfWeek: z.number(), sponsorName: z.string(), sponsorUrl: z.string(), sponsorTagline: z.string(), logoUrl: z.string(), isActive: z.boolean() }))
+    })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sponsorSchedules } = await import("../drizzle/schema");
+      const { eq: eqOp, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      await dbConn.delete(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, lid));
+      if (input.slots.length > 0) {
+        await dbConn.insert(sponsorSchedules).values(input.slots.map(s => ({ licenseId: lid, dayOfWeek: s.dayOfWeek, sponsorName: s.sponsorName, sponsorUrl: s.sponsorUrl, sponsorTagline: s.sponsorTagline, logoUrl: s.logoUrl, isActive: s.isActive })));
+      }
+      return { success: true };
+    }),
+  }),
+
+  // ─── Revenue ──────────────────────────────────────
+  revenue: router({
+    getOverview: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { publishedArticles: 0, totalViews: 0, subscribers: 0, socialPostsSent: 0, adsenseEnabled: false, sponsorEnabled: false, amazonEnabled: false };
+      const { articles: artTable, distributionQueue: dq } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [pubCount] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
+      const [viewsResult] = await dbConn.select({ total: sqlFn<number>`COALESCE(SUM(views), 0)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
+      const [subCount] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as c FROM newsletter_subscribers WHERE license_id = " + lid));
+      const [socialCount] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as c FROM distribution_queue WHERE license_id = " + lid + " AND status = 'sent'"));
+      const adsense = await db.getLicenseSetting(lid, "adsense_enabled");
+      const sponsor = await db.getLicenseSetting(lid, "sponsor_enabled");
+      const amazon = await db.getLicenseSetting(lid, "amazon_affiliate_tag");
+      return { publishedArticles: Number(pubCount?.count || 0), totalViews: Number(viewsResult?.total || 0), subscribers: Number((subCount as any[])?.[0]?.c || 0), socialPostsSent: Number((socialCount as any[])?.[0]?.c || 0), adsenseEnabled: adsense?.value === "true", sponsorEnabled: sponsor?.value === "true", amazonEnabled: !!(amazon?.value) };
+    }),
+    getTopArticles: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { articles: [] };
+      const { articles: artTable, categories: catTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, desc } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const top = await dbConn.select({ id: artTable.id, headline: artTable.headline, slug: artTable.slug, views: artTable.views, publishedAt: artTable.publishedAt, categoryId: artTable.categoryId }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).orderBy(desc(artTable.views)).limit(10);
+      const withCats = await Promise.all(top.map(async a => {
+        if (!a.categoryId) return { ...a, categoryName: null };
+        const [cat] = await dbConn.select({ name: catTable.name }).from(catTable).where(eqOp(catTable.id, a.categoryId)).limit(1);
+        return { ...a, categoryName: cat?.name || null };
+      }));
+      return { articles: withCats };
+    }),
+    getDistributionStats: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { stats: [] };
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [rows] = await dbConn.execute(sqlFn.raw("SELECT platform, status, COUNT(*) as cnt FROM distribution_queue WHERE license_id = " + lid + " GROUP BY platform, status"));
+      const map = new Map<string, { sent: number; failed: number }>();
+      for (const r of (rows as any[])) {
+        const ex = map.get(r.platform) || { sent: 0, failed: 0 };
+        if (r.status === "sent") ex.sent += Number(r.cnt);
+        if (r.status === "failed") ex.failed += Number(r.cnt);
+        map.set(r.platform, ex);
+      }
+      return { stats: Array.from(map.entries()).map(([platform, counts]) => ({ platform, ...counts })) };
+    }),
+  }),
+
+  // ─── Billing ──────────────────────────────────────
+  billing: router({
+    getStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { plan: "professional", articlesUsedThisMonth: 0, articlesLimit: 500 };
+      const { licenses, articles: artTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, gte, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [license] = await dbConn.select({ tier: licenses.tier }).from(licenses).where(eqOp(licenses.id, lid)).limit(1);
+      const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+      const [countResult] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), gte(artTable.createdAt, startOfMonth)));
+      const tier = license?.tier || "professional";
+      const limits: Record<string, number> = { starter: 100, professional: 500, enterprise: 1000 };
+      return { plan: tier, articlesUsedThisMonth: Number(countResult?.count || 0), articlesLimit: limits[tier] || 500 };
+    }),
+    changePlan: tenantOrAdminProcedure.input(z.object({ planKey: z.string(), stripeProductId: z.string() })).mutation(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenses } = await import("../drizzle/schema");
+      const { eq: eqOp } = await import("drizzle-orm");
+      const validTiers = ["starter", "professional", "enterprise"];
+      if (!validTiers.includes(input.planKey)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid plan" });
+      await dbConn.update(licenses).set({ tier: input.planKey as any }).where(eqOp(licenses.id, ctx.licenseId || 7));
+      console.log("[Billing] licenseId " + (ctx.licenseId || 7) + " changed to " + input.planKey);
+      return { success: true, plan: input.planKey };
     }),
   }),
 
