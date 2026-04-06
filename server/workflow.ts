@@ -173,16 +173,16 @@ async function fetchRSSFeeds(feeds: { name: string; url: string; weight?: number
       }
       console.log(`    Got ${entries.length} entries`);
       
-      // Update feed health: successful fetch
-      await db.updateFeedHealth(feed.url, { errorCount: 0, lastError: null });
+      // Update feed health: successful fetch (track counters)
+      await db.updateFeedHealth(feed.url, { errorCount: 0, lastError: null, isSuccess: true, candidatesGenerated: entries.length });
     } catch (err: any) {
       const errorMsg = err.message?.slice(0, 100) || "Unknown error";
       console.log(`    Error fetching ${feed.name}: ${errorMsg}`);
       
-      // Update feed health: increment error count
+      // Update feed health: increment error count, auto-disable at 3+ failures
       const currentHealth = await db.getFeedHealth(feed.url);
       const newErrorCount = (currentHealth?.errorCount ?? 0) + 1;
-      await db.updateFeedHealth(feed.url, { errorCount: newErrorCount, lastError: errorMsg });
+      await db.updateFeedHealth(feed.url, { errorCount: newErrorCount, lastError: errorMsg, isSuccess: false });
     }
   }
 

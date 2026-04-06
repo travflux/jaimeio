@@ -1681,26 +1681,48 @@ export async function migrateRssFeedsToWeights() {
 }
 
 
-export async function updateFeedHealth(feedUrl: string, updates: { errorCount?: number; lastError?: string | null }) {
+export async function updateFeedHealth(feedUrl: string, updates: { errorCount?: number; lastError?: string | null; isSuccess?: boolean; candidatesGenerated?: number }) {
   const db = await getDb();
   if (!db) return;
   
   try {
     const newErrorCount = updates.errorCount ?? 0;
     const shouldDisable = newErrorCount >= 3;
+    const isSuccess = updates.isSuccess ?? (newErrorCount === 0);
+    const candidatesInc = updates.candidatesGenerated ?? 0;
     
-    await db.update(rssFeedWeights)
-      .set({
-        lastFetchTime: new Date(),
-        errorCount: newErrorCount,
-        lastError: updates.lastError ?? null,
-        enabled: shouldDisable ? false : true,
-        updatedAt: new Date(),
-      })
-      .where(eq(rssFeedWeights.feedUrl, feedUrl));
+    // Use raw SQL to atomically increment counters
+    const { sql: sqlHelper } = await import("drizzle-orm");
     
-    if (shouldDisable) {
-      console.log(`[Feed Health] Feed ${feedUrl} auto-disabled due to 3+ consecutive failures`);
+    if (isSuccess) {
+      await db.execute(sqlHelper`
+        UPDATE rss_feed_weights
+        SET lastFetchTime = NOW(),
+            errorCount = ${newErrorCount},
+            lastError = ${updates.lastError ?? null},
+            enabled = 1,
+            total_fetches = COALESCE(total_fetches, 0) + 1,
+            successful_fetches = COALESCE(successful_fetches, 0) + 1,
+            candidates_generated = COALESCE(candidates_generated, 0) + ${candidatesInc},
+            auto_disabled = 0,
+            updatedAt = NOW()
+        WHERE feedUrl = ${feedUrl}
+      `);
+    } else {
+      await db.execute(sqlHelper`
+        UPDATE rss_feed_weights
+        SET lastFetchTime = NOW(),
+            errorCount = ${newErrorCount},
+            lastError = ${updates.lastError ?? null},
+            enabled = ${shouldDisable ? 0 : 1},
+            total_fetches = COALESCE(total_fetches, 0) + 1,
+            auto_disabled = ${shouldDisable ? 1 : 0},
+            updatedAt = NOW()
+        WHERE feedUrl = ${feedUrl}
+      `);
+      if (shouldDisable) {
+        console.log(`[Feed Health] Feed ${feedUrl} auto-disabled due to 3+ consecutive failures`);
+      }
     }
   } catch (error) {
     console.error(`[Database] Failed to update feed health for ${feedUrl}:`, error);

@@ -379,6 +379,11 @@ export const rssFeedWeights = mysqlTable("rss_feed_weights", {
   lastFetchTime: timestamp("lastFetchTime"),
   errorCount: int("errorCount").default(0).notNull(),
   lastError: text("lastError"),
+  licenseId: int("license_id"),
+  totalFetches: int("total_fetches").default(0),
+  successfulFetches: int("successful_fetches").default(0),
+  candidatesGenerated: int("candidates_generated").default(0),
+  autoDisabled: boolean("auto_disabled").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
