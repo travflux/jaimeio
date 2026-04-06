@@ -19,3 +19,6 @@ Mon Apr  6 08:35:17 PM UTC 2026: Promoted — Hotfix Batch B: Candidates UI, GEO
 [2026-04-06 20:54:56] Deploy started: production @ b181b20
 [2026-04-06 20:54:56] Deploy complete: production
 Mon Apr  6 08:55:28 PM UTC 2026: Promoted — Hotfix Batch C: Dashboard overhaul, Analytics nav removed
+[2026-04-06 21:30:23] Deploy started: production @ afbe482
+[2026-04-06 21:30:23] Deploy complete: production
+Mon Apr  6 09:30:50 PM UTC 2026: Promoted — Hotfix Batch D: Newsletter builder, SMS templates

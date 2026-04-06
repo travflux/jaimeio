@@ -245,6 +245,87 @@ export const appRouter = router({
         await dbConn.execute(sqlFn`UPDATE rss_feeds SET last_fetched = NOW() WHERE id = ${input.feedId}`);
         return { success: true, newCandidates: 0, message: "Feed fetch triggered" };
       }),
+    getPerformance: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { stats: { total: 0, healthy: 0, unhealthy: 0, disabled: 0 }, feeds: [] };
+      const { sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId || 7;
+      const [rows] = await dbConn.execute(sqlFn`SELECT id, feedUrl, weight, enabled, lastFetchTime, errorCount, lastError, total_fetches, successful_fetches, candidates_generated, auto_disabled FROM rss_feed_weights WHERE license_id = ${lid} ORDER BY weight DESC`);
+      const feeds = (rows as any[]).map(r => {
+        const errorCount = r.errorCount || 0;
+        const totalFetches = r.total_fetches || 0;
+        const successfulFetches = r.successful_fetches || 0;
+        const errorRate = totalFetches > 0 ? Math.round(((totalFetches - successfulFetches) / totalFetches) * 100) : 0;
+        const health: "healthy" | "unhealthy" | "disabled" = !r.enabled ? "disabled" : errorCount >= 2 ? "unhealthy" : "healthy";
+        return {
+          id: r.id,
+          feedUrl: r.feedUrl,
+          weight: r.weight,
+          enabled: !!r.enabled,
+          lastFetchTime: r.lastFetchTime,
+          errorCount,
+          lastError: r.lastError || null,
+          totalFetches,
+          successfulFetches,
+          candidatesGenerated: r.candidates_generated || 0,
+          autoDisabled: !!r.auto_disabled,
+          errorRate,
+          health,
+        };
+      });
+      const stats = {
+        total: feeds.length,
+        healthy: feeds.filter(f => f.health === "healthy").length,
+        unhealthy: feeds.filter(f => f.health === "unhealthy").length,
+        disabled: feeds.filter(f => f.health === "disabled").length,
+      };
+      return { stats, feeds };
+    }),
+    reactivate: tenantOrAdminProcedure
+      .input(z.object({ feedId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const lid = ctx.licenseId || 7;
+        await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET enabled = 1, errorCount = 0, auto_disabled = 0, lastError = NULL WHERE id = ${input.feedId} AND license_id = ${lid}`);
+        return { success: true };
+      }),
+    updateWeight: tenantOrAdminProcedure
+      .input(z.object({ feedId: z.number(), weight: z.number().min(0).max(100) }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const lid = ctx.licenseId || 7;
+        await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET weight = ${input.weight} WHERE id = ${input.feedId} AND license_id = ${lid}`);
+        return { success: true };
+      }),
+    checkAll: tenantOrAdminProcedure
+      .mutation(async ({ ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        const lid = ctx.licenseId || 7;
+        const [rows] = await dbConn.execute(sqlFn`SELECT id, feedUrl FROM rss_feed_weights WHERE license_id = ${lid} AND (enabled = 0 OR errorCount >= 2)`);
+        const feeds = rows as any[];
+        let reactivatedCount = 0;
+        for (const feed of feeds) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            const res = await fetch(feed.feedUrl, { method: "HEAD", signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) {
+              await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET enabled = 1, errorCount = 0, auto_disabled = 0, lastError = NULL WHERE id = ${feed.id}`);
+              reactivatedCount++;
+            }
+          } catch {
+            // Feed still unreachable, skip
+          }
+        }
+        return { reactivated: reactivatedCount };
+      }),
   }),
   selectorCandidates: router({
     getCounts: tenantOrAdminProcedure.query(async ({ ctx }) => {
