@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure, tenantOrAdminProcedure } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getSetting } from "../db";
 import { publicationPages } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 const DEFAULT_CONTENT: Record<string, any> = {
   advertise: {
@@ -39,6 +43,67 @@ const DEFAULT_CONTENT: Record<string, any> = {
 };
 
 export const pagesRouter = router({
+  submitContactForm: publicProcedure
+    .input(z.object({
+      formType: z.enum(["contact", "advertise", "careers"]),
+      name: z.string().min(1),
+      email: z.string().email(),
+      subject: z.string().optional(),
+      company: z.string().optional(),
+      budget: z.string().optional(),
+      message: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const notificationEmail =
+        (await getSetting("brand_contact_email"))?.value ??
+        (await getSetting("brand_editor_email"))?.value ??
+        "support@getjaime.io";
+      const siteName =
+        (await getSetting("brand_site_name"))?.value ?? "Publication";
+      const resendKey =
+        (await getSetting("resend_api_key"))?.value ?? process.env.RESEND_API_KEY;
+
+      const labels: Record<string, string> = {
+        contact: "Contact Form", advertise: "Advertising Inquiry", careers: "Career Application",
+      };
+      const emailHtml = `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#111827;margin-bottom:16px;">New ${labels[input.formType]} — ${escapeHtml(siteName)}</h2>
+          <table style="border-collapse:collapse;width:100%;">
+            <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;width:120px;">Name</td>
+                <td style="padding:8px 12px;border:1px solid #e5e7eb;">${escapeHtml(input.name)}</td></tr>
+            <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;">Email</td>
+                <td style="padding:8px 12px;border:1px solid #e5e7eb;"><a href="mailto:${escapeHtml(input.email)}">${escapeHtml(input.email)}</a></td></tr>
+            ${input.company ? `<tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;">Company</td><td style="padding:8px 12px;border:1px solid #e5e7eb;">${escapeHtml(input.company)}</td></tr>` : ""}
+            ${input.budget ? `<tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;">Budget</td><td style="padding:8px 12px;border:1px solid #e5e7eb;">${escapeHtml(input.budget)}</td></tr>` : ""}
+            ${input.subject ? `<tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;">Subject</td><td style="padding:8px 12px;border:1px solid #e5e7eb;">${escapeHtml(input.subject)}</td></tr>` : ""}
+            <tr><td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f9fafb;vertical-align:top;">Message</td>
+                <td style="padding:8px 12px;border:1px solid #e5e7eb;white-space:pre-wrap;">${escapeHtml(input.message)}</td></tr>
+          </table>
+          <p style="color:#9ca3af;font-size:12px;margin-top:16px;">Submitted via ${escapeHtml(siteName)} website</p>
+        </div>`;
+
+      if (resendKey) {
+        try {
+          const { Resend } = await import("resend");
+          const resend = new Resend(resendKey);
+          const fromEmail = (await getSetting("newsletter_from_email"))?.value ?? "noreply@getjaime.io";
+          await resend.emails.send({
+            from: `${siteName} Forms <${fromEmail}>`,
+            to: notificationEmail,
+            replyTo: input.email,
+            subject: `[${siteName}] New ${labels[input.formType]} from ${input.name}`,
+            html: emailHtml,
+          });
+        } catch (err) {
+          console.error("[Pages] Email send failed:", err);
+        }
+      } else {
+        console.log(`[Pages] No Resend key — form from ${input.email} logged only`);
+      }
+      return { success: true };
+    }),
+
   get: publicProcedure
     .input(z.object({ licenseId: z.number(), slug: z.string() }))
     .query(async ({ input }) => {

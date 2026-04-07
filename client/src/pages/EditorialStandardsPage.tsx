@@ -135,7 +135,7 @@ const EditorialStandardsPage = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-3">How to Report an Error</h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    If you believe we have made a factual error in our content or misrepresented a real-world event, please contact us at <a href="mailto:hello@getjaime.io" className="text-primary hover:underline">hello@getjaime.io</a>. Please include:
+                    If you believe we have made a factual error in our content or misrepresented a real-world event, please contact us at <a href={`mailto:${branding.correctionsEmail}`} className="text-primary hover:underline">{branding.correctionsEmail}</a>. Please include:
                   </p>
                   <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4 mt-3">
                     <li>The URL of the article in question</li>
@@ -231,9 +231,9 @@ const EditorialStandardsPage = () => {
                 We value feedback from our readers and are committed to continuous improvement. If you have questions, concerns, or suggestions about our content standards, please reach out:
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                <strong>General Inquiries:</strong> <a href="mailto:hello@getjaime.io" className="text-primary hover:underline">hello@getjaime.io</a><br />
-                <strong>Corrections:</strong> <a href="mailto:hello@getjaime.io" className="text-primary hover:underline">hello@getjaime.io</a><br />
-                <strong>Community Issues:</strong> <a href="mailto:hello@getjaime.io" className="text-primary hover:underline">hello@getjaime.io</a>
+                <strong>General Inquiries:</strong> <a href={`mailto:${branding.editorEmail}`} className="text-primary hover:underline">{branding.editorEmail}</a><br />
+                <strong>Corrections:</strong> <a href={`mailto:${branding.correctionsEmail}`} className="text-primary hover:underline">{branding.correctionsEmail}</a><br />
+                <strong>Community Issues:</strong> <a href={`mailto:${branding.moderationEmail}`} className="text-primary hover:underline">{branding.moderationEmail}</a>
               </p>
             </section>
 

@@ -74,6 +74,21 @@ export interface BrandingConfig {
   // White-label attribution (v4.9.1)
   poweredByUrl: string;
 
+  // Business & Contact (v5.0)
+  businessName: string;
+  businessAddress: string;
+  businessEmail: string;
+  businessPhone: string;
+  businessWebsite: string;
+
+  // Social links (v5.0)
+  socialXUrl: string;
+  socialInstagramUrl: string;
+  socialLinkedinUrl: string;
+  socialFacebookUrl: string;
+  socialTiktokUrl: string;
+  socialPinterestUrl: string;
+
   // Masthead customization (v4.9.6)
   mastheadBgColor: string;
   mastheadTextColor: string;
@@ -126,6 +141,21 @@ const DEFAULTS: BrandingConfig = {
   headingFont: "",
   bodyFont: "",
   poweredByUrl: "https://getjaime.io",
+
+  // Business & Contact (v5.0)
+  businessName: "",
+  businessAddress: "",
+  businessEmail: "",
+  businessPhone: "",
+  businessWebsite: "",
+
+  // Social links (v5.0)
+  socialXUrl: "",
+  socialInstagramUrl: "",
+  socialLinkedinUrl: "",
+  socialFacebookUrl: "",
+  socialTiktokUrl: "",
+  socialPinterestUrl: "",
 
   // Masthead customization (v4.9.6)
   mastheadBgColor: "",
@@ -183,6 +213,17 @@ function mapKeyToField(key: string): keyof BrandingConfig | null {
     brand_heading_font: "headingFont",
     brand_body_font: "bodyFont",
     powered_by_url: "poweredByUrl",
+    brand_business_name: "businessName",
+    brand_address: "businessAddress",
+    brand_contact_email: "businessEmail",
+    brand_phone: "businessPhone",
+    brand_website_url: "businessWebsite",
+    social_x_url: "socialXUrl",
+    social_instagram_url: "socialInstagramUrl",
+    social_linkedin_url: "socialLinkedinUrl",
+    social_facebook_url: "socialFacebookUrl",
+    social_tiktok_url: "socialTiktokUrl",
+    social_pinterest_url: "socialPinterestUrl",
     masthead_bg_color: "mastheadBgColor",
     masthead_text_color: "mastheadTextColor",
     masthead_font_family: "mastheadFontFamily",

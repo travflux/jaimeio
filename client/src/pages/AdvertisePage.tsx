@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useBranding } from "@/hooks/useBranding";
+import { trpc } from "@/lib/trpc";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,18 @@ export default function AdvertisePage() {
   const [form, setForm] = useState({ name: "", email: "", company: "", budget: "", message: "" });
   const [sending, setSending] = useState(false);
 
+  const submitForm = trpc.pages.submitContactForm.useMutation({
+    onSuccess: () => {
+      toast.success("Inquiry submitted! Our advertising team will be in touch within 24 hours.");
+      setForm({ name: "", email: "", company: "", budget: "", message: "" });
+      setSending(false);
+    },
+    onError: () => {
+      toast.error("Failed to send — please email us directly.");
+      setSending(false);
+    },
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.company || !form.message) {
@@ -52,10 +65,14 @@ export default function AdvertisePage() {
       return;
     }
     setSending(true);
-    await new Promise(r => setTimeout(r, 1200));
-    toast.success("Inquiry submitted! Our advertising team will be in touch.");
-    setForm({ name: "", email: "", company: "", budget: "", message: "" });
-    setSending(false);
+    submitForm.mutate({
+      formType: "advertise",
+      name: form.name,
+      email: form.email,
+      company: form.company,
+      budget: form.budget,
+      message: form.message,
+    });
   };
 
   return (

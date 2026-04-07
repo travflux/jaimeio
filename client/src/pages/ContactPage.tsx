@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useBranding } from "@/hooks/useBranding";
+import { trpc } from "@/lib/trpc";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,18 @@ export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sending, setSending] = useState(false);
 
+  const submitForm = trpc.pages.submitContactForm.useMutation({
+    onSuccess: () => {
+      toast.success("Message sent! We'll get back to you within 24 hours.");
+      setForm({ name: "", email: "", subject: "", message: "" });
+      setSending(false);
+    },
+    onError: () => {
+      toast.error("Failed to send — please email us directly.");
+      setSending(false);
+    },
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) {
@@ -27,11 +40,13 @@ export default function ContactPage() {
       return;
     }
     setSending(true);
-    // Simulate sending — in production this would hit a backend endpoint
-    await new Promise(r => setTimeout(r, 1200));
-    toast.success("Message sent! We'll get back to you soon.");
-    setForm({ name: "", email: "", subject: "", message: "" });
-    setSending(false);
+    submitForm.mutate({
+      formType: "contact",
+      name: form.name,
+      email: form.email,
+      subject: form.subject,
+      message: form.message,
+    });
   };
 
   return (
@@ -83,11 +98,9 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-[15px] font-semibold mb-1">Location</h3>
-                  <p className="text-[15px] text-muted-foreground">
-                    1412 Valencia<br />
-                    Tustin, CA 92782
+                  <p className="text-[15px] text-muted-foreground whitespace-pre-line">
+                    {branding.businessAddress || "Tustin, CA"}
                   </p>
-                  <p className="text-[13px] text-muted-foreground mt-1">Our headquarters</p>
                 </div>
               </div>
 
