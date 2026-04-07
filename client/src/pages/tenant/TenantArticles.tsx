@@ -53,7 +53,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const [manualUrl, setManualUrl] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
-  const [panelTab, setPanelTab] = useState<"review" | "geo">("review");
+  const [panelTab, setPanelTab] = useState<"review" | "geo" | "seo">("review");
   const deleteMut = trpc.articles.permanentDelete.useMutation({ onSuccess: () => { toast.success("Article deleted"); onAction(); } });
   const [editedHeadline, setEditedHeadline] = useState(article.headline || "");
   const [editedSubheadline, setEditedSubheadline] = useState(article.subheadline || "");
@@ -61,6 +61,24 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const saveMut = trpc.articles.update.useMutation({
     onSuccess: () => { toast.success("Changes saved"); setDirty(false); onAction(); },
     onError: () => toast.error("Failed to save"),
+  });
+  const [seoTitle, setSeoTitle] = useState(article.seoTitle || "");
+  const [seoDescription, setSeoDescription] = useState(article.seoDescription || "");
+  const [focusKeyword, setFocusKeyword] = useState(article.focusKeyword || "");
+  const [altText, setAltText] = useState(article.altText || "");
+  const saveSeoMut = trpc.articles.update.useMutation({
+    onSuccess: () => toast.success("SEO saved"),
+    onError: () => toast.error("Failed to save SEO"),
+  });
+  const generateSeoMut = trpc.articles.generateSeo.useMutation({
+    onSuccess: (r: any) => {
+      if (r?.seoTitle) setSeoTitle(r.seoTitle);
+      if (r?.seoDescription) setSeoDescription(r.seoDescription);
+      if (r?.focusKeyword) setFocusKeyword(r.focusKeyword);
+      if (r?.altText) setAltText(r.altText);
+      toast.success("SEO generated");
+    },
+    onError: () => toast.error("SEO generation failed"),
   });
 
   const wordCount = article.body ? article.body.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length : 0;
@@ -87,6 +105,8 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
               borderColor: panelTab === "review" ? "#111827" : "#e5e7eb", background: panelTab === "review" ? "#111827" : "#fff", color: panelTab === "review" ? "#fff" : "#6b7280" }}>Review</button>
             <button onClick={() => setPanelTab("geo")} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer",
               borderColor: panelTab === "geo" ? "#111827" : "#e5e7eb", background: panelTab === "geo" ? "#111827" : "#fff", color: panelTab === "geo" ? "#fff" : "#6b7280" }}>GEO</button>
+            <button onClick={() => setPanelTab("seo")} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: panelTab === "seo" ? "#111827" : "#e5e7eb", background: panelTab === "seo" ? "#111827" : "#fff", color: panelTab === "seo" ? "#fff" : "#6b7280" }}>SEO</button>
           </div>
         </div>
 
@@ -251,6 +271,119 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </>
           )}
+
+          {/* ═══ SEO TAB ═══ */}
+          {panelTab === "seo" && (
+            <>
+              {/* Generate SEO button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>SEO Data</h3>
+                <button onClick={() => generateSeoMut.mutate({ articleId: article.id })} disabled={generateSeoMut.isPending}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#374151" }}>
+                  {generateSeoMut.isPending ? <><Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> Generating...</> : "Generate SEO"}
+                </button>
+              </div>
+
+              {/* SEO Title */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>SEO Title</label>
+                  <span style={{ fontSize: 10, color: seoTitle.length > 60 ? "#f59e0b" : seoTitle.length >= 30 ? "#22c55e" : "#9ca3af" }}>{seoTitle.length}/60</span>
+                </div>
+                <input value={seoTitle} onChange={e => setSeoTitle(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid", borderColor: seoTitle.length > 60 ? "#f59e0b" : seoTitle.length >= 30 ? "#22c55e" : "#e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="SEO-optimized title..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Optimized for search. Falls back to headline if empty.</p>
+              </div>
+
+              {/* Meta Description */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Meta Description</label>
+                  <span style={{ fontSize: 10, color: seoDescription.length > 155 ? "#f59e0b" : seoDescription.length >= 120 ? "#22c55e" : "#9ca3af" }}>{seoDescription.length}/155</span>
+                </div>
+                <textarea value={seoDescription} onChange={e => setSeoDescription(e.target.value)} rows={3}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid", borderColor: seoDescription.length > 155 ? "#f59e0b" : seoDescription.length >= 120 ? "#22c55e" : "#e5e7eb", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+                  placeholder="Meta description shown in search results..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Shown in search results. Falls back to subheadline if empty.</p>
+              </div>
+
+              {/* Image Alt Text */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Image Alt Text</label>
+                <input value={altText} onChange={e => setAltText(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="Descriptive alt text for the featured image..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Used for accessibility and image SEO. Max 125 chars.</p>
+              </div>
+
+              {/* Focus Keyword */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Focus Keyword</label>
+                <input value={focusKeyword} onChange={e => setFocusKeyword(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="e.g. AI content marketing strategy" />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Primary keyword phrase (2-4 words) for this article.</p>
+              </div>
+
+              {/* Keyword Density Analysis */}
+              {focusKeyword && article?.body && (() => {
+                const kw = focusKeyword.toLowerCase();
+                const body = (article.body || "").toLowerCase();
+                let bodyCount = 0;
+                let pos = 0;
+                while ((pos = body.indexOf(kw, pos)) !== -1) { bodyCount++; pos += kw.length; }
+                const checks = [
+                  { label: "In SEO title", present: seoTitle.toLowerCase().includes(kw) },
+                  { label: "In meta description", present: seoDescription.toLowerCase().includes(kw) },
+                  { label: "In article headline", present: (article.headline || "").toLowerCase().includes(kw) },
+                  { label: "In article body", present: bodyCount > 0, count: bodyCount },
+                ];
+                return (
+                  <div style={{ marginBottom: 20, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Keyword Analysis</p>
+                    {checks.map(check => (
+                      <div key={check.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", fontSize: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: check.present ? "#22c55e" : "#d1d5db" }}>{check.present ? "\u2713" : "\u25cb"}</span>
+                          <span style={{ color: check.present ? "#15803d" : "#9ca3af" }}>{check.label}</span>
+                        </div>
+                        {"count" in check && check.count !== undefined && check.count > 0 && (
+                          <span style={{
+                            fontSize: 11, padding: "1px 8px", borderRadius: 999,
+                            background: check.count >= 2 && check.count <= 4 ? "#f0fdf4" : check.count > 4 ? "#fffbeb" : "#f3f4f6",
+                            color: check.count >= 2 && check.count <= 4 ? "#15803d" : check.count > 4 ? "#92400e" : "#6b7280",
+                          }}>
+                            {check.count}x{check.count > 4 ? " (may be too many)" : ""}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Save SEO button */}
+              <button onClick={() => saveSeoMut.mutate({ id: article.id, seoTitle, seoDescription, focusKeyword, altText })} disabled={saveSeoMut.isPending}
+                style={{ width: "100%", height: 38, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 24 }}>
+                {saveSeoMut.isPending ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving...</> : "Save SEO"}
+              </button>
+
+              {/* Google Preview */}
+              <div style={{ padding: 14, border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff" }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Google Search Preview</p>
+                <div style={{ fontSize: 18, color: "#1a0dab", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {(seoTitle || article.headline || "Article Title").substring(0, 60)}
+                </div>
+                <div style={{ fontSize: 13, color: "#006621", marginBottom: 4 }}>
+                  site.com/article/{article.slug || article.id}
+                </div>
+                <div style={{ fontSize: 13, color: "#545454", lineHeight: 1.5 }}>
+                  {(seoDescription || article.subheadline || "No description set.").substring(0, 155)}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer */}
@@ -328,7 +461,7 @@ export default function TenantArticles() {
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
               borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
-              {f}
+              {f}{f !== "all" && counts[f as keyof typeof counts] !== undefined ? ` (${counts[f as keyof typeof counts]})` : f === "all" ? ` (${counts.all})` : ""}
             </button>
           ))}
           <select value={catFilter ?? ""} onChange={e => setCatFilter(e.target.value ? Number(e.target.value) : undefined)}
@@ -336,13 +469,27 @@ export default function TenantArticles() {
             <option value="">All Categories</option>
             {licenseCategories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select>
-          {(search || catFilter) && (
-            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); }}
+          <button onClick={() => setMissingGeo(!missingGeo)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: missingGeo ? "#f59e0b" : "#e5e7eb", background: missingGeo ? "#fffbeb" : "#fff", color: missingGeo ? "#92400e" : "#6b7280" }}>
+            No GEO
+          </button>
+          <button onClick={() => setMissingImage(!missingImage)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: missingImage ? "#f59e0b" : "#e5e7eb", background: missingImage ? "#fffbeb" : "#fff", color: missingImage ? "#92400e" : "#6b7280" }}>
+            No Image
+          </button>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }} />
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }} />
+          {hasActiveFilters && (
+            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); setMissingGeo(false); setMissingImage(false); setDateFrom(""); setDateTo(""); }}
               style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#9ca3af" }}>
               Clear
             </button>
           )}
-          {(search || catFilter) && <span style={{ fontSize: 11, color: "#9ca3af" }}>{data?.total || 0} results</span>}
+          {hasActiveFilters && <span style={{ fontSize: 11, color: "#9ca3af" }}>{data?.total || 0} results</span>}
         </div>
       </div>
       {isLoading ? <p style={{ color: "#6b7280", padding: 40, textAlign: "center" }}>Loading...</p> : articles.length === 0 ? (

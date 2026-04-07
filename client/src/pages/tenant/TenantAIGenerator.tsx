@@ -21,6 +21,8 @@ export default function TenantAIGenerator() {
   const [wordCount, setWordCount] = useState("800");
   const [extra, setExtra] = useState("");
   const [lastGen, setLastGen] = useState<{ articleId: number; headline: string } | null>(null);
+  const [imageGenerated, setImageGenerated] = useState(false);
+  const [geoGenerated, setGeoGenerated] = useState(false);
 
   const catsQuery = trpc.categories.list.useQuery();
   const recentQuery = trpc.articles.list.useQuery({ limit: 8, status: "pending" });
@@ -28,12 +30,23 @@ export default function TenantAIGenerator() {
   const genMut = trpc.workflow.generateFromTopic.useMutation({
     onSuccess: (data: any) => {
       setLastGen(data);
+      setImageGenerated(false);
+      setGeoGenerated(false);
       setTopic("");
       setExtra("");
       toast.success("Article generated!");
       recentQuery.refetch();
     },
     onError: (err: any) => toast.error("Generation failed: " + err.message),
+  });
+
+  const regenImageMut = trpc.articles.regenerateImage.useMutation({
+    onSuccess: () => { setImageGenerated(true); toast.success("Image generated"); recentQuery.refetch(); },
+    onError: (e: any) => toast.error("Image generation failed: " + e.message),
+  });
+  const geoMut = trpc.geo.generateForArticle.useMutation({
+    onSuccess: () => { setGeoGenerated(true); toast.success("GEO generated"); },
+    onError: (e: any) => toast.error("GEO generation failed: " + e.message),
   });
 
   const handleGenerate = () => {
@@ -116,8 +129,18 @@ export default function TenantAIGenerator() {
           {lastGen && (
             <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: 16, marginBottom: 16 }}>
               <p style={{ fontSize: 14, fontWeight: 600, color: "#166534", marginBottom: 4 }}>Article generated</p>
-              <p style={{ fontSize: 13, color: "#15803d" }}>{lastGen.headline}</p>
-              <a href="/admin/articles" style={{ fontSize: 12, color: "#15803d", textDecoration: "underline", marginTop: 8, display: "inline-block" }}>Review in Articles →</a>
+              <p style={{ fontSize: 13, color: "#15803d", marginBottom: 12 }}>{lastGen.headline}</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                <button onClick={() => regenImageMut.mutate({ articleId: lastGen.articleId })} disabled={regenImageMut.isPending || imageGenerated}
+                  style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #bbf7d0", background: imageGenerated ? "#d1fae5" : "#fff", fontSize: 12, fontWeight: 600, cursor: imageGenerated ? "default" : "pointer", color: imageGenerated ? "#166534" : "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
+                  {regenImageMut.isPending ? <><Loader2 size={12} className="animate-spin" /> Generating Image...</> : imageGenerated ? "✓ Image Generated" : "Generate Image"}
+                </button>
+                <button onClick={() => geoMut.mutate({ articleId: lastGen.articleId })} disabled={geoMut.isPending || geoGenerated}
+                  style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #bbf7d0", background: geoGenerated ? "#d1fae5" : "#fff", fontSize: 12, fontWeight: 600, cursor: geoGenerated ? "default" : "pointer", color: geoGenerated ? "#166534" : "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
+                  {geoMut.isPending ? <><Loader2 size={12} className="animate-spin" /> Generating GEO...</> : geoGenerated ? "✓ GEO Generated" : "Generate GEO"}
+                </button>
+              </div>
+              <a href="/admin/articles" style={{ fontSize: 12, color: "#15803d", textDecoration: "underline", display: "inline-block" }}>Review in Articles →</a>
             </div>
           )}
         </div>

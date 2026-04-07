@@ -195,7 +195,7 @@ export async function seedDefaultCategories() {
 }
 
 // ─── Articles ────────────────────────────────────────────
-export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; missingGeo?: boolean; missingImage?: boolean; licenseId?: number } = {}) {
+export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; missingGeo?: boolean; missingImage?: boolean; licenseId?: number; dateFrom?: string; dateTo?: string } = {}) {
   const db = await getDb();
   if (!db) return { articles: [], total: 0 };
   
@@ -211,6 +211,8 @@ export async function listArticles(opts: { status?: string; categoryId?: number;
   if (opts.missingImage) conditions.push(sql`(${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '')`);
   if (opts.missingGeo) conditions.push(sql`(${articles.geoSummary} IS NULL OR ${articles.geoSummary} = '')`);
   if (opts.licenseId) conditions.push(eq(articles.licenseId, opts.licenseId));
+  if (opts.dateFrom) conditions.push(sql`${articles.createdAt} >= ${new Date(opts.dateFrom)}`);
+  if (opts.dateTo) conditions.push(sql`${articles.createdAt} <= ${new Date(opts.dateTo)}`);
 
   
   // Add date range filter

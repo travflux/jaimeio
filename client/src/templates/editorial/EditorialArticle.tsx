@@ -158,7 +158,7 @@ export function EditorialArticle({ licenseSettings, categories, currentArticle, 
       {/* Featured Image */}
       {article.featuredImage && (
         <div style={{ maxWidth: 1280, margin: "24px auto 0", padding: "0 24px" }}>
-          <img src={article.featuredImage} alt={article.headline} style={{
+          <img src={article.featuredImage} alt={article.altText || article.headline || ""} style={{
             width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: 8,
           }} />
         </div>

@@ -15,12 +15,16 @@ function scoreColor(s: number) { return s >= 0.7 ? "#22c55e" : s >= 0.4 ? "#f59e
 export default function TenantCandidates() {
   const [statusTab, setStatusTab] = useState("pending");
   const [potentialFilter, setPotentialFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
   const [bulkGenerating, setBulkGenerating] = useState(false);
 
+  const countsQuery = trpc.selectorCandidates.getCounts.useQuery(undefined, { staleTime: 30000 });
+  const counts = countsQuery.data || { pending: 0, selected: 0, rejected: 0, expired: 0, high: 0, medium: 0, low: 0, sources: [] as string[] };
+
   const { data, refetch, isLoading } = trpc.selectorCandidates.list.useQuery(
-    { status: statusTab, potential: potentialFilter === "all" ? undefined : potentialFilter, limit: 50 },
+    { status: statusTab, potential: potentialFilter === "all" ? undefined : potentialFilter, source: sourceFilter || undefined, limit: 50 },
     { staleTime: 15000 }
   );
 
@@ -64,23 +68,35 @@ export default function TenantCandidates() {
     <TenantLayout pageTitle="Candidates" pageSubtitle={total + " " + statusTab + " candidates"} section="Content"
       headerActions={<button onClick={() => refetch()} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer" }}><RefreshCw size={12} /> Refresh</button>}>
 
-      {/* Status Tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1px solid #e5e7eb" }}>
-        {["pending", "selected", "rejected", "expired"].map(tab => (
-          <button key={tab} onClick={() => { setStatusTab(tab); setSelectedIds(new Set()); }}
-            style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", textTransform: "capitalize", border: "none", background: "transparent", borderBottom: statusTab === tab ? "2px solid #2dd4bf" : "2px solid transparent", color: statusTab === tab ? "#111827" : "#9ca3af", marginBottom: -1 }}>
-            {tab}{tab === "pending" && total > 0 ? " (" + total + ")" : ""}
-          </button>
-        ))}
+      {/* Subtitle with counts */}
+      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
+        {counts.pending} pending · {counts.selected} selected · {counts.rejected} rejected
+      </p>
+
+      {/* Status + Source selects */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <select value={statusTab} onChange={e => { setStatusTab(e.target.value); setSelectedIds(new Set()); }}
+          style={{ height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff", cursor: "pointer" }}>
+          {[["pending","Pending"], ["selected","Selected"], ["rejected","Rejected"], ["expired","Expired"]].map(([val, label]) => (
+            <option key={val} value={val}>{label} ({counts[val as keyof typeof counts] as number || 0})</option>
+          ))}
+        </select>
+        {counts.sources && counts.sources.length > 0 && (
+          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+            style={{ height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff", cursor: "pointer" }}>
+            <option value="">All Sources</option>
+            {(counts.sources as string[]).map((src: string) => <option key={src} value={src}>{src}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Filters + Bulk */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {["all", "high", "medium", "low"].map(f => (
+        {[["all", "All Potential"], ["high", "High"], ["medium", "Medium"], ["low", "Low"]].map(([f, label]) => (
           <button key={f} onClick={() => setPotentialFilter(f)}
             style={{ padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
               borderColor: potentialFilter === f ? "#2dd4bf" : "#e5e7eb", background: potentialFilter === f ? "#f0fdfa" : "#fff", color: potentialFilter === f ? "#0d9488" : "#6b7280" }}>
-            {f === "all" ? "All Potential" : f}
+            {label}{f !== "all" && counts[f as keyof typeof counts] !== undefined ? ` (${counts[f as keyof typeof counts]})` : ""}
           </button>
         ))}
         {statusTab === "pending" && (

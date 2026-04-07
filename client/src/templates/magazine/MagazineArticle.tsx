@@ -41,7 +41,7 @@ export function MagazineArticle({ licenseSettings, categories, currentArticle, a
       {/* Full-width hero image */}
       {article.featuredImage && (
         <div style={{ width: "100%", maxHeight: 520, overflow: "hidden" }}>
-          <img src={article.featuredImage} alt={article.headline} style={{ width: "100%", height: 520, objectFit: "cover" }} onError={e => (e.currentTarget.style.display = "none")} />
+          <img src={article.featuredImage} alt={article.altText || article.headline || ""} style={{ width: "100%", height: 520, objectFit: "cover" }} onError={e => (e.currentTarget.style.display = "none")} />
         </div>
       )}
 
