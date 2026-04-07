@@ -146,6 +146,52 @@ export default function TenantBranding() {
         </div>
       </div>
 
+      {/* Business & Contact Information */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Business & Contact Information</h3>
+        <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>Required for CAN-SPAM email compliance. Toggle to show on Contact page.</p>
+        {[
+          { key: "business_name", label: "Business / Brand Name", placeholder: "Niki James LLC", type: "text", note: "" },
+          { key: "business_address", label: "Physical Mailing Address", placeholder: "123 Main St, Los Angeles, CA 90001", type: "text", note: "Must be a valid physical address — required by CAN-SPAM law" },
+          { key: "business_email", label: "Contact Email", placeholder: "hello@nikijames.com", type: "email", note: "" },
+          { key: "business_phone", label: "Phone Number (optional)", placeholder: "+1 (310) 555-0000", type: "text", note: "" },
+          { key: "business_website", label: "Website URL", placeholder: "https://nikijames.com", type: "url", note: "" },
+        ].map(field => (
+          <div key={field.key} style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 500 }}>{field.label}</label>
+              <label style={{ fontSize: 11, color: "#9ca3af", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                <span>Show on Contact</span>
+                <input type="checkbox" checked={s[`${field.key}_show_on_contact`] === "true"} onChange={e => update(`${field.key}_show_on_contact`, e.target.checked ? "true" : "false")} />
+              </label>
+            </div>
+            <input type={field.type} value={s[field.key] || ""} onChange={e => update(field.key, e.target.value)} placeholder={field.placeholder}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
+            {field.note && <p style={{ fontSize: 11, color: "#d97706", marginTop: 4 }}>&#9888; {field.note}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Social Media Links */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Social Media Links</h3>
+        <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>These appear as icons in your publication footer and newsletter. Enter full URLs.</p>
+        {[
+          { key: "social_instagram_url", label: "Instagram", placeholder: "https://instagram.com/yourhandle" },
+          { key: "social_x_url", label: "X (Twitter)", placeholder: "https://x.com/yourhandle" },
+          { key: "social_linkedin_url", label: "LinkedIn", placeholder: "https://linkedin.com/in/yourprofile" },
+          { key: "social_facebook_url", label: "Facebook", placeholder: "https://facebook.com/yourpage" },
+          { key: "social_tiktok_url", label: "TikTok", placeholder: "https://tiktok.com/@yourhandle" },
+          { key: "social_pinterest_url", label: "Pinterest", placeholder: "https://pinterest.com/yourprofile" },
+        ].map(field => (
+          <div key={field.key} style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>{field.label}</label>
+            <input value={s[field.key] || ""} onChange={e => update(field.key, e.target.value)} placeholder={field.placeholder}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
+          </div>
+        ))}
+      </div>
+
       {/* Custom Domain */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Custom Domain</h3>
