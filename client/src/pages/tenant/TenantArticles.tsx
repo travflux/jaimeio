@@ -315,6 +315,43 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                 <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Primary keyword phrase (2-4 words) for this article.</p>
               </div>
 
+              {/* Keyword Density Analysis */}
+              {focusKeyword && article?.body && (() => {
+                const kw = focusKeyword.toLowerCase();
+                const body = (article.body || "").toLowerCase();
+                let bodyCount = 0;
+                let pos = 0;
+                while ((pos = body.indexOf(kw, pos)) !== -1) { bodyCount++; pos += kw.length; }
+                const checks = [
+                  { label: "In SEO title", present: seoTitle.toLowerCase().includes(kw) },
+                  { label: "In meta description", present: seoDescription.toLowerCase().includes(kw) },
+                  { label: "In article headline", present: (article.headline || "").toLowerCase().includes(kw) },
+                  { label: "In article body", present: bodyCount > 0, count: bodyCount },
+                ];
+                return (
+                  <div style={{ marginBottom: 20, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Keyword Analysis</p>
+                    {checks.map(check => (
+                      <div key={check.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", fontSize: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: check.present ? "#22c55e" : "#d1d5db" }}>{check.present ? "\u2713" : "\u25cb"}</span>
+                          <span style={{ color: check.present ? "#15803d" : "#9ca3af" }}>{check.label}</span>
+                        </div>
+                        {"count" in check && check.count !== undefined && check.count > 0 && (
+                          <span style={{
+                            fontSize: 11, padding: "1px 8px", borderRadius: 999,
+                            background: check.count >= 2 && check.count <= 4 ? "#f0fdf4" : check.count > 4 ? "#fffbeb" : "#f3f4f6",
+                            color: check.count >= 2 && check.count <= 4 ? "#15803d" : check.count > 4 ? "#92400e" : "#6b7280",
+                          }}>
+                            {check.count}x{check.count > 4 ? " (may be too many)" : ""}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {/* Save SEO button */}
               <button onClick={() => saveSeoMut.mutate({ id: article.id, seoTitle, seoDescription, focusKeyword })} disabled={saveSeoMut.isPending}
                 style={{ width: "100%", height: 38, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 24 }}>

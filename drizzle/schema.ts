@@ -68,6 +68,7 @@ export const articles = mysqlTable("articles", {
   seoDescription: varchar("seo_description", { length: 500 }),
   focusKeyword: varchar("focus_keyword", { length: 100 }),
   seoTitle: varchar("seo_title", { length: 255 }),
+  altText: varchar("alt_text", { length: 255 }),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isSponsored: boolean("is_sponsored").default(false).notNull(),
   isBreaking: boolean("is_breaking").default(false).notNull(),

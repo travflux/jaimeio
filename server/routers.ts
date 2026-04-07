@@ -1358,13 +1358,13 @@ export const appRouter = router({
 
         const result = await invokeLLM({
           messages: [
-            { role: "system", content: 'You are an SEO specialist. Generate optimized SEO metadata for the given article. Return valid JSON with exactly these fields: {"seoTitle": "...", "seoDescription": "...", "focusKeyword": "..."}. seoTitle should be max 60 chars, compelling for search. seoDescription should be max 155 chars, summarizing the article for search results. focusKeyword should be 2-4 words representing the main topic.' },
+            { role: "system", content: 'You are an SEO specialist. Generate optimized SEO metadata for the given article. Return valid JSON with exactly these fields: {"seoTitle": "...", "seoDescription": "...", "focusKeyword": "...", "altText": "..."}. seoTitle should be max 60 chars, compelling for search. seoDescription should be max 155 chars, summarizing the article for search results. focusKeyword should be 2-4 words representing the main topic. altText should be a descriptive alt text for the article featured image, max 125 chars.' },
             { role: "user", content: `Headline: ${article.headline}\nSubheadline: ${article.subheadline || ""}\n\nArticle excerpt:\n${plainBody}` },
           ],
         });
 
         const llmContent = result.choices?.[0]?.message?.content;
-        let seoData: { seoTitle: string; seoDescription: string; focusKeyword: string } = { seoTitle: "", seoDescription: "", focusKeyword: "" };
+        let seoData: { seoTitle: string; seoDescription: string; focusKeyword: string; altText: string } = { seoTitle: "", seoDescription: "", focusKeyword: "", altText: "" };
         try {
           const raw = typeof llmContent === "string" ? llmContent : "{}";
           const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -1373,6 +1373,7 @@ export const appRouter = router({
             seoTitle: (parsed.seoTitle || "").slice(0, 255),
             seoDescription: (parsed.seoDescription || "").slice(0, 500),
             focusKeyword: (parsed.focusKeyword || "").slice(0, 100),
+            altText: (parsed.altText || "").slice(0, 255),
           };
         } catch {
           seoData.seoDescription = (typeof llmContent === "string" ? llmContent : "").slice(0, 500);
@@ -1381,6 +1382,38 @@ export const appRouter = router({
         await db.updateArticle(input.articleId, seoData as any);
         return seoData;
       }),
+
+
+    backfillSEO: adminProcedure.mutation(async () => {
+      const { generateAndSaveSEO } = await import("./workflow");
+      const { articles: articlesTable } = await import("../drizzle/schema");
+      const { and, or, isNull, inArray, desc } = await import("drizzle-orm");
+      const dbConn = await db.getDb();
+      const rows = await dbConn
+        .select({ id: articlesTable.id, licenseId: articlesTable.licenseId })
+        .from(articlesTable)
+        .where(
+          and(
+            inArray(articlesTable.licenseId, [6, 7]),
+            or(isNull(articlesTable.seoTitle), isNull(articlesTable.focusKeyword)),
+          ),
+        )
+        .orderBy(desc(articlesTable.createdAt))
+        .limit(30);
+
+      let processed = 0;
+      for (const row of rows) {
+        try {
+          await generateAndSaveSEO(row.id, row.licenseId);
+          processed++;
+          await new Promise(r => setTimeout(r, 2000));
+        } catch (err) {
+          console.error(`[SEO Backfill] Failed for article ${row.id}:`, err);
+        }
+      }
+
+      return { total: rows.length, processed };
+    }),
 
     generateImageForDraft: adminProcedure
       .input(z.object({ id: z.number() }))

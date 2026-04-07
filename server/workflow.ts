@@ -663,6 +663,11 @@ export async function generateArticleFromTopic(opts: {
     sourceEvent: "Manual: " + opts.topic.substring(0, 100),
   } as any);
 
+  // Sprint 3.15: Background SEO generation
+  generateAndSaveSEO(articleId, lid).catch(err => {
+    console.error("[SEO] Background generation failed for article " + articleId + ":", err);
+  });
+
   // Generate image in background
   const autoImages = (await getLicenseSetting(lid, "auto_generate_images"))?.value;
   if (autoImages !== "false") {
@@ -681,7 +686,74 @@ export async function generateArticleFromTopic(opts: {
     })();
   }
 
-  return { id: articleId, headline: article.headline || "Untitled", slug };
+  return { id: articleId, headline: article.headline || Untitled, slug };
+}
+
+// ─── SEO Generation ─────────────────────────────────────────────────────────
+
+export async function generateAndSaveSEO(articleId: number, licenseId: number | null | undefined): Promise<void> {
+  const { getArticleById, updateArticle, getLicenseSetting } = await import("./db");
+
+  try {
+    const article = await getArticleById(articleId);
+    if (!article) {
+      console.error(`[SEO] Article ${articleId} not found`);
+      return;
+    }
+
+    const siteName = licenseId
+      ? (await getLicenseSetting(licenseId, "brand_site_name"))?.value || "our publication"
+      : "our publication";
+
+    const plainBody = (article.body || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2000);
+
+    const result = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are an SEO specialist for ${siteName}. Generate optimized SEO metadata for the given article. Return valid JSON with exactly these fields: {"focusKeyword": "...", "seoTitle": "...", "seoDescription": "...", "altText": "..."}. seoTitle should be max 60 chars, compelling for search. seoDescription should be max 155 chars, summarizing the article for search results. focusKeyword should be 2-4 words representing the main topic. altText should be a descriptive alt text for the article featured image, max 125 chars.`,
+        },
+        {
+          role: "user",
+          content: `Headline: ${article.headline}\nSubheadline: ${article.subheadline || ""}\n\nArticle excerpt:\n${plainBody}`,
+        },
+      ],
+    });
+
+    const llmContent = result.choices?.[0]?.message?.content;
+    if (!llmContent) {
+      console.error(`[SEO] No LLM response for article ${articleId}`);
+      return;
+    }
+
+    let seoData: { focusKeyword: string; seoTitle: string; seoDescription: string; altText: string } = {
+      focusKeyword: "",
+      seoTitle: "",
+      seoDescription: "",
+      altText: "",
+    };
+
+    try {
+      const raw = typeof llmContent === "string" ? llmContent : "{}";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+      seoData = {
+        focusKeyword: (parsed.focusKeyword || "").slice(0, 100),
+        seoTitle: (parsed.seoTitle || "").slice(0, 255),
+        seoDescription: (parsed.seoDescription || "").slice(0, 500),
+        altText: (parsed.altText || "").slice(0, 255),
+      };
+    } catch {
+      console.error(`[SEO] Failed to parse LLM JSON for article ${articleId}`);
+      return;
+    }
+
+    await updateArticle(articleId, seoData as any);
+    console.log(`[SEO] Generated SEO for article ${articleId}: "${seoData.seoTitle}"`);
+  } catch (err: any) {
+    console.error(`[SEO] generateAndSaveSEO failed for article ${articleId}:`, err?.message || err);
+    throw err;
+  }
 }
 
 
@@ -1318,6 +1390,10 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
         if (article.candidateId) {
           linkCandidateToArticle(article.candidateId, id).catch(() => { /* non-critical */ });
         }
+        // Sprint 3.15: Background SEO generation
+        generateAndSaveSEO(id, tenantId).catch(err => {
+          console.error("[SEO] Background generation failed for article " + id + ":", err);
+        });
       }
     } catch (err: any) {
       // Skip duplicates silently
