@@ -654,7 +654,7 @@ export const appRouter = router({
 
   // ─── Articles ────────────────────────────────────────
   articles: router({
-    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional(), missingGeo: z.boolean().optional(), missingImage: z.boolean().optional(), dateFrom: z.string().optional(), dateTo: z.string().optional() }).optional()).query(async ({ input, ctx }) => {
+    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional(), missingGeo: z.boolean().optional(), missingImage: z.boolean().optional(), dateFrom: z.string().optional(), dateTo: z.string().optional(), tagFilter: z.string().optional() }).optional()).query(async ({ input, ctx }) => {
       const params = input ?? {};
       const limit = params.limit ?? 20;
       const offset = params.cursor ? undefined : params.offset;

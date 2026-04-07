@@ -273,6 +273,7 @@ function Router() {
           <Route path="/admin/post-queue" component={TenantPostQueue} />
           <Route path="/admin/social-performance" component={TenantSocialPerformance} />
           <Route path="/admin/revenue" component={TenantRevenue} />
+          <Route path="/admin/monetization" component={TenantRevenue} />
           <Route path="/admin/adsense" component={TenantAdSense} />
           <Route path="/admin/amazon" component={TenantAmazon} />
           <Route path="/admin/sponsorship" component={TenantSponsorship} />

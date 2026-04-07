@@ -195,7 +195,7 @@ export async function seedDefaultCategories() {
 }
 
 // ─── Articles ────────────────────────────────────────────
-export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; missingGeo?: boolean; missingImage?: boolean; licenseId?: number; dateFrom?: string; dateTo?: string } = {}) {
+export async function listArticles(opts: { status?: string; categoryId?: number; limit?: number; offset?: number; search?: string; dateRange?: string; noImage?: boolean; missingGeo?: boolean; missingImage?: boolean; licenseId?: number; dateFrom?: string; dateTo?: string; tagFilter?: string } = {}) {
   const db = await getDb();
   if (!db) return { articles: [], total: 0 };
   
@@ -213,6 +213,10 @@ export async function listArticles(opts: { status?: string; categoryId?: number;
   if (opts.licenseId) conditions.push(eq(articles.licenseId, opts.licenseId));
   if (opts.dateFrom) conditions.push(sql`${articles.createdAt} >= ${new Date(opts.dateFrom)}`);
   if (opts.dateTo) conditions.push(sql`${articles.createdAt} <= ${new Date(opts.dateTo)}`);
+  if (opts.tagFilter) {
+    const tagCol = (articles as any)[opts.tagFilter];
+    if (tagCol) conditions.push(eq(tagCol, true));
+  }
 
   
   // Add date range filter
