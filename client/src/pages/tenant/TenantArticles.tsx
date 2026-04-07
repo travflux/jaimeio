@@ -440,6 +440,7 @@ export default function TenantArticles() {
   const [missingImage, setMissingImage] = useState(false);
   const [dateFrom, setDateFrom] = useState();
   const [dateTo, setDateTo] = useState();
+  const [tagFilter, setTagFilter] = useState("");
 
   useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
 
@@ -451,6 +452,7 @@ export default function TenantArticles() {
   if (missingImage) queryParams.missingImage = true;
   if (dateFrom) queryParams.dateFrom = dateFrom;
   if (dateTo) queryParams.dateTo = dateTo;
+  if (tagFilter) queryParams.tagFilter = tagFilter;
   const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
   const catsQuery = trpc.categories.list.useQuery();
   const { data: articleCounts } = trpc.articles.getCounts.useQuery(undefined, { refetchInterval: 30000 });
@@ -458,7 +460,7 @@ export default function TenantArticles() {
   let licenseCategories = catsQuery.data || [];
   try { if (settings?.categories) { const p = JSON.parse(settings.categories); if (Array.isArray(p) && p.length > 0) licenseCategories = p.map((c: any, i: number) => ({ id: c.id ?? -(i+1), name: c.name, slug: c.slug || "", color: c.color || null })); } } catch {}
   const filters = ["all", "pending", "published", "approved", "draft", "rejected"];
-  const hasActiveFilters = filter !== "all" || !!search || !!catFilter || missingGeo || missingImage || !!dateFrom || !!dateTo;
+  const hasActiveFilters = filter !== "all" || !!search || !!catFilter || missingGeo || missingImage || !!dateFrom || !!dateTo || !!tagFilter;
 
   return (
     <TenantLayout pageTitle="Articles" pageSubtitle={`${data?.total || 0} total articles`} section="Content"
@@ -487,6 +489,16 @@ export default function TenantArticles() {
             <option value="">All Categories</option>
             {licenseCategories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select>
+          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid", fontSize: 11, background: "#fff",
+              borderColor: tagFilter ? "#8b5cf6" : "#e5e7eb", color: tagFilter ? "#6d28d9" : "#6b7280" }}>
+            <option value="">All Tags</option>
+            <option value="isEditorsPick">Editor's Pick</option>
+            <option value="isTrending">Trending</option>
+            <option value="isFeatured">Featured</option>
+            <option value="isSponsored">Sponsored</option>
+            <option value="isBreaking">Breaking</option>
+          </select>
           <button onClick={() => setMissingGeo(!missingGeo)}
             style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer",
               borderColor: missingGeo ? "#f59e0b" : "#e5e7eb", background: missingGeo ? "#fffbeb" : "#fff", color: missingGeo ? "#92400e" : "#6b7280" }}>
@@ -502,7 +514,7 @@ export default function TenantArticles() {
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
             style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }} />
           {hasActiveFilters && (
-            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); setMissingGeo(false); setMissingImage(false); setDateFrom(""); setDateTo(""); }}
+            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); setMissingGeo(false); setMissingImage(false); setDateFrom(""); setDateTo(""); setTagFilter(""); }}
               style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#9ca3af" }}>
               Clear
             </button>
