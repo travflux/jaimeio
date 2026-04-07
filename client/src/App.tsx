@@ -138,6 +138,7 @@ import TenantDistribution from "./pages/tenant/TenantDistribution";
 import TenantPostQueue from "./pages/tenant/TenantPostQueue";
 import TenantSocialPerformance from "./pages/tenant/TenantSocialPerformance";
 import TenantRevenue from "./pages/tenant/TenantRevenue";
+import TenantMonetizationSettings from "./pages/tenant/TenantMonetizationSettings";
 import TenantAdSense from "./pages/tenant/TenantAdSense";
 import TenantAmazon from "./pages/tenant/TenantAmazon";
 import TenantSponsorship from "./pages/tenant/TenantSponsorship";
@@ -273,7 +274,8 @@ function Router() {
           <Route path="/admin/post-queue" component={TenantPostQueue} />
           <Route path="/admin/social-performance" component={TenantSocialPerformance} />
           <Route path="/admin/revenue" component={TenantRevenue} />
-          <Route path="/admin/monetization" component={TenantRevenue} />
+          <Route path="/admin/monetization" component={TenantMonetizationSettings} />
+          <Route path="/admin/monetization-settings" component={TenantMonetizationSettings} />
           <Route path="/admin/adsense" component={TenantAdSense} />
           <Route path="/admin/amazon" component={TenantAmazon} />
           <Route path="/admin/sponsorship" component={TenantSponsorship} />
