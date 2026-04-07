@@ -1586,16 +1586,20 @@ export const appRouter = router({
   newsletter: router({
     subscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(async ({ input, ctx }) => {
       const result = await db.subscribeNewsletter(input.email, ctx.licenseId || undefined);
-      // Sync to Resend audience if configured
+      // Sync to Resend contacts
       const licenseId = ctx.licenseId;
       if (licenseId) {
         const resendKey = await db.getLicenseSetting(licenseId, "resend_api_key") ?? process.env.RESEND_API_KEY;
-        const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
-        if (resendKey && audienceId) {
+        if (resendKey) {
           try {
             const { Resend } = await import("resend");
             const resend = new Resend(resendKey);
-            await resend.contacts.create({ audienceId, email: input.email, unsubscribed: false });
+            const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
+            await resend.contacts.create({
+              ...(audienceId ? { audienceId } : {}),
+              email: input.email,
+              unsubscribed: false,
+            });
           } catch (err) {
             console.error("[Newsletter] Resend contact sync failed:", err);
           }
@@ -1606,23 +1610,9 @@ export const appRouter = router({
     unsubscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input }) => db.unsubscribeNewsletter(input.email)),
     list: adminProcedure.query(({ ctx }) => db.listSubscribers(ctx.licenseId || undefined)),
     subscriberCount: publicProcedure.query(async ({ ctx }) => {
-      const licenseId = ctx.licenseId;
-      if (licenseId) {
-        const resendKey = await db.getLicenseSetting(licenseId, "resend_api_key") ?? process.env.RESEND_API_KEY;
-        const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
-        if (resendKey && audienceId) {
-          try {
-            const { Resend } = await import("resend");
-            const resend = new Resend(resendKey);
-            const result = await resend.contacts.list({ audienceId });
-            const active = (result.data?.data ?? []).filter((c: any) => !c.unsubscribed).length;
-            return { count: active, source: "resend" };
-          } catch (err) {
-            console.error("[Newsletter] Resend count failed:", err);
-          }
-        }
-      }
-      const count = await db.countNewsletterSubscribers("active", licenseId || undefined);
+      // Use local DB count — always accurate and fast
+      // Resend contacts.list is paginated and unreliable for counting
+      const count = await db.countNewsletterSubscribers("active", ctx.licenseId || undefined);
       return { count, source: "local" };
     }),
     sendDigest: adminProcedure
@@ -1699,10 +1689,11 @@ export const appRouter = router({
         const fromName = (await getLicenseSetting(lid, "newsletter_from_name")) || "Newsletter";
         const fromEmail = (await getLicenseSetting(lid, "newsletter_from_email")) || "newsletter@getjaime.io";
 
-        // Get active subscribers
+        // Get active subscribers for this license
+        const { and: andOp } = await import("drizzle-orm");
         const subscribers = await dbConn.select({ email: newsletterSubscribers.email })
           .from(newsletterSubscribers)
-          .where(eq(newsletterSubscribers.status, "active"));
+          .where(lid ? andOp(eq(newsletterSubscribers.status, "active"), eq(newsletterSubscribers.licenseId, lid)) : eq(newsletterSubscribers.status, "active"));
 
         const recipientCount = subscribers.length;
         let successCount = 0;

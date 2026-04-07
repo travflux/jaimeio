@@ -64,6 +64,7 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
   const deleteMut = trpc.articles.permanentDelete.useMutation({ onSuccess: () => { toast.success("Article deleted"); onAction(); } });
   const [editedHeadline, setEditedHeadline] = useState(article.headline || "");
   const [editedSubheadline, setEditedSubheadline] = useState(article.subheadline || "");
+  const [editedBody, setEditedBody] = useState(article.body || "");
   const [dirty, setDirty] = useState(false);
   const saveMut = trpc.articles.update.useMutation({
     onSuccess: () => { toast.success("Changes saved"); setDirty(false); onAction(); },
@@ -225,7 +226,13 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
                   </button>
                 </div>
               )}
-              <div style={{ fontSize: 15, lineHeight: 1.8, color: "#374151", maxHeight: 400, overflowY: "auto" }} dangerouslySetInnerHTML={{ __html: article.body || "" }} />
+              <div style={{ marginTop: 8 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Article Body</label>
+                <textarea value={editedBody} onChange={e => { setEditedBody(e.target.value); setDirty(true); }}
+                  rows={14} style={{ width: "100%", fontSize: 13, lineHeight: 1.7, color: "#374151", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", resize: "vertical", fontFamily: "inherit", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#2dd4bf")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "#e5e7eb")} />
+              </div>
             </>
           )}
 
@@ -395,7 +402,7 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
 
         {/* Footer */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-          <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline }); }} disabled={!dirty || saveMut.isPending}
+          <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
             style={{ width: "100%", height: 38, background: dirty ? "#2dd4bf" : "#f9fafb", color: dirty ? "#0f2d5e" : "#9ca3af", border: "1px solid", borderColor: dirty ? "#2dd4bf" : "#e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: dirty ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
             {saveMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Changes"}
           </button>
