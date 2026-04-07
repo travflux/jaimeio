@@ -50,6 +50,11 @@ export default function TenantBranding() {
 
   return (
     <TenantLayout pageTitle="Branding" pageSubtitle="Publication identity, logos, colors, and fonts" section="Settings" saveAction={handleSave}>
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>Design & Branding</span>
+      </nav>
 
       {/* Template Selection */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>

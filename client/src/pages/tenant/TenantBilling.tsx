@@ -24,7 +24,12 @@ export default function TenantBilling() {
   const limit = data?.articlesLimit || 500;
 
   return (
-    <TenantLayout pageTitle="Billing & Plan" pageSubtitle="Manage your subscription and usage" section="Account">
+    <TenantLayout pageTitle="Billing & Plan" pageSubtitle="Manage your subscription and usage" section="Settings">
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>Billing</span>
+      </nav>
       {/* Usage */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e7eb", padding: 20, marginBottom: 20 }}>
         <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>This Month</h2>

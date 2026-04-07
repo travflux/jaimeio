@@ -100,6 +100,11 @@ export default function TenantContentEngine() {
 
   return (
     <TenantLayout pageTitle="Content Engine" pageSubtitle="Control how your AI generates articles" section="Settings" saveAction={handleSave}>
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>Content Engine</span>
+      </nav>
 
       {/* Production Settings */}
       <Section title="Production Settings" desc="Control how many articles generate automatically each day.">
