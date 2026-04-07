@@ -431,6 +431,10 @@ export default function TenantArticles() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<number | undefined>();
   const [reviewArticle, setReviewArticle] = useState<any>(null);
+  const [missingGeo, setMissingGeo] = useState(false);
+  const [missingImage, setMissingImage] = useState(false);
+  const [dateFrom, setDateFrom] = useState();
+  const [dateTo, setDateTo] = useState();
 
   useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
 
@@ -440,10 +444,13 @@ export default function TenantArticles() {
   if (catFilter) queryParams.categoryId = catFilter;
   const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
   const catsQuery = trpc.categories.list.useQuery();
+  const snapshotQuery = trpc.dashboard.getSnapshot.useQuery();
+  const articleCounts = snapshotQuery.data?.articles;
   const articles = data?.articles || [];
   let licenseCategories = catsQuery.data || [];
   try { if (settings?.categories) { const p = JSON.parse(settings.categories); if (Array.isArray(p) && p.length > 0) licenseCategories = p.map((c: any, i: number) => ({ id: c.id ?? -(i+1), name: c.name, slug: c.slug || "", color: c.color || null })); } } catch {}
   const filters = ["all", "pending", "published", "approved", "draft", "rejected"];
+  const hasActiveFilters = filter !== "all" || !!search || !!catFilter || missingGeo || missingImage || !!dateFrom || !!dateTo;
 
   return (
     <TenantLayout pageTitle="Articles" pageSubtitle={`${data?.total || 0} total articles`} section="Content"
@@ -461,7 +468,7 @@ export default function TenantArticles() {
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
               borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
-              {f}{f !== "all" && counts[f as keyof typeof counts] !== undefined ? ` (${counts[f as keyof typeof counts]})` : f === "all" ? ` (${counts.all})` : ""}
+              {f}{f !== "all" && articleCounts?.[f as keyof typeof articleCounts] !== undefined ? ` (${articleCounts?.[f as keyof typeof articleCounts] ?? 0})` : f === "all" ? ` (${articleCounts?.total ?? 0})` : ""}
             </button>
           ))}
           <select value={catFilter ?? ""} onChange={e => setCatFilter(e.target.value ? Number(e.target.value) : undefined)}
