@@ -1605,7 +1605,26 @@ export const appRouter = router({
     }),
     unsubscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input }) => db.unsubscribeNewsletter(input.email)),
     list: adminProcedure.query(({ ctx }) => db.listSubscribers(ctx.licenseId || undefined)),
-    subscriberCount: publicProcedure.query(({ ctx }) => db.countNewsletterSubscribers("active", ctx.licenseId || undefined)),
+    subscriberCount: publicProcedure.query(async ({ ctx }) => {
+      const licenseId = ctx.licenseId;
+      if (licenseId) {
+        const resendKey = await db.getLicenseSetting(licenseId, "resend_api_key") ?? process.env.RESEND_API_KEY;
+        const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
+        if (resendKey && audienceId) {
+          try {
+            const { Resend } = await import("resend");
+            const resend = new Resend(resendKey);
+            const result = await resend.contacts.list({ audienceId });
+            const active = (result.data?.data ?? []).filter((c: any) => !c.unsubscribed).length;
+            return { count: active, source: "resend" };
+          } catch (err) {
+            console.error("[Newsletter] Resend count failed:", err);
+          }
+        }
+      }
+      const count = await db.countNewsletterSubscribers("active", licenseId || undefined);
+      return { count, source: "local" };
+    }),
     sendDigest: adminProcedure
       .input(z.object({ dryRun: z.boolean().optional() }))
       .mutation(async ({ input }) => {
