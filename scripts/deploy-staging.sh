@@ -14,8 +14,8 @@ echo "Building staging image..."
 docker build -t jaimeio-staging .
 
 echo "Restarting staging container..."
-docker stop jaimeio-staging || true
-docker rm jaimeio-staging || true
+docker rm -f jaimeio-staging 2>/dev/null || true
+sleep 2
 docker run -d \
   --name jaimeio-staging \
   --restart unless-stopped \
