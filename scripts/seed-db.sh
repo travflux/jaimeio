@@ -19,7 +19,7 @@ async function seed() {
     [7,'business_address_show_on_contact','true'],
   ];
   for (const [lid,key,val] of rows) {
-    await conn.execute('INSERT INTO license_settings (license_id,\`key\`,value) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)',[lid,key,val]);
+    await conn.execute('INSERT INTO license_settings (licenseId,\`key\`,value) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)',[lid,key,val]);
     console.log('Seeded:',key,'=',val);
   }
   await conn.end();

@@ -215,7 +215,7 @@ function mapKeyToField(key: string): keyof BrandingConfig | null {
     powered_by_url: "poweredByUrl",
     brand_business_name: "businessName",
     brand_address: "businessAddress",
-    brand_contact_email: "businessEmail",
+    business_email: "businessEmail",
     brand_phone: "businessPhone",
     brand_website_url: "businessWebsite",
     social_x_url: "socialXUrl",
