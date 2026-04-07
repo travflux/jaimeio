@@ -41,6 +41,7 @@ const GROUPS: Array<{ title: string; desc: string; fields: KeyField[] }> = [
   { title: "Distribution & Communications", desc: "Social media and email services.", fields: [
     { key: "blotato_api_key", label: "Blotato API Key", tooltip: "Connects all social accounts.", getUrl: "https://blotato.com/?ref=jaime", getLabel: "Get Blotato key" },
     { key: "resend_api_key", label: "Resend API Key", tooltip: "Email newsletter delivery.", getUrl: "https://resend.com", getLabel: "Get Resend key (free)" },
+    { key: "resend_audience_id", label: "Resend Audience ID", tooltip: "Subscribers are synced to this audience. Found in Resend → Audiences.", placeholder: "d0b4c034-15fc-4afe-..." },
   ]},
   { title: "Analytics & Search", desc: "Track performance and search visibility.", fields: [
     { key: "google_analytics_id", label: "Google Analytics ID", tooltip: "GA4 measurement ID (G-XXXXXXXX).", getUrl: "https://analytics.google.com", getLabel: "Set up Analytics", placeholder: "G-XXXXXXXXXX" },

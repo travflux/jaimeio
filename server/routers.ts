@@ -1584,7 +1584,25 @@ export const appRouter = router({
 
   // ─── Newsletter ──────────────────────────────────────
   newsletter: router({
-    subscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input, ctx }) => db.subscribeNewsletter(input.email, ctx.licenseId || undefined)),
+    subscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(async ({ input, ctx }) => {
+      const result = await db.subscribeNewsletter(input.email, ctx.licenseId || undefined);
+      // Sync to Resend audience if configured
+      const licenseId = ctx.licenseId;
+      if (licenseId) {
+        const resendKey = await db.getLicenseSetting(licenseId, "resend_api_key") ?? process.env.RESEND_API_KEY;
+        const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
+        if (resendKey && audienceId) {
+          try {
+            const { Resend } = await import("resend");
+            const resend = new Resend(resendKey);
+            await resend.contacts.create({ audienceId, email: input.email, unsubscribed: false });
+          } catch (err) {
+            console.error("[Newsletter] Resend contact sync failed:", err);
+          }
+        }
+      }
+      return result;
+    }),
     unsubscribe: publicProcedure.input(z.object({ email: z.string().email() })).mutation(({ input }) => db.unsubscribeNewsletter(input.email)),
     list: adminProcedure.query(({ ctx }) => db.listSubscribers(ctx.licenseId || undefined)),
     subscriberCount: publicProcedure.query(({ ctx }) => db.countNewsletterSubscribers("active", ctx.licenseId || undefined)),

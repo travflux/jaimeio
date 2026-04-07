@@ -26,7 +26,7 @@ const PrivacyTermsPage = () => {
               Your privacy matters. Here's how we collect, use, and protect your information.
             </p>
             <p className="text-sm text-gray-400 mt-4">
-              Last updated: February 18, 2026
+              Last updated: {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
         </div>

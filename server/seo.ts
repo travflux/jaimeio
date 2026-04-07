@@ -369,9 +369,8 @@ export function registerSeoRoutes(app: Express) {
 
       const [metaTags, categoryArticles] = await Promise.all([
         Promise.resolve(buildDefaultMetaTags({
-          pageTitle: `${categoryName} | ${branding.siteName}`,
-          // Fix 3: Use branding.genre instead of hardcoded "satire and commentary"
-          description: `${categoryName} ${branding.genre} from ${branding.siteName}. ${branding.description}`,
+          pageTitle: `${categoryName} — ${branding.siteName}`,
+          description: `Browse ${categoryName} articles from ${branding.siteName}. ${branding.tagline || branding.description}`.slice(0, 155),
           siteUrl: branding.siteUrl,
           ogImage: branding.ogImage,
           pagePath: `/category/${categorySlug}`,
