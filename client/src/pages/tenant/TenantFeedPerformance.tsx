@@ -10,6 +10,11 @@ type SortKey = "health" | "errors" | "weight" | "name";
 
 export default function TenantFeedPerformance() {
   const [sortBy, setSortBy] = useState<SortKey>("health");
+  const [editingWeight, setEditingWeight] = useState<{ feedId: number; value: number } | null>(null);
+  const updateWeight = trpc.sourceFeeds.updateWeight.useMutation({
+    onSuccess: () => { toast.success("Weight updated"); setEditingWeight(null); refetch(); },
+    onError: () => toast.error("Failed to update weight"),
+  });
 
   const { data, isLoading, refetch } = trpc.sourceFeeds.getPerformance.useQuery(undefined, {
     refetchOnWindowFocus: false,
@@ -234,7 +239,22 @@ export default function TenantFeedPerformance() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginTop: 12, paddingTop: 12, borderTop: "1px solid #f3f4f6" }}>
                 <div>
                   <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>Weight</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>{feed.weight}</div>
+                  {editingWeight?.feedId === feed.id ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <input type="number" min={0} max={100} value={editingWeight.value}
+                        onChange={e => setEditingWeight({ feedId: feed.id, value: parseInt(e.target.value) || 0 })}
+                        onKeyDown={e => { if (e.key === "Enter") updateWeight.mutate({ feedId: feed.id, weight: editingWeight.value }); if (e.key === "Escape") setEditingWeight(null); }}
+                        style={{ width: 52, fontSize: 13, padding: "2px 6px", border: "1px solid #e5e7eb", borderRadius: 4, fontFamily: "monospace" }} autoFocus />
+                      <button onClick={() => updateWeight.mutate({ feedId: feed.id, weight: editingWeight.value })} style={{ fontSize: 11, color: "#2dd4bf", cursor: "pointer", background: "none", border: "none" }}>Save</button>
+                      <button onClick={() => setEditingWeight(null)} style={{ fontSize: 11, color: "#9ca3af", cursor: "pointer", background: "none", border: "none" }}>✕</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setEditingWeight({ feedId: feed.id, value: feed.weight ?? 75 })}
+                      style={{ fontSize: 15, fontWeight: 600, color: "#374151", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "monospace" }}
+                      title="Click to edit weight">
+                      {feed.weight ?? 75}
+                    </button>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>Errors</div>

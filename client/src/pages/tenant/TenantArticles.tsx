@@ -443,10 +443,14 @@ export default function TenantArticles() {
 
   useEffect(() => { const t = setTimeout(() => setSearch(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
 
-  const queryParams: any = { limit: 50 };
+  const queryParams: any = { limit: 100 };
   if (filter !== "all") queryParams.status = filter;
   if (search) queryParams.search = search;
   if (catFilter) queryParams.categoryId = catFilter;
+  if (missingGeo) queryParams.missingGeo = true;
+  if (missingImage) queryParams.missingImage = true;
+  if (dateFrom) queryParams.dateFrom = dateFrom;
+  if (dateTo) queryParams.dateTo = dateTo;
   const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
   const catsQuery = trpc.categories.list.useQuery();
   const { data: articleCounts } = trpc.articles.getCounts.useQuery(undefined, { refetchInterval: 30000 });
