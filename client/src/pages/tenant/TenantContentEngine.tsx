@@ -47,6 +47,26 @@ function Toggle({ label, desc, tooltip, checked, onChange }: { label: string; de
 
 const selectStyle: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff" };
 
+function ManualRunButton() {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const runMut = trpc.workflow.runProductionLoop.useMutation({
+    onSuccess: (data: any) => { setRunning(false); setResult(data?.message ?? "Generation complete — check Articles"); setTimeout(() => setResult(null), 15000); },
+    onError: (err: any) => { setRunning(false); setResult("Error: " + err.message); },
+  });
+  return (
+    <div>
+      <button onClick={() => { setRunning(true); setResult(null); runMut.mutate(); }} disabled={running}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 6, border: "1px solid #e5e7eb", background: running ? "#f3f4f6" : "#fff", fontSize: 13, fontWeight: 600, cursor: running ? "wait" : "pointer", color: "#374151" }}>
+        {running ? <><span style={{ width: 14, height: 14, border: "2px solid #9ca3af", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "spin 1s linear infinite" }} /> Running...</> : "▶ Run Generation Now"}
+      </button>
+      {running && <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>This may take 2–5 minutes. Check Articles when complete.</p>}
+      {result && <p style={{ fontSize: 12, marginTop: 6, fontWeight: 500, color: result.startsWith("Error") ? "#ef4444" : "#22c55e" }}>{result}</p>}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 export default function TenantContentEngine() {
   const { licenseId, settings: init } = useTenantContext();
   const [s, setS] = useState<Record<string, string>>({});
@@ -185,6 +205,24 @@ export default function TenantContentEngine() {
           ))}
         </div>
         <KBLink url="https://knowledgebase.getjaime.io/knowledge-base/choosing-your-ai-model/" label="Read: Choosing Your AI Model" />
+      </Section>
+
+      {/* Publishing & Approval */}
+      <Section title="Publishing & Approval" desc="Control how articles move from draft to published.">
+        <Toggle label="Auto-Publish Articles" desc="Publish without manual review" tooltip="When enabled, AI articles publish automatically."
+          checked={s.auto_publish === "true"} onChange={v => upd("auto_publish", v ? "true" : "false")} />
+        <Toggle label="Require Featured Image" desc="Block publishing without an image" tooltip="Articles cannot publish without a featured image."
+          checked={s.require_featured_image === "true"} onChange={v => upd("require_featured_image", v ? "true" : "false")} />
+        <Toggle label="IndexNow on Publish" desc="Notify search engines instantly" tooltip="Notify Google, Bing, Yandex when articles publish."
+          checked={s.indexnow_on_publish !== "false"} onChange={v => upd("indexnow_on_publish", v ? "true" : "false")} />
+        <a href="/admin/publishing" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#2dd4bf", textDecoration: "none", marginTop: 12 }}>
+          <ExternalLink size={11} /> Full Publishing & Schedule Settings
+        </a>
+      </Section>
+
+      {/* Manual Run */}
+      <Section title="Manual Generation Run" desc="Trigger one immediate generation run outside your normal schedule.">
+        <ManualRunButton />
       </Section>
 
       <style>{`@media (max-width: 768px) { .ce-grid { grid-template-columns: 1fr !important; } }`}</style>
