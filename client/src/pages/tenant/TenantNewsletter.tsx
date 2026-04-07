@@ -22,11 +22,15 @@ function buildEmailHtml(opts: {
   sponsorName: string;
   sponsorTagline: string;
   sponsorUrl: string;
+  sponsor2Name?: string;
+  sponsor2Tagline?: string;
+  sponsor2Url?: string;
 }) {
   const {
     siteName, websiteUrl, logoUrl, primaryColor, businessName, businessAddress,
     instagram, twitterX, linkedin, greeting, articles,
     sponsorName, sponsorTagline, sponsorUrl,
+    sponsor2Name, sponsor2Tagline, sponsor2Url,
   } = opts;
 
   const accentColor = primaryColor || "#2dd4bf";
@@ -64,6 +68,19 @@ function buildEmailHtml(opts: {
     )
     : "";
 
+  const sponsor2Block = (sponsor2Name && sponsor2Url)
+    ? (
+      '<table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;border-radius:8px;border:2px solid ' + accentColor + ';overflow:hidden;">'
+      + '<tr><td style="padding:18px 22px;background:#fafafa;">'
+      + '<p style="margin:0 0 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9ca3af;">SPONSORED</p>'
+      + '<p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#111827;">' + sponsor2Name + "</p>"
+      + (sponsor2Tagline ? '<p style="margin:0 0 12px;font-size:13px;color:#6b7280;">' + sponsor2Tagline + "</p>" : "")
+      + '<a href="' + sponsor2Url + '" style="display:inline-block;padding:7px 16px;background:' + accentColor + ';color:#fff;text-decoration:none;border-radius:5px;font-size:12px;font-weight:600;">Learn More</a>'
+      + "</td></tr>"
+      + "</table>"
+    )
+    : "";
+
   const socialLinks = [
     instagram ? '<a href="https://instagram.com/' + instagram.replace("@", "") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">Instagram</a>' : "",
     twitterX ? '<a href="https://x.com/' + twitterX.replace("@", "") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">X</a>' : "",
@@ -95,6 +112,7 @@ function buildEmailHtml(opts: {
     + greetingBlock
     + articleCards
     + sponsorBlock
+    + sponsor2Block
     + "</td></tr>"
     // Footer
     + "<tr><td style='background:#f9fafb;border-radius:0 0 12px 12px;padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;'>"
@@ -137,6 +155,9 @@ export default function TenantNewsletter() {
   const [sponsorName, setSponsorName] = useState("");
   const [sponsorTagline, setSponsorTagline] = useState("");
   const [sponsorUrl, setSponsorUrl] = useState("");
+  const [sponsor2Name, setSponsor2Name] = useState("");
+  const [sponsor2Tagline, setSponsor2Tagline] = useState("");
+  const [sponsor2Url, setSponsor2Url] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -193,6 +214,9 @@ export default function TenantNewsletter() {
     sponsorName,
     sponsorTagline,
     sponsorUrl,
+    sponsor2Name,
+    sponsor2Tagline,
+    sponsor2Url,
   });
 
   // Update iframe
@@ -527,6 +551,38 @@ export default function TenantNewsletter() {
                 value={sponsorUrl}
                 onChange={e => setSponsorUrl(e.target.value)}
                 placeholder="https://sponsor.com"
+                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, boxSizing: "border-box" }}
+              />
+            </div>
+          </div>
+
+          {/* Sponsor 2 */}
+          <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 10 }}>Sponsor 2 (optional)</label>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 3 }}>Sponsor Name</label>
+              <input
+                value={sponsor2Name}
+                onChange={e => setSponsor2Name(e.target.value)}
+                placeholder="Partner Inc"
+                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 3 }}>Tagline</label>
+              <input
+                value={sponsor2Tagline}
+                onChange={e => setSponsor2Tagline(e.target.value)}
+                placeholder="Tagline for sponsor 2..."
+                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, boxSizing: "border-box" }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 3 }}>Sponsor URL</label>
+              <input
+                value={sponsor2Url}
+                onChange={e => setSponsor2Url(e.target.value)}
+                placeholder="https://sponsor2.com"
                 style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, boxSizing: "border-box" }}
               />
             </div>
