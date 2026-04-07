@@ -962,6 +962,7 @@ export const appRouter = router({
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
       batchDate: z.string().optional(), sourceEvent: z.string().optional(), sourceUrl: z.string().optional(),
+      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
       const id = await db.createArticle({ ...input, authorId: ctx.user.id });
       return { id };
@@ -983,6 +984,7 @@ export const appRouter = router({
       body: z.string().optional(), slug: z.string().optional(),
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
+      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(),
     })).mutation(({ input }) => { const { id, ...data } = input; return db.updateArticle(id, data); }),
     updateStatus: tenantOrAdminProcedure.input(z.object({ id: z.number(), status: z.enum(["draft", "pending", "approved", "published", "rejected"]) })).mutation(async ({ input }) => {
       // Get the article's previous status before updating
@@ -1344,6 +1346,40 @@ export const appRouter = router({
         ]);
         await db.updateArticle(input.id, { geoSummary, geoFaq } as any);
         return { success: true, geoSummary, geoFaq };
+      }),
+
+    generateSeo: tenantOrAdminProcedure
+      .input(z.object({ articleId: z.number() }))
+      .mutation(async ({ input }) => {
+        const article = await db.getArticleById(input.articleId);
+        if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+
+        const plainBody = article.body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2000);
+
+        const result = await invokeLLM({
+          messages: [
+            { role: "system", content: 'You are an SEO specialist. Generate optimized SEO metadata for the given article. Return valid JSON with exactly these fields: {"seoTitle": "...", "seoDescription": "...", "focusKeyword": "..."}. seoTitle should be max 60 chars, compelling for search. seoDescription should be max 155 chars, summarizing the article for search results. focusKeyword should be 2-4 words representing the main topic.' },
+            { role: "user", content: `Headline: ${article.headline}\nSubheadline: ${article.subheadline || ""}\n\nArticle excerpt:\n${plainBody}` },
+          ],
+        });
+
+        const llmContent = result.choices?.[0]?.message?.content;
+        let seoData: { seoTitle: string; seoDescription: string; focusKeyword: string } = { seoTitle: "", seoDescription: "", focusKeyword: "" };
+        try {
+          const raw = typeof llmContent === "string" ? llmContent : "{}";
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+          seoData = {
+            seoTitle: (parsed.seoTitle || "").slice(0, 255),
+            seoDescription: (parsed.seoDescription || "").slice(0, 500),
+            focusKeyword: (parsed.focusKeyword || "").slice(0, 100),
+          };
+        } catch {
+          seoData.seoDescription = (typeof llmContent === "string" ? llmContent : "").slice(0, 500);
+        }
+
+        await db.updateArticle(input.articleId, seoData as any);
+        return seoData;
       }),
 
     generateImageForDraft: adminProcedure

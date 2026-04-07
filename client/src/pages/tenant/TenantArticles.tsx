@@ -53,7 +53,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const [manualUrl, setManualUrl] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
-  const [panelTab, setPanelTab] = useState<"review" | "geo">("review");
+  const [panelTab, setPanelTab] = useState<"review" | "geo" | "seo">("review");
   const deleteMut = trpc.articles.permanentDelete.useMutation({ onSuccess: () => { toast.success("Article deleted"); onAction(); } });
   const [editedHeadline, setEditedHeadline] = useState(article.headline || "");
   const [editedSubheadline, setEditedSubheadline] = useState(article.subheadline || "");
@@ -61,6 +61,22 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const saveMut = trpc.articles.update.useMutation({
     onSuccess: () => { toast.success("Changes saved"); setDirty(false); onAction(); },
     onError: () => toast.error("Failed to save"),
+  });
+  const [seoTitle, setSeoTitle] = useState(article.seoTitle || "");
+  const [seoDescription, setSeoDescription] = useState(article.seoDescription || "");
+  const [focusKeyword, setFocusKeyword] = useState(article.focusKeyword || "");
+  const saveSeoMut = trpc.articles.update.useMutation({
+    onSuccess: () => toast.success("SEO saved"),
+    onError: () => toast.error("Failed to save SEO"),
+  });
+  const generateSeoMut = trpc.articles.generateSeo.useMutation({
+    onSuccess: (r: any) => {
+      if (r?.seoTitle) setSeoTitle(r.seoTitle);
+      if (r?.seoDescription) setSeoDescription(r.seoDescription);
+      if (r?.focusKeyword) setFocusKeyword(r.focusKeyword);
+      toast.success("SEO generated");
+    },
+    onError: () => toast.error("SEO generation failed"),
   });
 
   const wordCount = article.body ? article.body.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length : 0;
@@ -87,6 +103,8 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
               borderColor: panelTab === "review" ? "#111827" : "#e5e7eb", background: panelTab === "review" ? "#111827" : "#fff", color: panelTab === "review" ? "#fff" : "#6b7280" }}>Review</button>
             <button onClick={() => setPanelTab("geo")} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer",
               borderColor: panelTab === "geo" ? "#111827" : "#e5e7eb", background: panelTab === "geo" ? "#111827" : "#fff", color: panelTab === "geo" ? "#fff" : "#6b7280" }}>GEO</button>
+            <button onClick={() => setPanelTab("seo")} style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: panelTab === "seo" ? "#111827" : "#e5e7eb", background: panelTab === "seo" ? "#111827" : "#fff", color: panelTab === "seo" ? "#fff" : "#6b7280" }}>SEO</button>
           </div>
         </div>
 
@@ -249,6 +267,73 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
               )}
 
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </>
+          )}
+
+          {/* ═══ SEO TAB ═══ */}
+          {panelTab === "seo" && (
+            <>
+              {/* Generate SEO button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>SEO Data</h3>
+                <button onClick={() => generateSeoMut.mutate({ articleId: article.id })} disabled={generateSeoMut.isPending}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#374151" }}>
+                  {generateSeoMut.isPending ? <><Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> Generating...</> : "Generate SEO"}
+                </button>
+              </div>
+
+              {/* SEO Title */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>SEO Title</label>
+                  <span style={{ fontSize: 10, color: seoTitle.length > 60 ? "#f59e0b" : seoTitle.length >= 30 ? "#22c55e" : "#9ca3af" }}>{seoTitle.length}/60</span>
+                </div>
+                <input value={seoTitle} onChange={e => setSeoTitle(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid", borderColor: seoTitle.length > 60 ? "#f59e0b" : seoTitle.length >= 30 ? "#22c55e" : "#e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="SEO-optimized title..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Optimized for search. Falls back to headline if empty.</p>
+              </div>
+
+              {/* Meta Description */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Meta Description</label>
+                  <span style={{ fontSize: 10, color: seoDescription.length > 155 ? "#f59e0b" : seoDescription.length >= 120 ? "#22c55e" : "#9ca3af" }}>{seoDescription.length}/155</span>
+                </div>
+                <textarea value={seoDescription} onChange={e => setSeoDescription(e.target.value)} rows={3}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid", borderColor: seoDescription.length > 155 ? "#f59e0b" : seoDescription.length >= 120 ? "#22c55e" : "#e5e7eb", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+                  placeholder="Meta description shown in search results..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Shown in search results. Falls back to subheadline if empty.</p>
+              </div>
+
+              {/* Focus Keyword */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Focus Keyword</label>
+                <input value={focusKeyword} onChange={e => setFocusKeyword(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="e.g. AI content marketing strategy" />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Primary keyword phrase (2-4 words) for this article.</p>
+              </div>
+
+              {/* Save SEO button */}
+              <button onClick={() => saveSeoMut.mutate({ id: article.id, seoTitle, seoDescription, focusKeyword })} disabled={saveSeoMut.isPending}
+                style={{ width: "100%", height: 38, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 24 }}>
+                {saveSeoMut.isPending ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving...</> : "Save SEO"}
+              </button>
+
+              {/* Google Preview */}
+              <div style={{ padding: 14, border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff" }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Google Search Preview</p>
+                <div style={{ fontSize: 18, color: "#1a0dab", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {(seoTitle || article.headline || "Article Title").substring(0, 60)}
+                </div>
+                <div style={{ fontSize: 13, color: "#006621", marginBottom: 4 }}>
+                  site.com/article/{article.slug || article.id}
+                </div>
+                <div style={{ fontSize: 13, color: "#545454", lineHeight: 1.5 }}>
+                  {(seoDescription || article.subheadline || "No description set.").substring(0, 155)}
+                </div>
+              </div>
             </>
           )}
         </div>

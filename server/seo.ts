@@ -130,14 +130,19 @@ function buildArticleMetaTags(params: {
   editorialTeam: string;
   mascotUrl: string;
   siteUrl: string;
+  focusKeyword?: string;
+  geoSummary?: string | null;
+  geoFaq?: string | null;
+  geoSpeakable?: string | null;
 }): string {
-  const { title, description, image, url, publishedAt, modifiedAt, siteName, editorialTeam, mascotUrl, siteUrl } = params;
+  const { title, description, image, url, publishedAt, modifiedAt, siteName, editorialTeam, mascotUrl, siteUrl, focusKeyword, geoSummary, geoFaq, geoSpeakable } = params;
 
-  const jsonLd = JSON.stringify({
+  // Build NewsArticle JSON-LD
+  const newsArticleSchema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: title,
-    description: description,
+    description: geoSummary ? `${description} ${geoSummary}`.trim() : description,
     image: image,
     datePublished: publishedAt,
     dateModified: modifiedAt,
@@ -157,11 +162,43 @@ function buildArticleMetaTags(params: {
       "@type": "WebPage",
       "@id": url,
     },
-  });
+  };
+
+  if (geoSpeakable) {
+    newsArticleSchema.speakable = {
+      "@type": "SpeakableSpecification",
+      cssSelector: geoSpeakable,
+    };
+  }
+
+  const schemas: unknown[] = [newsArticleSchema];
+
+  // Add FAQPage schema if geoFaq is valid JSON
+  if (geoFaq) {
+    try {
+      const faqItems = JSON.parse(geoFaq) as Array<{ question: string; answer: string }>;
+      if (Array.isArray(faqItems) && faqItems.length > 0) {
+        schemas.push({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqItems.map(item => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: { "@type": "Answer", text: item.answer },
+          })),
+        });
+      }
+    } catch { /* invalid JSON — skip */ }
+  }
+
+  const jsonLd = schemas.length === 1
+    ? JSON.stringify(schemas[0])
+    : JSON.stringify(schemas);
 
   return `
     <!-- SEO: Dynamic meta tags injected server-side -->
     <title>${escapeHtml(title)} | ${escapeHtml(siteName)}</title>
+    ${focusKeyword ? `<meta name="keywords" content="${escapeHtml(focusKeyword)}" />` : ""}
     <meta name="description" content="${escapeHtml(truncate(description, 160))}" />
     <link rel="canonical" href="${escapeHtml(url)}" />
     <meta property="og:type" content="article" />
@@ -264,10 +301,12 @@ export function registerSeoRoutes(app: Express) {
 
       const siteUrl = branding.siteUrl;
       const url = `${siteUrl}/article/${article.slug}`;
-      const title = article.headline;
-      const description = article.subheadline
-        ? article.subheadline
-        : truncate(stripHtml(article.body), 160);
+      // Priority: seoTitle > headline
+      const title = (article as any).seoTitle || article.headline;
+      // Priority: seoDescription > subheadline > body excerpt
+      const description = (article as any).seoDescription
+        || article.subheadline
+        || truncate(stripHtml(article.body), 160);
       const publishedAt = (article.publishedAt || article.createdAt).toISOString();
       const modifiedAt = (article.updatedAt || article.publishedAt || article.createdAt).toISOString();
 
@@ -290,6 +329,10 @@ export function registerSeoRoutes(app: Express) {
         editorialTeam: branding.editorialTeam,
         mascotUrl: branding.mascotUrl,
         siteUrl,
+        focusKeyword: (article as any).focusKeyword || undefined,
+        geoSummary: (article as any).geoSummary || undefined,
+        geoFaq: (article as any).geoFaq || undefined,
+        geoSpeakable: (article as any).geoSpeakable || undefined,
       });
 
       const html = injectMetaTags(getHtmlTemplate(), metaTags);

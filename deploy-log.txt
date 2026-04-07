@@ -22,3 +22,6 @@ Mon Apr  6 08:55:28 PM UTC 2026: Promoted — Hotfix Batch C: Dashboard overhaul
 [2026-04-06 21:30:23] Deploy started: production @ afbe482
 [2026-04-06 21:30:23] Deploy complete: production
 Mon Apr  6 09:30:50 PM UTC 2026: Promoted — Hotfix Batch D: Newsletter builder, SMS templates
+[2026-04-06 21:58:26] Deploy started: production @ ee6f32e
+[2026-04-06 21:58:26] Deploy complete: production
+Mon Apr  6 09:58:52 PM UTC 2026: Promoted — Hotfix Batch E: Feed Performance enhancements, auto-disable on errors, Forkd rename
