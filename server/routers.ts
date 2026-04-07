@@ -1919,7 +1919,7 @@ export const appRouter = router({
     }),
     generateFromCandidate: tenantOrAdminProcedure
       .input(z.object({ candidateId: z.number(), categoryId: z.number().optional(), tags: z.array(z.string()).optional(), imageUrl: z.string().optional(), templateId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
