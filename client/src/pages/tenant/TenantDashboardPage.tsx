@@ -1,184 +1,255 @@
-import React, { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
-import { useTenantContext } from "@/hooks/useTenantContext";
-
-const TABS = ["Overview", "Publications", "Social", "Email", "Web & SEO", "Advertising", "AI Insights"];
-
-function KPI({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 8, padding: 16, borderLeft: "4px solid " + color, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{title}</h3>
-      {children}
-    </div>
-  );
-}
+import {
+  FileText, Eye, Users, Send, TrendingUp,
+  AlertCircle, BarChart2, Zap, Star,
+  Image, Globe, ExternalLink, RefreshCw, Loader2,
+} from "lucide-react";
 
 export default function TenantDashboardPage() {
-  const [tab, setTab] = useState("Overview");
-  const { licenseId, settings } = useTenantContext();
-  const stats = trpc.articles.stats.useQuery();
-  const articlesQuery = trpc.articles.list.useQuery({ limit: 10, status: "published" });
-  const batchesQuery = trpc.workflow.list.useQuery({ limit: 5 });
-  const d = stats.data;
-  const articles = articlesQuery.data?.articles || [];
+  const { data, isLoading, refetch } = trpc.dashboard.getSnapshot.useQuery(
+    undefined,
+    { refetchInterval: 60000 }
+  );
+
+  if (isLoading) {
+    return (
+      <TenantLayout pageTitle="Dashboard" pageSubtitle="Loading..." section="Overview">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+          <div style={{ textAlign: "center" }}>
+            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#2dd4bf", margin: "0 auto 12px", display: "block" }} />
+            <p style={{ fontSize: 13, color: "#9ca3af" }}>Loading dashboard...</p>
+          </div>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </TenantLayout>
+    );
+  }
+
+  const alerts = [
+    (data?.articles?.missingImage ?? 0) > 0 && {
+      message: `${data.articles.missingImage} published articles missing images`,
+      href: "/admin/articles?missingImage=true",
+      label: "Fix now",
+    },
+    (data?.articles?.missingGeo ?? 0) > 0 && {
+      message: `${data.articles.missingGeo} published articles missing GEO`,
+      href: "/admin/articles?missingGeo=true",
+      label: "Fix now",
+    },
+    (data?.articles?.pending ?? 0) > 10 && {
+      message: `${data.articles.pending} articles waiting for review`,
+      href: "/admin/articles?status=pending",
+      label: "Review",
+    },
+  ].filter(Boolean) as { message: string; href: string; label: string }[];
+
+  const totalSocialSent = Object.values(data?.social ?? {})
+    .reduce((sum: number, p: any) => sum + (p.sent ?? 0), 0);
 
   return (
-    <TenantLayout pageTitle="Dashboard" pageSubtitle="Performance overview" section="Overview">
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto" }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: "8px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer", whiteSpace: "nowrap",
-            borderColor: tab === t ? "#111827" : "#e5e7eb", background: tab === t ? "#111827" : "#fff", color: tab === t ? "#fff" : "#6b7280" }}>{t}</button>
-        ))}
-      </div>
+    <TenantLayout pageTitle="Dashboard" pageSubtitle="Performance overview" section="Overview"
+      headerActions={
+        <button onClick={() => refetch()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#9ca3af" }}>
+          <RefreshCw size={16} />
+        </button>
+      }>
 
-      {tab === "Overview" && (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-            <KPI label="Articles This Month" value={d?.thisMonth || 0} sub={`${d?.published || 0} published · ${d?.pending || 0} pending`} color="#2dd4bf" />
-            <KPI label="Total Articles" value={d?.total || 0} sub={`${d?.approved || 0} approved`} color="#f97316" />
-            <KPI label="Total Views" value={d?.viewsTotal || 0} sub="All time" color="#8b5cf6" />
-            <KPI label="Workflow Runs" value={(batchesQuery.data || []).length} sub="Recent batches" color="#06b6d4" />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Card title="Article Status">
-              {[["Published", d?.published || 0, "#22c55e"], ["Pending", d?.pending || 0, "#f97316"], ["Approved", d?.approved || 0, "#3b82f6"], ["Draft", d?.draft || 0, "#9ca3af"], ["Rejected", d?.rejected || 0, "#ef4444"]].map(([l, v, c]) => (
-                <div key={l as string} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: c as string }} /><span style={{ flex: 1, fontSize: 13 }}>{l as string}</span><span style={{ fontWeight: 600, fontSize: 13 }}>{v as number}</span>
-                </div>
-              ))}
-            </Card>
-            <Card title="Top Categories">
-              {(d?.categoryBreakdown || []).slice(0, 5).map((c: any, i: number) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ flex: 1, fontSize: 13 }}>{c.name || "Uncategorized"}</span><span style={{ fontWeight: 600, fontSize: 13 }}>{c.count}</span>
-                </div>
-              ))}
-              {(!d?.categoryBreakdown || d.categoryBreakdown.length === 0) && <p style={{ color: "#9ca3af", fontSize: 13 }}>No data yet</p>}
-            </Card>
-          </div>
-          <Card title="Recent Published Articles">
-            {articles.length > 0 ? articles.slice(0, 5).map((a: any) => (
-              <div key={a.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f3f4f6" }}>
-                <span style={{ fontSize: 13 }}>{a.headline?.substring(0, 60)}</span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ""}</span>
-              </div>
-            )) : <p style={{ color: "#9ca3af", fontSize: 13 }}>No published articles yet</p>}
-          </Card>
-          <Card title="System Alerts">
-            <div style={{ fontSize: 13 }}>
-              {!settings?.blotato_api_key && <div style={{ padding: "6px 0", color: "#f59e0b" }}>⚠ Blotato not connected — social distribution disabled</div>}
-              {!settings?.image_provider && <div style={{ padding: "6px 0", color: "#f59e0b" }}>⚠ No image provider configured</div>}
-              {settings?.workflow_enabled !== "true" && <div style={{ padding: "6px 0", color: "#9ca3af" }}>ℹ Workflow is paused</div>}
-              {settings?.blotato_api_key && settings?.image_provider && settings?.workflow_enabled === "true" && <div style={{ padding: "6px 0", color: "#22c55e" }}>✓ All systems operational</div>}
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          {alerts.map((alert, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 8, border: "1px solid #fde68a", background: "#fffbeb", color: "#92400e", fontSize: 13 }}>
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{alert.message}</span>
+              <a href={alert.href} style={{ fontWeight: 600, textDecoration: "underline", flexShrink: 0 }}>{alert.label}</a>
             </div>
-          </Card>
-        </>
-      )}
-
-      {tab === "Publications" && (
-        <Card title="Published Articles">
-          {articles.length > 0 ? (
-            <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-              <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ textAlign: "left", padding: "8px 0", fontWeight: 600, color: "#6b7280", fontSize: 11 }}>Headline</th>
-                <th style={{ textAlign: "left", padding: "8px 0", fontWeight: 600, color: "#6b7280", fontSize: 11 }}>Status</th>
-                <th style={{ textAlign: "center", padding: "8px 0", fontWeight: 600, color: "#6b7280", fontSize: 11 }}>Views</th>
-                <th style={{ textAlign: "left", padding: "8px 0", fontWeight: 600, color: "#6b7280", fontSize: 11 }}>Date</th>
-              </tr></thead>
-              <tbody>{(articlesQuery.data?.articles || []).map((a: any) => (
-                <tr key={a.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "8px 0" }}>{a.headline?.substring(0, 50)}</td>
-                  <td style={{ padding: "8px 0" }}><span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: a.status === "published" ? "#d1fae5" : "#fef3c7", color: a.status === "published" ? "#065f46" : "#92400e" }}>{a.status}</span></td>
-                  <td style={{ padding: "8px 0", textAlign: "center" }}>{a.views || 0}</td>
-                  <td style={{ padding: "8px 0", color: "#6b7280", fontSize: 12 }}>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ""}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          ) : <p style={{ color: "#9ca3af", fontSize: 13 }}>No articles yet — run your first workflow</p>}
-        </Card>
-      )}
-
-      {tab === "Social" && (
-        <Card title="Social Distribution">
-          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
-            {settings?.blotato_api_key ? "Blotato connected — posts distributed automatically on publish" : "Connect Blotato in Distribution settings to enable social posting"}
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-            {["X/Twitter", "Instagram", "LinkedIn"].map(p => (
-              <div key={p} style={{ padding: 12, background: "#f9fafb", borderRadius: 6, textAlign: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{p}</div>
-                <div style={{ fontSize: 11, color: "#9ca3af" }}>{settings?.["blotato_" + p.toLowerCase().replace(/[^a-z]/g, "") + "_enabled"] === "true" ? "Enabled" : "Disabled"}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {tab === "Email" && (
-        <Card title="Newsletter">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div style={{ padding: 12, background: "#f9fafb", borderRadius: 6 }}><div style={{ fontSize: 11, color: "#6b7280" }}>Subscribers</div><div style={{ fontSize: 20, fontWeight: 700 }}>0</div></div>
-            <div style={{ padding: 12, background: "#f9fafb", borderRadius: 6 }}><div style={{ fontSize: 11, color: "#6b7280" }}>Last Digest</div><div style={{ fontSize: 14, fontWeight: 600 }}>Not sent yet</div></div>
-          </div>
-          <p style={{ fontSize: 13, color: "#9ca3af" }}>Configure email in Communications settings to start collecting subscribers.</p>
-        </Card>
-      )}
-
-      {tab === "Web & SEO" && (
-        <>
-          <Card title="GEO Status">
-            <p style={{ fontSize: 13, color: "#6b7280" }}>GEO optimization is {settings?.geo_enabled === "true" ? "enabled" : "disabled"}. Generate GEO data in GEO Settings.</p>
-          </Card>
-          <Card title="Sitemap">
-            <div style={{ fontFamily: "monospace", fontSize: 13, padding: "8px 12px", background: "#f9fafb", borderRadius: 6 }}>
-              https://{typeof window !== "undefined" ? window.location.hostname : ""}/sitemap.xml
-            </div>
-          </Card>
-          <Card title="IndexNow">
-            <p style={{ fontSize: 13, color: "#6b7280" }}>Auto-submit: {settings?.indexnow_auto_submit === "true" ? "Enabled" : "Disabled"}</p>
-          </Card>
-        </>
-      )}
-
-      {tab === "Advertising" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <Card title="Google AdSense"><p style={{ fontSize: 13, color: "#6b7280" }}>{settings?.adsense_enabled === "true" ? "Connected" : "Not configured"}</p></Card>
-          <Card title="Amazon Affiliate"><p style={{ fontSize: 13, color: "#6b7280" }}>{settings?.amazon_enabled === "true" ? "Tag: " + (settings?.amazon_associate_tag || "—") : "Not configured"}</p></Card>
-          <Card title="Sponsorship"><p style={{ fontSize: 13, color: "#6b7280" }}>{settings?.sponsor_enabled === "true" ? "Active" : "Not configured"}</p></Card>
-          <Card title="Merch Store"><p style={{ fontSize: 13, color: "#6b7280" }}>{settings?.merch_enabled === "true" ? "Active" : "Not configured"}</p></Card>
+          ))}
         </div>
       )}
 
-      {tab === "AI Insights" && (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-            <KPI label="Articles Generated" value={d?.thisMonth || 0} sub="This month" color="#8b5cf6" />
-            <KPI label="Image Provider" value={settings?.image_provider || "None"} sub="Current provider" color="#f97316" />
-            <KPI label="Workflow Batches" value={(batchesQuery.data || []).length} sub="Total runs" color="#2dd4bf" />
-          </div>
-          <Card title="Recent Workflow Runs">
-            {(batchesQuery.data || []).length > 0 ? (batchesQuery.data || []).map((b: any) => (
-              <div key={b.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f3f4f6" }}>
-                <span style={{ fontSize: 13 }}>{b.batchDate}</span>
-                <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: b.status === "completed" ? "#d1fae5" : "#fef3c7", color: b.status === "completed" ? "#065f46" : "#92400e" }}>{b.status}</span>
-              </div>
-            )) : <p style={{ color: "#9ca3af", fontSize: 13 }}>No workflow runs yet</p>}
-          </Card>
-        </>
-      )}
+      {/* KPI Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+        {[
+          { label: "Total Articles", value: (data?.articles?.total ?? 0).toLocaleString(), sub: `${data?.articles?.thisMonth ?? 0} this month`, icon: FileText, color: "#3b82f6", bg: "#eff6ff", href: "/admin/articles" },
+          { label: "Total Views", value: (data?.views?.total ?? 0).toLocaleString(), sub: "all published", icon: Eye, color: "#22c55e", bg: "#f0fdf4", href: "/admin/articles" },
+          { label: "Subscribers", value: (data?.newsletter?.subscribers ?? 0).toLocaleString(), sub: "newsletter", icon: Users, color: "#8b5cf6", bg: "#faf5ff", href: "/admin/newsletter" },
+          { label: "Social Posts", value: totalSocialSent.toLocaleString(), sub: "sent last 30d", icon: Send, color: "#2dd4bf", bg: "#f0fdfa", href: "/admin/distribution" },
+        ].map(kpi => (
+          <a key={kpi.label} href={kpi.href} style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", textDecoration: "none", color: "inherit", display: "block", transition: "border-color 0.15s" }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "#2dd4bf")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "#e5e7eb")}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: kpi.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+              <kpi.icon size={16} style={{ color: kpi.color }} />
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>{kpi.value}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginTop: 2 }}>{kpi.label}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{kpi.sub}</div>
+          </a>
+        ))}
+      </div>
 
-      <style>{`@media (max-width: 768px) { div[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; } div[style*="repeat(3"] { grid-template-columns: 1fr !important; } }`}</style>
+      {/* Article Production + Needs Attention */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+
+        {/* Article Production */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <BarChart2 size={16} style={{ color: "#2dd4bf" }} /> Article Production
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { label: "Published", value: data?.articles?.published ?? 0, color: "#22c55e", href: "/admin/articles?status=published" },
+              { label: "Pending", value: data?.articles?.pending ?? 0, color: "#f97316", href: "/admin/articles?status=pending" },
+              { label: "Approved", value: data?.articles?.approved ?? 0, color: "#3b82f6", href: "/admin/articles?status=approved" },
+              { label: "Draft", value: data?.articles?.draft ?? 0, color: "#9ca3af", href: "/admin/articles?status=draft" },
+              { label: "Rejected", value: data?.articles?.rejected ?? 0, color: "#ef4444", href: "/admin/articles?status=rejected" },
+            ].map(row => {
+              const pct = (data?.articles?.total ?? 0) > 0 ? Math.round(row.value / (data?.articles?.total ?? 1) * 100) : 0;
+              return (
+                <a key={row.label} href={row.href} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "inherit" }}>
+                  <span style={{ fontSize: 12, color: "#6b7280", width: 70, flexShrink: 0 }}>{row.label}</span>
+                  <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 99, background: row.color, width: `${pct}%`, transition: "width 0.3s" }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "#6b7280", width: 28, textAlign: "right" }}>{row.value}</span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Needs Attention */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <Zap size={16} style={{ color: "#2dd4bf" }} /> Needs Attention
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { label: "Missing Images", value: data?.articles?.missingImage ?? 0, icon: Image, href: "/admin/articles?missingImage=true", urgent: (data?.articles?.missingImage ?? 0) > 0 },
+              { label: "Missing GEO", value: data?.articles?.missingGeo ?? 0, icon: Globe, href: "/admin/articles?missingGeo=true", urgent: (data?.articles?.missingGeo ?? 0) > 5 },
+              { label: "Pending Review", value: data?.articles?.pending ?? 0, icon: FileText, href: "/admin/articles?status=pending", urgent: (data?.articles?.pending ?? 0) > 10 },
+              { label: "Editor's Picks", value: data?.articles?.editorsPicks ?? 0, icon: Star, href: "/admin/articles", urgent: false },
+            ].map(item => (
+              <a key={item.label} href={item.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: "inherit", transition: "background 0.15s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: item.urgent ? "#fffbeb" : "#f3f4f6", flexShrink: 0 }}>
+                  <item.icon size={14} style={{ color: item.urgent ? "#f59e0b" : "#9ca3af" }} />
+                </div>
+                <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: item.urgent ? "#d97706" : "#9ca3af" }}>{item.value}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Articles + Trending */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+
+        {/* Top Performing */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+              <TrendingUp size={16} style={{ color: "#2dd4bf" }} /> Top Performing
+            </h2>
+            <a href="/admin/articles?status=published" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>View all</a>
+          </div>
+          {!(data?.topArticles?.length) ? (
+            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No articles with views yet</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {data.topArticles.map((article: any, i: number) => (
+                <div key={article.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#e5e7eb", width: 18, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{article.headline}</p>
+                    <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{(article.views ?? 0).toLocaleString()} views</p>
+                    <div style={{ height: 3, background: "#f3f4f6", borderRadius: 99, marginTop: 6, overflow: "hidden" }}>
+                      <div style={{ height: "100%", background: "#2dd4bf", borderRadius: 99, width: `${Math.round((article.views ?? 0) / Math.max(1, data.topArticles[0]?.views ?? 1) * 100)}%` }} />
+                    </div>
+                  </div>
+                  {article.slug && (
+                    <a href={`/article/${article.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "#9ca3af", flexShrink: 0, marginTop: 2 }}>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Trending */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600 }}>Trending Now</h2>
+            <span style={{ fontSize: 11, color: "#9ca3af" }}>Updated hourly</span>
+          </div>
+          {!(data?.trendingArticles?.length) ? (
+            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No trending articles yet</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {data.trendingArticles.map((article: any, i: number) => (
+                <div key={article.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, transition: "background 0.15s" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <span style={{ fontSize: 11, color: "#9ca3af", width: 16 }}>{i + 1}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{article.headline}</span>
+                  <span style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>{(article.views ?? 0).toLocaleString()} views</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Social + Newsletter */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+        {/* Social */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+              <Send size={16} style={{ color: "#2dd4bf" }} /> Social Distribution
+            </h2>
+            <a href="/admin/distribution" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>Manage</a>
+          </div>
+          {!Object.keys(data?.social ?? {}).length ? (
+            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No social posts sent yet</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {Object.entries(data?.social ?? {}).map(([platform, stats]: [string, any]) => (
+                <div key={platform} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, textTransform: "capitalize", width: 80, flexShrink: 0 }}>{platform}</span>
+                  <div style={{ display: "flex", gap: 10, fontSize: 12 }}>
+                    <span style={{ color: "#22c55e" }}>{stats.sent ?? 0} sent</span>
+                    {(stats.failed ?? 0) > 0 && <span style={{ color: "#ef4444" }}>{stats.failed} failed</span>}
+                    {(stats.pending ?? 0) > 0 && <span style={{ color: "#f59e0b" }}>{stats.pending} queued</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Newsletter */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+              <Users size={16} style={{ color: "#2dd4bf" }} /> Newsletter
+            </h2>
+            <a href="/admin/newsletter" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>Manage</a>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#111827" }}>{(data?.newsletter?.subscribers ?? 0).toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>total subscribers</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`@media (max-width: 768px) { div[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; } div[style*="1fr 1fr"] { grid-template-columns: 1fr !important; } } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </TenantLayout>
   );
 }
