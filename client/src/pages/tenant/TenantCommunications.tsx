@@ -30,7 +30,13 @@ export default function TenantCommunications() {
     <TenantLayout pageTitle="Communications" pageSubtitle="Email and SMS configuration" section="Overview" saveAction={handleSave}>
       
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#111827" }}>Email (Resend)</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>Email (Resend)</h3>
+            <a href="https://resend.com/dashboard" target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+              Resend Dashboard ↗
+            </a>
+          </div>
           
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
               <div>
@@ -49,6 +55,13 @@ export default function TenantCommunications() {
               
             </div>
             <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Resend Audience ID</label>
+              <input value={s["resend_audience_id"] || ""} onChange={e => update("resend_audience_id", e.target.value)}
+                placeholder="d0b4c034-15fc-4afe-8a7f-7e4ae2864a9b"
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff", fontFamily: "monospace" }} />
+              <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Found in Resend → Audiences. New subscribers are synced here automatically.</p>
+            </div>
+            <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>From Name</label>
               <input value={s["resend_from_name"] || ""} onChange={e => update("resend_from_name", e.target.value)}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff" }} />
@@ -62,7 +75,13 @@ export default function TenantCommunications() {
             </div>
         </div>
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#111827" }}>SMS (Twilio)</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>SMS (Twilio)</h3>
+            <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+              Twilio Console ↗
+            </a>
+          </div>
           
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
               <div>
