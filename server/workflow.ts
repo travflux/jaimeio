@@ -695,6 +695,7 @@ export async function generateAndSaveSEO(articleId: number, licenseId: number | 
   const { getArticleById, updateArticle, getLicenseSetting } = await import("./db");
 
   try {
+    console.log(`[SEO] Starting generation for article ${articleId} (licenseId=${licenseId})`);
     const article = await getArticleById(articleId);
     if (!article) {
       console.error(`[SEO] Article ${articleId} not found`);
@@ -721,6 +722,7 @@ export async function generateAndSaveSEO(articleId: number, licenseId: number | 
     });
 
     const llmContent = result.choices?.[0]?.message?.content;
+    console.log(`[SEO] LLM response received for article ${articleId}, content type: ${typeof llmContent}, length: ${typeof llmContent === "string" ? llmContent.length : 0}`);
     if (!llmContent) {
       console.error(`[SEO] No LLM response for article ${articleId}`);
       return;

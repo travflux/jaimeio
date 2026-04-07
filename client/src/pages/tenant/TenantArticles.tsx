@@ -65,6 +65,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
   const [seoTitle, setSeoTitle] = useState(article.seoTitle || "");
   const [seoDescription, setSeoDescription] = useState(article.seoDescription || "");
   const [focusKeyword, setFocusKeyword] = useState(article.focusKeyword || "");
+  const [altText, setAltText] = useState(article.altText || "");
   const saveSeoMut = trpc.articles.update.useMutation({
     onSuccess: () => toast.success("SEO saved"),
     onError: () => toast.error("Failed to save SEO"),
@@ -74,6 +75,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
       if (r?.seoTitle) setSeoTitle(r.seoTitle);
       if (r?.seoDescription) setSeoDescription(r.seoDescription);
       if (r?.focusKeyword) setFocusKeyword(r.focusKeyword);
+      if (r?.altText) setAltText(r.altText);
       toast.success("SEO generated");
     },
     onError: () => toast.error("SEO generation failed"),
@@ -306,6 +308,15 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                 <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Shown in search results. Falls back to subheadline if empty.</p>
               </div>
 
+              {/* Image Alt Text */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Image Alt Text</label>
+                <input value={altText} onChange={e => setAltText(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  placeholder="Descriptive alt text for the featured image..." />
+                <p style={{ fontSize: 11, color: "#9ca3af", margin: "4px 0 0" }}>Used for accessibility and image SEO. Max 125 chars.</p>
+              </div>
+
               {/* Focus Keyword */}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 4 }}>Focus Keyword</label>
@@ -353,7 +364,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
               })()}
 
               {/* Save SEO button */}
-              <button onClick={() => saveSeoMut.mutate({ id: article.id, seoTitle, seoDescription, focusKeyword })} disabled={saveSeoMut.isPending}
+              <button onClick={() => saveSeoMut.mutate({ id: article.id, seoTitle, seoDescription, focusKeyword, altText })} disabled={saveSeoMut.isPending}
                 style={{ width: "100%", height: 38, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 24 }}>
                 {saveSeoMut.isPending ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Saving...</> : "Save SEO"}
               </button>
@@ -450,7 +461,7 @@ export default function TenantArticles() {
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
               borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
-              {f}
+              {f}{f !== "all" && counts[f as keyof typeof counts] !== undefined ? ` (${counts[f as keyof typeof counts]})` : f === "all" ? ` (${counts.all})` : ""}
             </button>
           ))}
           <select value={catFilter ?? ""} onChange={e => setCatFilter(e.target.value ? Number(e.target.value) : undefined)}
@@ -458,13 +469,27 @@ export default function TenantArticles() {
             <option value="">All Categories</option>
             {licenseCategories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select>
-          {(search || catFilter) && (
-            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); }}
+          <button onClick={() => setMissingGeo(!missingGeo)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: missingGeo ? "#f59e0b" : "#e5e7eb", background: missingGeo ? "#fffbeb" : "#fff", color: missingGeo ? "#92400e" : "#6b7280" }}>
+            No GEO
+          </button>
+          <button onClick={() => setMissingImage(!missingImage)}
+            style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer",
+              borderColor: missingImage ? "#f59e0b" : "#e5e7eb", background: missingImage ? "#fffbeb" : "#fff", color: missingImage ? "#92400e" : "#6b7280" }}>
+            No Image
+          </button>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }} />
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }} />
+          {hasActiveFilters && (
+            <button onClick={() => { setSearchInput(""); setSearch(""); setCatFilter(undefined); setFilter("all"); setMissingGeo(false); setMissingImage(false); setDateFrom(""); setDateTo(""); }}
               style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 11, cursor: "pointer", color: "#9ca3af" }}>
               Clear
             </button>
           )}
-          {(search || catFilter) && <span style={{ fontSize: 11, color: "#9ca3af" }}>{data?.total || 0} results</span>}
+          {hasActiveFilters && <span style={{ fontSize: 11, color: "#9ca3af" }}>{data?.total || 0} results</span>}
         </div>
       </div>
       {isLoading ? <p style={{ color: "#6b7280", padding: 40, textAlign: "center" }}>Loading...</p> : articles.length === 0 ? (

@@ -654,7 +654,7 @@ export const appRouter = router({
 
   // ─── Articles ────────────────────────────────────────
   articles: router({
-    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional(), missingGeo: z.boolean().optional(), missingImage: z.boolean().optional() }).optional()).query(async ({ input, ctx }) => {
+    list: publicProcedure.input(z.object({ status: z.string().optional(), categoryId: z.number().optional(), limit: z.number().optional(), offset: z.number().optional(), cursor: z.number().optional(), search: z.string().optional(), dateRange: z.enum(['all', 'today', 'week', 'month', 'year']).optional(), noImage: z.boolean().optional(), missingGeo: z.boolean().optional(), missingImage: z.boolean().optional(), dateFrom: z.string().optional(), dateTo: z.string().optional() }).optional()).query(async ({ input, ctx }) => {
       const params = input ?? {};
       const limit = params.limit ?? 20;
       const offset = params.cursor ? undefined : params.offset;
@@ -962,7 +962,7 @@ export const appRouter = router({
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
       batchDate: z.string().optional(), sourceEvent: z.string().optional(), sourceUrl: z.string().optional(),
-      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(),
+      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(), altText: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
       const id = await db.createArticle({ ...input, authorId: ctx.user.id });
       return { id };
@@ -984,7 +984,7 @@ export const appRouter = router({
       body: z.string().optional(), slug: z.string().optional(),
       status: z.enum(["draft", "pending", "approved", "published", "rejected"]).optional(),
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
-      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(),
+      seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(), altText: z.string().optional(),
     })).mutation(({ input }) => { const { id, ...data } = input; return db.updateArticle(id, data); }),
     updateStatus: tenantOrAdminProcedure.input(z.object({ id: z.number(), status: z.enum(["draft", "pending", "approved", "published", "rejected"]) })).mutation(async ({ input }) => {
       // Get the article's previous status before updating
@@ -1387,7 +1387,7 @@ export const appRouter = router({
     backfillSEO: adminProcedure.mutation(async () => {
       const { generateAndSaveSEO } = await import("./workflow");
       const { articles: articlesTable } = await import("../drizzle/schema");
-      const { and, or, isNull, inArray, desc } = await import("drizzle-orm");
+      const { and, or, isNull, inArray, desc, eq } = await import("drizzle-orm");
       const dbConn = await db.getDb();
       const rows = await dbConn
         .select({ id: articlesTable.id, licenseId: articlesTable.licenseId })
@@ -1395,7 +1395,7 @@ export const appRouter = router({
         .where(
           and(
             inArray(articlesTable.licenseId, [6, 7]),
-            or(isNull(articlesTable.seoTitle), isNull(articlesTable.focusKeyword)),
+            or(isNull(articlesTable.seoTitle), isNull(articlesTable.focusKeyword), eq(articlesTable.seoTitle, ''), eq(articlesTable.focusKeyword, '')),
           ),
         )
         .orderBy(desc(articlesTable.createdAt))

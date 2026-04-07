@@ -16,7 +16,7 @@ const CARDS = [
   { icon: CalendarClock, title: "Publishing", desc: "Auto-publish rules, approval workflow, schedule times, and timezone.", tags: ["schedule", "approval", "timezone"], route: "/admin/publishing" },
   { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/image-settings" },
   { icon: Share2, title: "Social Distribution", desc: "Blotato connection, platform accounts, posting schedule, and rules.", tags: ["blotato", "social", "schedule"], route: "/admin/distribution" },
-  { icon: Mail, title: "Newsletter", desc: "Email newsletter, Resend connection, templates, and subscribers.", tags: ["email", "resend", "template"], route: "/admin/communications" },
+  { icon: Mail, title: "Newsletter", desc: "Email newsletter, Resend connection, templates, and subscribers.", tags: ["email", "resend", "template"], route: "/admin/newsletter" },
   { icon: Globe, title: "SEO & GEO", desc: "Meta defaults, IndexNow, Google Search Console, and GEO optimization.", tags: ["SEO", "GEO", "indexing"], route: "/admin/seo" },
   { icon: DollarSign, title: "Monetization", desc: "Google AdSense, Amazon Associates, sponsorship, and merch store.", tags: ["ads", "sponsors", "revenue"], route: "/admin/monetization" },
   { icon: Plug, title: "Integrations", desc: "All API keys — AI providers, storage, analytics, and third-party services.", tags: ["API keys", "connections"], route: "/admin/integrations" },

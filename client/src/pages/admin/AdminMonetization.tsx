@@ -1,4 +1,4 @@
-import AdminLayout from "@/components/AdminLayout";
+import TenantLayout from "@/layouts/TenantLayout";
 import { Link } from "wouter";
 import { DollarSign, ShoppingCart, ShoppingBag, Star, Megaphone, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,21 +40,8 @@ const monetizationCards = [
 
 export default function AdminMonetization() {
   return (
-    <AdminLayout>
+    <TenantLayout pageTitle="Monetization" pageSubtitle="Manage all revenue streams and monetization settings" section="Settings">
       <div className="p-6 max-w-4xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Monetization</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Manage all revenue streams and monetization settings in one place.
-            </p>
-          </div>
-        </div>
-
         {/* Cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {monetizationCards.map((card) => {
@@ -95,6 +82,6 @@ export default function AdminMonetization() {
           </span>
         </div>
       </div>
-    </AdminLayout>
+    </TenantLayout>
   );
 }
