@@ -5,7 +5,7 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { X, Loader2, Share2, RefreshCw, Trash2 as TrashIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 
-function ReviewPanel({ article, categories, onClose, onAction }: { article: any; categories: any[]; onClose: () => void; onAction: () => void }) {
+function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { article: any; categories: any[]; onClose: () => void; onAction: () => void; onRefresh: () => void }) {
   const approveMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const rejectMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const updateMut = trpc.articles.update.useMutation();
@@ -14,7 +14,14 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
     onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
   });
   const updateImageMut = trpc.articles.updateImage.useMutation();
-  const toggleTagMut = trpc.articles.toggleTag.useMutation({ onSuccess: () => onAction() });
+  const toggleTagMut = trpc.articles.toggleTag.useMutation({
+    onSuccess: (result) => {
+      const fieldMap: Record<string, string> = { editors_pick: "isEditorsPick", trending: "isTrending", featured: "isFeatured", sponsored: "isSponsored", breaking: "isBreaking" };
+      const field = fieldMap[result.tag];
+      if (field) setLocalArticle((prev: any) => ({ ...prev, [field]: result.value }));
+      onRefresh();
+    },
+  });
   const regenImageMut = trpc.articles.regenerateImage.useMutation({
     onSuccess: (r: any) => { if (r?.url) setImageUrl(r.url); toast.success("New image generated"); },
     onError: () => toast.error("Image generation failed"),
@@ -150,7 +157,7 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
                   { key: "sponsored", label: "Sponsored", field: "isSponsored", color: "#22c55e" },
                   { key: "breaking", label: "Breaking", field: "isBreaking", color: "#ef4444" },
                 ].map(tag => {
-                  const active = !!(article as any)[tag.field];
+                  const active = !!(localArticle as any)[tag.field];
                   return (
                     <button key={tag.key} onClick={() => toggleTagMut.mutate({ articleId: article.id, tag: tag.key as any })}
                       style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid",
@@ -388,12 +395,10 @@ function ReviewPanel({ article, categories, onClose, onAction }: { article: any;
 
         {/* Footer */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-          {dirty && (
-            <button onClick={() => saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline })} disabled={saveMut.isPending}
-              style={{ width: "100%", height: 38, background: "#fff", color: "#111827", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              {saveMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Changes"}
-            </button>
-          )}
+          <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline }); }} disabled={!dirty || saveMut.isPending}
+            style={{ width: "100%", height: 38, background: dirty ? "#2dd4bf" : "#f9fafb", color: dirty ? "#0f2d5e" : "#9ca3af", border: "1px solid", borderColor: dirty ? "#2dd4bf" : "#e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: dirty ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
+            {saveMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Changes"}
+          </button>
           <div style={{ display: "flex", gap: 8 }}>
             {article.status === "published" ? (
               <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
@@ -444,8 +449,7 @@ export default function TenantArticles() {
   if (catFilter) queryParams.categoryId = catFilter;
   const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
   const catsQuery = trpc.categories.list.useQuery();
-  const snapshotQuery = trpc.dashboard.getSnapshot.useQuery();
-  const articleCounts = snapshotQuery.data?.articles;
+  const { data: articleCounts } = trpc.articles.getCounts.useQuery(undefined, { refetchInterval: 30000 });
   const articles = data?.articles || [];
   let licenseCategories = catsQuery.data || [];
   try { if (settings?.categories) { const p = JSON.parse(settings.categories); if (Array.isArray(p) && p.length > 0) licenseCategories = p.map((c: any, i: number) => ({ id: c.id ?? -(i+1), name: c.name, slug: c.slug || "", color: c.color || null })); } } catch {}
@@ -465,12 +469,15 @@ export default function TenantArticles() {
           {searchInput && <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{ position: "absolute", right: 8, top: 8, background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={14} /></button>}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {filters.map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
-              borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
-              {f}{f !== "all" && articleCounts?.[f as keyof typeof articleCounts] !== undefined ? ` (${articleCounts?.[f as keyof typeof articleCounts] ?? 0})` : f === "all" ? ` (${articleCounts?.total ?? 0})` : ""}
-            </button>
-          ))}
+          {filters.map(f => {
+            const count = f === "all" ? articleCounts?.all : articleCounts?.[f as keyof typeof articleCounts];
+            return (
+              <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
+                borderColor: filter === f ? "#2dd4bf" : "#e5e7eb", background: filter === f ? "#2dd4bf" : "#fff", color: filter === f ? "#0f2d5e" : "#6b7280" }}>
+                {f} ({count ?? 0})
+              </button>
+            );
+          })}
           <select value={catFilter ?? ""} onChange={e => setCatFilter(e.target.value ? Number(e.target.value) : undefined)}
             style={{ height: 28, padding: "0 8px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, color: "#6b7280", background: "#fff" }}>
             <option value="">All Categories</option>
@@ -542,7 +549,7 @@ export default function TenantArticles() {
           </table>
         </div>
       )}
-      {reviewArticle && <ReviewPanel article={reviewArticle} categories={licenseCategories} onClose={() => setReviewArticle(null)} onAction={() => { setReviewArticle(null); refetch(); }} />}
+      {reviewArticle && <ReviewPanel article={reviewArticle} categories={licenseCategories} onClose={() => setReviewArticle(null)} onAction={() => { setReviewArticle(null); refetch(); }} onRefresh={() => refetch()} />}
     </TenantLayout>
   );
 }
