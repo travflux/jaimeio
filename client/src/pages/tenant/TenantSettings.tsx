@@ -12,8 +12,7 @@ import {
 const CARDS = [
   { icon: Palette, title: "Branding", desc: "Site name, logo, colors, fonts, favicon, business info, and social links.", tags: ["name", "logo", "colors", "social"], route: "/admin/branding" },
   { icon: Layout, title: "Design & Theme", desc: "Publication template, masthead layout, and homepage sections.", tags: ["template", "masthead", "layout"], route: "/admin/design" },
-  { icon: Bot, title: "Content Engine", desc: "Article volume, AI model, writing style, and custom instructions.", tags: ["AI model", "articles", "tone"], route: "/admin/content-engine" },
-  { icon: CalendarClock, title: "Publishing", desc: "Auto-publish rules, approval workflow, schedule times, and timezone.", tags: ["schedule", "approval", "timezone"], route: "/admin/publishing" },
+  { icon: Bot, title: "Content Engine", desc: "AI model, writing style, publishing rules, and manual generation.", tags: ["AI model", "articles", "tone", "publishing"], route: "/admin/content-engine" },
   { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/image-settings" },
   { icon: Mail, title: "Communications", desc: "Email (Resend), SMS (Twilio), social distribution (Blotato), and notifications.", tags: ["email", "SMS", "social"], route: "/admin/communications" },
   { icon: Globe, title: "SEO & GEO", desc: "Meta defaults, IndexNow, Google Search Console, and GEO optimization.", tags: ["SEO", "GEO", "indexing"], route: "/admin/seo" },

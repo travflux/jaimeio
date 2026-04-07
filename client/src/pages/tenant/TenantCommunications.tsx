@@ -27,7 +27,7 @@ export default function TenantCommunications() {
   };
 
   return (
-    <TenantLayout pageTitle="Communications" pageSubtitle="Email and SMS configuration" section="Overview" saveAction={handleSave}>
+    <TenantLayout pageTitle="Communications" pageSubtitle="Email and SMS configuration" section="Settings" saveAction={handleSave}>
       
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>

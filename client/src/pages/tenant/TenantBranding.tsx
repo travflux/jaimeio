@@ -49,7 +49,7 @@ export default function TenantBranding() {
   const selectedTemplate = s.brand_template || "editorial";
 
   return (
-    <TenantLayout pageTitle="Branding" pageSubtitle="Publication identity, logos, colors, and fonts" section="Overview" saveAction={handleSave}>
+    <TenantLayout pageTitle="Branding" pageSubtitle="Publication identity, logos, colors, and fonts" section="Settings" saveAction={handleSave}>
 
       {/* Template Selection */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
