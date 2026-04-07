@@ -31,7 +31,12 @@ export default function TenantSEO() {
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); };
 
   return (
-    <TenantLayout pageTitle="SEO Settings" pageSubtitle="Search engine optimization and indexing" section="SEO & GEO" saveAction={handleSave}>
+    <TenantLayout pageTitle="SEO Settings" pageSubtitle="Search engine optimization and indexing" section="Settings" saveAction={handleSave}>
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>SEO & GEO</span>
+      </nav>
       {/* Meta Defaults */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Meta Defaults</h3>

@@ -20,7 +20,12 @@ export default function TenantMonetizationSettings() {
   );
 
   return (
-    <TenantLayout pageTitle="Monetization" pageSubtitle="Configure revenue streams and API credentials" section="Overview" saveAction={handleSave}>
+    <TenantLayout pageTitle="Monetization" pageSubtitle="Configure revenue streams and API credentials" section="Settings" saveAction={handleSave}>
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>Monetization</span>
+      </nav>
 
       {/* Google AdSense */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>

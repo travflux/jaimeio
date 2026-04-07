@@ -32,7 +32,12 @@ export default function TenantTicket() {
   };
 
   return (
-    <TenantLayout pageTitle="Support" pageSubtitle="Get help with your publication" section="Support">
+    <TenantLayout pageTitle="Support" pageSubtitle="Get help with your publication" section="Settings">
+      <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>
+        <a href="/admin/settings" style={{ color: "#9ca3af", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#374151")} onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>Settings</a>
+        <span>›</span>
+        <span style={{ color: "#374151" }}>Support</span>
+      </nav>
 
       {/* Knowledge Base */}
       <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
