@@ -15,8 +15,8 @@ docker build -t jaimeio-production .
 docker tag jaimeio-production jaimeio-staging
 
 echo "Deploying production..."
-docker stop jaimeio-production || true
-docker rm jaimeio-production || true
+docker rm -f jaimeio-production 2>/dev/null || true
+sleep 2
 docker run -d \
   --name jaimeio-production \
   --restart unless-stopped \
@@ -25,8 +25,8 @@ docker run -d \
   jaimeio-production
 
 echo "Deploying staging..."
-docker stop jaimeio-staging || true
-docker rm jaimeio-staging || true
+docker rm -f jaimeio-staging 2>/dev/null || true
+sleep 2
 docker run -d \
   --name jaimeio-staging \
   --restart unless-stopped \

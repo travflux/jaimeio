@@ -14,8 +14,8 @@ echo "Building production image..."
 docker build -t jaimeio-production .
 
 echo "Restarting production container..."
-docker stop jaimeio-production || true
-docker rm jaimeio-production || true
+docker rm -f jaimeio-production 2>/dev/null || true
+sleep 2
 docker run -d \
   --name jaimeio-production \
   --restart unless-stopped \
