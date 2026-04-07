@@ -5,22 +5,19 @@ import { useTenantContext } from "@/hooks/useTenantContext";
 import { useLocation } from "wouter";
 import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
-  Palette, Layout, Bot, CalendarClock, Image, Share2, Mail, Globe, FileText,
-  DollarSign, Plug, Users, CreditCard, ChevronRight, ExternalLink
+  Palette, Bot, Mail, Globe, FileText,
+  DollarSign, CreditCard, HelpCircle, ChevronRight
 } from "lucide-react";
 
 const CARDS = [
-  { icon: Palette, title: "Branding", desc: "Site name, logo, colors, fonts, favicon, business info, and social links.", tags: ["name", "logo", "colors", "social"], route: "/admin/branding" },
-  { icon: Layout, title: "Design & Theme", desc: "Publication template, masthead layout, and homepage sections.", tags: ["template", "masthead", "layout"], route: "/admin/design" },
-  { icon: Bot, title: "Content Engine", desc: "AI model, writing style, publishing rules, and manual generation.", tags: ["AI model", "articles", "tone", "publishing"], route: "/admin/content-engine" },
-  { icon: Image, title: "Images", desc: "Image generation provider, style prompt, watermark, and article images.", tags: ["provider", "style", "watermark"], route: "/admin/image-settings" },
-  { icon: Mail, title: "Communications", desc: "Email (Resend), SMS (Twilio), social distribution (Blotato), and notifications.", tags: ["email", "SMS", "social"], route: "/admin/communications" },
+  { icon: Palette, title: "Design & Branding", desc: "Site name, logo, colors, fonts, business info, and social links.", tags: ["name", "logo", "colors", "social"], route: "/admin/branding" },
   { icon: Globe, title: "SEO & GEO", desc: "Meta defaults, IndexNow, Google Search Console, and GEO optimization.", tags: ["SEO", "GEO", "indexing"], route: "/admin/seo" },
+  { icon: Bot, title: "Content Engine", desc: "AI model, writing style, publishing rules, and manual generation.", tags: ["AI model", "tone", "publishing"], route: "/admin/content-engine" },
+  { icon: Mail, title: "Communications", desc: "Email (Resend), SMS (Twilio), newsletter templates, and test emails.", tags: ["email", "SMS", "newsletter"], route: "/admin/communications" },
   { icon: DollarSign, title: "Monetization", desc: "Google AdSense, Amazon Associates, sponsorship, and merch store.", tags: ["ads", "sponsors", "revenue"], route: "/admin/monetization" },
-  { icon: Plug, title: "Integrations", desc: "API keys — AI providers, image generation, analytics, and search.", tags: ["API keys", "connections"], route: "/admin/integrations" },
   { icon: FileText, title: "Pages", desc: "Edit static pages (Advertise, Privacy, Contact, Sitemap) and custom pages.", tags: ["pages", "content", "static"], route: "/admin/pages" },
-  { icon: Users, title: "Users & Access", desc: "Team members, invitations, roles, and access control.", tags: ["team", "invite", "roles"], route: "/admin/users" },
   { icon: CreditCard, title: "Billing", desc: "Subscription plan, usage limits, payment method, and upgrade options.", tags: ["plan", "billing", "upgrade"], route: "/admin/billing" },
+  { icon: HelpCircle, title: "Support", desc: "Submit a support ticket or search the knowledge base.", tags: ["help", "ticket", "KB"], route: "/admin/ticket" },
 ];
 
 export default function TenantSettings() {
