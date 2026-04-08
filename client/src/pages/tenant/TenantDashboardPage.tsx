@@ -1,255 +1,245 @@
+import { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import {
-  FileText, Eye, Users, Send, TrendingUp,
-  AlertCircle, BarChart2, Zap, Star,
-  Image, Globe, ExternalLink, RefreshCw, Loader2,
+  FileText, Eye, Users, Send, AlertCircle, BarChart2, Zap, Star,
+  Image, Globe, ExternalLink, RefreshCw, Loader2, Play, Mail,
+  PenLine, CheckCircle2, XCircle, Lightbulb, Activity, TrendingUp
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+function Skeleton({ w, h }: { w?: string; h?: number }) {
+  return <div style={{ width: w || "100%", height: h || 16, borderRadius: 4, background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />;
+}
+
+function KpiCard({ label, value, sub, color, href, loading }: { label: string; value: string | number; sub?: string; color: string; href?: string; loading?: boolean }) {
+  const inner = (
+    <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", transition: "border-color 0.15s" }}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = "#2dd4bf")} onMouseLeave={e => (e.currentTarget.style.borderColor = "#e5e7eb")}>
+      {loading ? <><Skeleton h={12} w="60%" /><div style={{ height: 6 }} /><Skeleton h={28} w="40%" /><div style={{ height: 4 }} /><Skeleton h={10} w="80%" /></> : <>
+        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{sub}</div>}
+      </>}
+    </div>
+  );
+  return href ? <a href={href} style={{ textDecoration: "none", color: "inherit" }}>{inner}</a> : inner;
+}
+
+const SOURCE_LABELS: Record<string, string> = { rss: "RSS Feeds", google_news: "Google News", reddit: "Reddit", x: "X (Twitter)", youtube: "YouTube", manual: "Manual", scraper: "Web Scraper" };
 
 export default function TenantDashboardPage() {
-  const { data, isLoading, refetch } = trpc.dashboard.getSnapshot.useQuery(
-    undefined,
-    { refetchInterval: 60000 }
-  );
+  const [tab, setTab] = useState("content");
+  const fast = trpc.dashboard.getFastSnapshot.useQuery(undefined, { staleTime: 15000 });
+  const full = trpc.dashboard.getSnapshot.useQuery(undefined, { staleTime: 60000 });
+  const runMut = trpc.workflow.runProductionLoop.useMutation({ onSuccess: () => toast.success("Generation run started"), onError: (e: any) => toast.error(e.message) });
+  const f = fast.data;
+  const d = full.data;
 
-  if (isLoading) {
-    return (
-      <TenantLayout pageTitle="Dashboard" pageSubtitle="Loading..." section="Overview">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
-          <div style={{ textAlign: "center" }}>
-            <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#2dd4bf", margin: "0 auto 12px", display: "block" }} />
-            <p style={{ fontSize: 13, color: "#9ca3af" }}>Loading dashboard...</p>
-          </div>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </TenantLayout>
-    );
-  }
+  const TABS = ["Content", "Social", "Communications", "Monetization"];
 
-  const alerts = [
-    (data?.articles?.missingImage ?? 0) > 0 && {
-      message: `${data.articles.missingImage} published articles missing images`,
-      href: "/admin/articles?missingImage=true",
-      label: "Fix now",
-    },
-    (data?.articles?.missingGeo ?? 0) > 0 && {
-      message: `${data.articles.missingGeo} published articles missing GEO`,
-      href: "/admin/articles?missingGeo=true",
-      label: "Fix now",
-    },
-    (data?.articles?.pending ?? 0) > 10 && {
-      message: `${data.articles.pending} articles waiting for review`,
-      href: "/admin/articles?status=pending",
-      label: "Review",
-    },
-  ].filter(Boolean) as { message: string; href: string; label: string }[];
+  const byDay = (d?.articles?.byDay ?? []).map((r: any) => ({
+    day: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }),
+    Published: r.published ?? 0,
+    Pending: r.pending ?? 0,
+    Rejected: r.rejected ?? 0,
+  }));
 
-  const totalSocialSent = Object.values(data?.social ?? {})
-    .reduce((sum: number, p: any) => sum + (p.sent ?? 0), 0);
+  const sourcePerf = (d as any)?.sourcePerformance ?? [];
+  const maxSource = Math.max(1, ...sourcePerf.map((s: any) => s.candidateCount));
 
   return (
-    <TenantLayout pageTitle="Dashboard" pageSubtitle="Performance overview" section="Overview"
-      headerActions={
-        <button onClick={() => refetch()} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#9ca3af" }}>
-          <RefreshCw size={16} />
-        </button>
-      }>
-
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          {alerts.map((alert, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 8, border: "1px solid #fde68a", background: "#fffbeb", color: "#92400e", fontSize: 13 }}>
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{alert.message}</span>
-              <a href={alert.href} style={{ fontWeight: 600, textDecoration: "underline", flexShrink: 0 }}>{alert.label}</a>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-        {[
-          { label: "Total Articles", value: (data?.articles?.total ?? 0).toLocaleString(), sub: `${data?.articles?.thisMonth ?? 0} this month`, icon: FileText, color: "#3b82f6", bg: "#eff6ff", href: "/admin/articles" },
-          { label: "Total Views", value: (data?.views?.total ?? 0).toLocaleString(), sub: "all published", icon: Eye, color: "#22c55e", bg: "#f0fdf4", href: "/admin/articles" },
-          { label: "Subscribers", value: (data?.newsletter?.subscribers ?? 0).toLocaleString(), sub: "newsletter", icon: Users, color: "#8b5cf6", bg: "#faf5ff", href: "/admin/newsletter" },
-          { label: "Social Posts", value: totalSocialSent.toLocaleString(), sub: "sent last 30d", icon: Send, color: "#2dd4bf", bg: "#f0fdfa", href: "/admin/distribution" },
-        ].map(kpi => (
-          <a key={kpi.label} href={kpi.href} style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", textDecoration: "none", color: "inherit", display: "block", transition: "border-color 0.15s" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#2dd4bf")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#e5e7eb")}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: kpi.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-              <kpi.icon size={16} style={{ color: kpi.color }} />
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>{kpi.value}</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginTop: 2 }}>{kpi.label}</div>
-            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{kpi.sub}</div>
-          </a>
+    <TenantLayout pageTitle="Dashboard" pageSubtitle="Performance overview" section="Content">
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t.toLowerCase())} style={{ padding: "7px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer",
+            borderColor: tab === t.toLowerCase() ? "#111827" : "#e5e7eb", background: tab === t.toLowerCase() ? "#111827" : "#fff", color: tab === t.toLowerCase() ? "#fff" : "#6b7280" }}>{t}</button>
         ))}
       </div>
 
-      {/* Article Production + Needs Attention */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+      {tab !== "content" && (
+        <div style={{ padding: 60, textAlign: "center", color: "#9ca3af" }}>
+          <p style={{ fontSize: 15 }}>{tab.charAt(0).toUpperCase() + tab.slice(1)} analytics coming soon.</p>
+        </div>
+      )}
 
-        {/* Article Production */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-            <BarChart2 size={16} style={{ color: "#2dd4bf" }} /> Article Production
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { label: "Published", value: data?.articles?.published ?? 0, color: "#22c55e", href: "/admin/articles?status=published" },
-              { label: "Pending", value: data?.articles?.pending ?? 0, color: "#f97316", href: "/admin/articles?status=pending" },
-              { label: "Approved", value: data?.articles?.approved ?? 0, color: "#3b82f6", href: "/admin/articles?status=approved" },
-              { label: "Draft", value: data?.articles?.draft ?? 0, color: "#9ca3af", href: "/admin/articles?status=draft" },
-              { label: "Rejected", value: data?.articles?.rejected ?? 0, color: "#ef4444", href: "/admin/articles?status=rejected" },
-            ].map(row => {
-              const pct = (data?.articles?.total ?? 0) > 0 ? Math.round(row.value / (data?.articles?.total ?? 1) * 100) : 0;
-              return (
-                <a key={row.label} href={row.href} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "inherit" }}>
-                  <span style={{ fontSize: 12, color: "#6b7280", width: 70, flexShrink: 0 }}>{row.label}</span>
-                  <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 99, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 99, background: row.color, width: `${pct}%`, transition: "width 0.3s" }} />
+      {tab === "content" && (
+        <div style={{ display: "flex", gap: 20 }}>
+          {/* Left column */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* KPI Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <KpiCard label="Published" value={f?.published ?? "—"} sub={`${f?.todayCount ?? 0} today`} color="#1D9E75" loading={fast.isLoading} href="/admin/articles?status=published" />
+              <KpiCard label="Pending Review" value={f?.pending ?? "—"} sub={f && f.pending > 0 ? "Review now →" : "All clear"} color={f && f.pending > 0 ? "#D97706" : "#22c55e"} loading={fast.isLoading} href="/admin/articles?status=pending" />
+              <KpiCard label="Candidate Pool" value={f?.candidatePoolDepth ?? "—"} sub={f && f.candidatePoolDepth < 10 ? "Pool low — add feeds" : "Candidates ready"} color={f && f.candidatePoolDepth < 10 ? "#DC2626" : "#3b82f6"} loading={fast.isLoading} href="/admin/candidates" />
+              <KpiCard label="Loop Status" value={f?.loopEnabled ? "Active" : "Paused"} sub={f?.loopEnabled ? "Auto-generating" : "Enable in settings"} color={f?.loopEnabled ? "#1D9E75" : "#DC2626"} loading={fast.isLoading} href="/admin/workflow" />
+            </div>
+
+            {/* Alert strip */}
+            {f && (f.pending > 0 || f.missingImages > 0 || f.missingGeo > 0 || f.candidatePoolDepth < 10) && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 14px", borderRadius: 8, background: "#FEF3C7", border: "1px solid #F59E0B", marginBottom: 16, alignItems: "center" }}>
+                <AlertCircle size={14} style={{ color: "#92400E", flexShrink: 0 }} />
+                {f.pending > 0 && <a href="/admin/articles?status=pending" style={{ fontSize: 12, color: "#92400E", textDecoration: "underline" }}>{f.pending} pending review</a>}
+                {f.missingImages > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingImages} missing images</span>}
+                {f.missingGeo > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingGeo} missing GEO</span>}
+                {f.candidatePoolDepth < 10 && <a href="/admin/source-feeds" style={{ fontSize: 12, color: "#92400E", textDecoration: "underline" }}>Pool low</a>}
+              </div>
+            )}
+
+            {/* 7-Day Activity Chart */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> 7-Day Activity</h3>
+              {full.isLoading ? <Skeleton h={160} /> : byDay.length > 0 && byDay.some((d: any) => d.Published > 0 || d.Pending > 0 || d.Rejected > 0) ? (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={byDay} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Published" fill="#1D9E75" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Pending" fill="#EF9F27" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill="#E53E3E" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 100, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 13 }}>No activity this week</div>
+              )}
+              <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8 }}>
+                {[["Published", "#1D9E75"], ["Pending", "#EF9F27"], ["Rejected", "#E53E3E"]].map(([label, color]) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6b7280" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />{label}
                   </div>
-                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "#6b7280", width: 28, textAlign: "right" }}>{row.value}</span>
-                </a>
-              );
-            })}
-          </div>
-        </div>
+                ))}
+              </div>
+            </div>
 
-        {/* Needs Attention */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-            <Zap size={16} style={{ color: "#2dd4bf" }} /> Needs Attention
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              { label: "Missing Images", value: data?.articles?.missingImage ?? 0, icon: Image, href: "/admin/articles?missingImage=true", urgent: (data?.articles?.missingImage ?? 0) > 0 },
-              { label: "Missing GEO", value: data?.articles?.missingGeo ?? 0, icon: Globe, href: "/admin/articles?missingGeo=true", urgent: (data?.articles?.missingGeo ?? 0) > 5 },
-              { label: "Pending Review", value: data?.articles?.pending ?? 0, icon: FileText, href: "/admin/articles?status=pending", urgent: (data?.articles?.pending ?? 0) > 10 },
-              { label: "Editor's Picks", value: data?.articles?.editorsPicks ?? 0, icon: Star, href: "/admin/articles", urgent: false },
-            ].map(item => (
-              <a key={item.label} href={item.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, textDecoration: "none", color: "inherit", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: item.urgent ? "#fffbeb" : "#f3f4f6", flexShrink: 0 }}>
-                  <item.icon size={14} style={{ color: item.urgent ? "#f59e0b" : "#9ca3af" }} />
-                </div>
-                <span style={{ fontSize: 13, flex: 1 }}>{item.label}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: item.urgent ? "#d97706" : "#9ca3af" }}>{item.value}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Top Articles + Trending */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-
-        {/* Top Performing */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-              <TrendingUp size={16} style={{ color: "#2dd4bf" }} /> Top Performing
-            </h2>
-            <a href="/admin/articles?status=published" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>View all</a>
-          </div>
-          {!(data?.topArticles?.length) ? (
-            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No articles with views yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {data.topArticles.map((article: any, i: number) => (
-                <div key={article.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: "#e5e7eb", width: 18, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{article.headline}</p>
-                    <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{(article.views ?? 0).toLocaleString()} views</p>
-                    <div style={{ height: 3, background: "#f3f4f6", borderRadius: 99, marginTop: 6, overflow: "hidden" }}>
-                      <div style={{ height: "100%", background: "#2dd4bf", borderRadius: 99, width: `${Math.round((article.views ?? 0) / Math.max(1, data.topArticles[0]?.views ?? 1) * 100)}%` }} />
+            {/* Top Articles */}
+            {d?.topArticles && d.topArticles.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={14} /> Top Articles</h3>
+                {d.topArticles.slice(0, 4).map((a: any, i: number) => (
+                  <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 3 ? "1px solid #f3f4f6" : "none" }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#e5e7eb", width: 18 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.headline}</div>
+                      <div style={{ fontSize: 11, color: "#9ca3af" }}>{(a.views ?? 0).toLocaleString()} views</div>
                     </div>
+                    {a.slug && <a href={`/article/${a.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "#9ca3af" }}><ExternalLink size={12} /></a>}
                   </div>
-                  {article.slug && (
-                    <a href={`/article/${article.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "#9ca3af", flexShrink: 0, marginTop: 2 }}>
-                      <ExternalLink size={12} />
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
 
-        {/* Trending */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600 }}>Trending Now</h2>
-            <span style={{ fontSize: 11, color: "#9ca3af" }}>Updated hourly</span>
-          </div>
-          {!(data?.trendingArticles?.length) ? (
-            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No trending articles yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {data.trendingArticles.map((article: any, i: number) => (
-                <div key={article.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, transition: "background 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <span style={{ fontSize: 11, color: "#9ca3af", width: 16 }}>{i + 1}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{article.headline}</span>
-                  <span style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>{(article.views ?? 0).toLocaleString()} views</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Social + Newsletter */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-        {/* Social */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-              <Send size={16} style={{ color: "#2dd4bf" }} /> Social Distribution
-            </h2>
-            <a href="/admin/distribution" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>Manage</a>
-          </div>
-          {!Object.keys(data?.social ?? {}).length ? (
-            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>No social posts sent yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {Object.entries(data?.social ?? {}).map(([platform, stats]: [string, any]) => (
-                <div key={platform} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, textTransform: "capitalize", width: 80, flexShrink: 0 }}>{platform}</span>
-                  <div style={{ display: "flex", gap: 10, fontSize: 12 }}>
-                    <span style={{ color: "#22c55e" }}>{stats.sent ?? 0} sent</span>
-                    {(stats.failed ?? 0) > 0 && <span style={{ color: "#ef4444" }}>{stats.failed} failed</span>}
-                    {(stats.pending ?? 0) > 0 && <span style={{ color: "#f59e0b" }}>{stats.pending} queued</span>}
+            {/* Content Health + Source Performance row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              {/* Content Health */}
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Zap size={13} /> Content Health</h3>
+                {fast.isLoading ? <Skeleton h={60} /> : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { label: "Missing Images", value: f?.missingImages ?? 0, bad: (f?.missingImages ?? 0) > 0, href: "/admin/articles?missingImage=true" },
+                      { label: "Missing GEO", value: f?.missingGeo ?? 0, bad: (f?.missingGeo ?? 0) > 0, href: "/admin/articles?missingGeo=true" },
+                      { label: "Missing SEO", value: f?.missingSeo ?? 0, bad: (f?.missingSeo ?? 0) > 0, href: "/admin/articles" },
+                    ].map(item => (
+                      <a key={item.label} href={item.href} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>{item.label}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: item.bad ? "#dc2626" : "#22c55e" }}>{item.value}</span>
+                      </a>
+                    ))}
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
+
+              {/* Source Performance */}
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Source Performance</h3>
+                {full.isLoading ? <Skeleton h={60} /> : sourcePerf.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: 16 }}>No candidate data this week</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sourcePerf.map((s: any) => (
+                      <div key={s.sourceType} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "#6b7280", width: 70, flexShrink: 0 }}>{SOURCE_LABELS[s.sourceType] || s.sourceType}</span>
+                        <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", background: "#2dd4bf", borderRadius: 99, width: `${(s.candidateCount / maxSource) * 100}%` }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: "#6b7280", width: 24, textAlign: "right" }}>{s.candidateCount}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Newsletter */}
-        <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-              <Users size={16} style={{ color: "#2dd4bf" }} /> Newsletter
-            </h2>
-            <a href="/admin/newsletter" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>Manage</a>
+            {/* Social Distribution */}
+            {d?.social && Object.keys(d.social).length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Send size={14} /> Social Distribution</h3>
+                {Object.entries(d.social).map(([platform, stats]: [string, any]) => (
+                  <div key={platform} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, textTransform: "capitalize", width: 80 }}>{platform}</span>
+                    <span style={{ fontSize: 12, color: "#22c55e" }}>{stats.sent ?? 0} sent</span>
+                    {(stats.failed ?? 0) > 0 && <span style={{ fontSize: 12, color: "#ef4444" }}>{stats.failed} failed</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#111827" }}>{(data?.newsletter?.subscribers ?? 0).toLocaleString()}</div>
-            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>total subscribers</div>
+
+          {/* Right sidebar */}
+          <div style={{ width: 260, flexShrink: 0 }}>
+            {/* AI Insights */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb", marginBottom: 12 }}>
+              <h4 style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Lightbulb size={13} style={{ color: "#f59e0b" }} /> AI Insights</h4>
+              {full.isLoading ? <Skeleton h={40} /> : (
+                <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+                  {((d as any)?.aiTips ?? []).length > 0
+                    ? ((d as any).aiTips as string[]).map((tip, i) => <p key={i} style={{ marginBottom: 6 }}>{tip}</p>)
+                    : <p style={{ fontStyle: "italic" }}>Generating insights for your publication...</p>
+                  }
+                  <p style={{ fontSize: 10, color: "#d1d5db", marginTop: 6 }}>Updated hourly</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb", marginBottom: 12 }}>
+              <h4 style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Quick Actions</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button onClick={() => runMut.mutate()} disabled={runMut.isPending}
+                  style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer", color: "#374151" }}>
+                  {runMut.isPending ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />} Run Generation
+                </button>
+                <a href="/admin/newsletter" style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, textDecoration: "none", color: "#374151" }}>
+                  <Mail size={12} /> Send Newsletter
+                </a>
+                <a href="/admin/articles/create" style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, textDecoration: "none", color: "#374151" }}>
+                  <PenLine size={12} /> Create Article
+                </a>
+              </div>
+            </div>
+
+            {/* System Health */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb" }}>
+              <h4 style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Activity size={13} /> System Health</h4>
+              {fast.isLoading ? <Skeleton h={80} /> : (
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: f?.loopEnabled ? "#22c55e" : "#ef4444" }} />
+                    Loop: {f?.loopEnabled ? "Active" : "Paused"}
+                  </div>
+                  {d?.newsletter && <div style={{ padding: "4px 0" }}>Subscribers: {d.newsletter.subscribers ?? 0}</div>}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <style>{`@media (max-width: 768px) { div[style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; } div[style*="1fr 1fr"] { grid-template-columns: 1fr !important; } } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }`}</style>
     </TenantLayout>
   );
 }

@@ -4110,6 +4110,36 @@ export const appRouter = router({
   }),
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
+    getFastSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { articles, candidates } = await import("../drizzle/schema");
+      const { eq, and, or, isNull, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { published: 0, pending: 0, approved: 0, draft: 0, rejected: 0, todayCount: 0, candidatePoolDepth: 0, loopEnabled: false, missingImages: 0, missingSeo: 0, missingGeo: 0 };
+      const lid = ctx.licenseId!;
+      const [statusCounts, todayResult, poolResult, loopSetting, healthResult] = await Promise.all([
+        dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` }).from(articles).where(eq(articles.licenseId, lid)).groupBy(articles.status),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(and(eq(articles.licenseId, lid), sql`DATE(created_at) = CURDATE()`)),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(candidates).where(and(eq(candidates.licenseId, lid), eq(candidates.status, "pending"))).catch(() => [{ count: 0 }]),
+        (await import("./db")).getLicenseSetting(lid, "workflow_enabled"),
+        dbConn.select({
+          missingImages: sql<number>`SUM(CASE WHEN (${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '') AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+          missingSeo: sql<number>`SUM(CASE WHEN ${articles.seoStatus} = 'pending' AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+          missingGeo: sql<number>`SUM(CASE WHEN ${articles.geoStatus} = 'pending' AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+        }).from(articles).where(eq(articles.licenseId, lid)),
+      ]);
+      const sm: Record<string, number> = {};
+      for (const r of statusCounts) sm[r.status] = Number(r.count);
+      return {
+        published: sm.published ?? 0, pending: sm.pending ?? 0, approved: sm.approved ?? 0, draft: sm.draft ?? 0, rejected: sm.rejected ?? 0,
+        todayCount: Number(todayResult[0]?.count ?? 0),
+        candidatePoolDepth: Number(poolResult[0]?.count ?? 0),
+        loopEnabled: loopSetting?.value === "true",
+        missingImages: Number(healthResult[0]?.missingImages ?? 0),
+        missingSeo: Number(healthResult[0]?.missingSeo ?? 0),
+        missingGeo: Number(healthResult[0]?.missingGeo ?? 0),
+      };
+    }),
     getSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
       const { getDb } = await import("./db");
       const { articles, distributionQueue, newsletterSubscribers } = await import("../drizzle/schema");
@@ -4196,6 +4226,28 @@ export const appRouter = router({
         else socialMap[row.platform].pending += Number(row.count);
       }
 
+      // 7-day byDay with status breakdown
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const byDayRaw = await dbConn.select({ date: sql<string>`DATE(created_at)`, status: articles.status, count: sql<number>`COUNT(*)` })
+        .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo)))
+        .groupBy(sql`DATE(created_at)`, articles.status).catch(() => []);
+      const byDayMap: Record<string, { published: number; pending: number; rejected: number }> = {};
+      for (let i = 6; i >= 0; i--) { const d2 = new Date(Date.now() - i * 86400000); byDayMap[d2.toISOString().split("T")[0]] = { published: 0, pending: 0, rejected: 0 }; }
+      for (const r of byDayRaw as any[]) { const key = String(r.date); if (byDayMap[key] && r.status in byDayMap[key]) (byDayMap[key] as any)[r.status] = Number(r.count); }
+      const byDay = Object.entries(byDayMap).map(([date, counts]) => ({ date, ...counts }));
+
+      // Source performance
+      const { selectorCandidates } = await import("../drizzle/schema");
+      const sourcePerf = await dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` })
+        .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), gte(selectorCandidates.createdAt, sevenDaysAgo)))
+        .groupBy(selectorCandidates.sourceType).catch(() => []);
+      const sourcePerformance = (sourcePerf as any[]).map(r => ({ sourceType: r.sourceType, candidateCount: Number(r.count) }));
+
+      // AI tips from license_settings
+      const tipsRaw = await (await import("./db")).getLicenseSetting(licenseId!, "ai_dashboard_tips");
+      let aiTips: string[] = [];
+      try { if (tipsRaw?.value) aiTips = JSON.parse(tipsRaw.value); } catch {}
+
       return {
         articles: {
           total: totalArticles,
@@ -4208,13 +4260,15 @@ export const appRouter = router({
           missingImage: Number(missingImageCount[0]?.count ?? 0),
           missingGeo: Number(missingGeoCount[0]?.count ?? 0),
           editorsPicks: Number(editorPicksCount[0]?.count ?? 0),
-          byDay: articlesByDay,
+          byDay,
         },
         views: { total: Number(totalViews[0]?.total ?? 0) },
         topArticles,
         trendingArticles,
         social: socialMap,
         newsletter: { subscribers: Number(subscriberCount[0]?.count ?? 0) },
+        sourcePerformance,
+        aiTips,
       };
     }),
   }),

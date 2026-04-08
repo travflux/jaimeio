@@ -219,6 +219,8 @@ async function runWorkflow(): Promise<{ status: string; message: string }> {
       }
       // Stagger tenant runs by 10 seconds to avoid simultaneous LLM hammering
       if (licenseIds.length > 1) await new Promise(resolve => setTimeout(resolve, 10000));
+      // Generate dashboard tips after pipeline run
+      try { await generateDashboardTips(licenseId); } catch {}
     }
 
     const result = {
@@ -623,4 +625,41 @@ export async function refreshScheduler() {
 
   nextRunTime = calculateNextRun(runs, days, timezone);
   return getSchedulerStatus();
+}
+
+// ─── Dashboard AI Tips Generator ────────────────────────────────────────────
+async function generateDashboardTips(licenseId: number): Promise<void> {
+  try {
+    const { articles, selectorCandidates } = await import("../drizzle/schema");
+    const { eq, and, sql } = await import("drizzle-orm");
+    const dbConn = await db.getDb();
+    if (!dbConn) return;
+
+    const [stats] = await dbConn.select({
+      pending: sql<number>`SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END)`,
+      missingImages: sql<number>`SUM(CASE WHEN (featured_image IS NULL OR featured_image = '') AND status = 'published' THEN 1 ELSE 0 END)`,
+    }).from(articles).where(eq(articles.licenseId, licenseId));
+
+    const [pool] = await dbConn.select({ count: sql<number>`COUNT(*)` })
+      .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), eq(selectorCandidates.status, "pending"))).catch(() => [{ count: 0 }]);
+
+    const tips: string[] = [];
+    if ((pool?.count ?? 0) < 10) tips.push("Your candidate pool is running low. Add more RSS feeds or lower your content filters.");
+    if ((stats?.missingImages ?? 0) > 5) tips.push(`${stats.missingImages} published articles are missing images. Run an image backfill.`);
+    if ((stats?.pending ?? 0) > 10) tips.push(`You have ${stats.pending} articles pending review. Clear the queue to stay on schedule.`);
+    if (tips.length === 0) tips.push("Your publication is running smoothly. Consider adding seasonal context to Content Engine settings.");
+
+    await db.upsertSetting({ key: `__tips_${licenseId}`, value: JSON.stringify(tips.slice(0, 2)), category: "system", type: "json" });
+    // Also save to license_settings for tenant access
+    const { licenseSettings } = await import("../drizzle/schema");
+    const existing = await dbConn.select().from(licenseSettings).where(and(eq(licenseSettings.licenseId, licenseId), eq(licenseSettings.key, "ai_dashboard_tips"))).limit(1);
+    if (existing.length > 0) {
+      await dbConn.update(licenseSettings).set({ value: JSON.stringify(tips.slice(0, 2)) }).where(and(eq(licenseSettings.licenseId, licenseId), eq(licenseSettings.key, "ai_dashboard_tips")));
+    } else {
+      await dbConn.insert(licenseSettings).values({ licenseId, key: "ai_dashboard_tips", value: JSON.stringify(tips.slice(0, 2)) } as any);
+    }
+    console.log(`[DashboardTips] Generated ${tips.length} tips for license ${licenseId}`);
+  } catch (err) {
+    console.error(`[DashboardTips] Failed for license ${licenseId}:`, err);
+  }
 }
