@@ -76,8 +76,12 @@ async function blotatoFetch(
   path: string,
   body?: unknown
 ): Promise<unknown> {
+  if (process.env.JAIME_ENV === "staging") {
+    console.log("[Blotato] Staging mode — skipping API call:", method, path);
+    return { status: "staging_skipped", message: "Social distribution disabled on staging" };
+  }
   const url = `${BLOTATO_BASE}${path}`;
-  
+
   const response = await fetch(url, {
     method,
     headers: {
