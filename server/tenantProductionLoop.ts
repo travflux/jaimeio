@@ -143,6 +143,12 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "daily_cap (" + todayCount + "/" + config.maxDailyArticles + ")" };
   }
 
+  // Monthly billing cycle quota check
+  if (await isAtMonthlyLimit(licenseId)) {
+    console.log(`[TenantLoop] License ${licenseId} has reached monthly article limit. Stopping.`);
+    return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "monthly_limit" };
+  }
+
   loopState.set(licenseId, { ...state, isRunning: true });
   let articlesGenerated = 0;
   let candidatesProcessed = 0;
@@ -262,4 +268,35 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     loopState.set(licenseId, { ...state, isRunning: false });
     throw err;
   }
+}
+
+// ─── Monthly Billing Cycle Quota ─────────────────────────────────────────────
+
+function getBillingCycleStart(startDay: number): Date {
+  const now = new Date();
+  if (now.getDate() >= startDay) {
+    return new Date(now.getFullYear(), now.getMonth(), startDay);
+  }
+  return new Date(now.getFullYear(), now.getMonth() - 1, startDay);
+}
+
+// NOTE: Enterprise parent licenses (tier === 'enterprise' && !parentLicenseId) bypass all limits.
+// Enterprise sub-tenants (parentLicenseId IS NOT NULL) DO enforce their monthlyPageLimit
+// as set by the reseller's plan config. Sprint 7 Batch 7-K builds that UI.
+async function isAtMonthlyLimit(licenseId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const { licenses, articles } = await import("../drizzle/schema");
+  const { eq, and, gte } = await import("drizzle-orm");
+  const { sql } = await import("drizzle-orm");
+
+  const [license] = await db.select().from(licenses).where(eq(licenses.id, licenseId)).limit(1);
+  if (!license) return true;
+  if (license.tier === "enterprise" && !license.parentLicenseId) return false;
+  if (!license.monthlyPageLimit) return false;
+
+  const cycleStart = getBillingCycleStart(license.billingCycleStartDay ?? 1);
+  const [result] = await db.select({ count: sql<number>`COUNT(*)` }).from(articles)
+    .where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, cycleStart)));
+  return (result?.count ?? 0) >= license.monthlyPageLimit;
 }

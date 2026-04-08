@@ -67,6 +67,9 @@ export const licenseManagementRouter = router({
       const db = await getDb();
       const licenseKey = generateLicenseKey();
 
+      const { PLAN_TIERS } = await import("../constants/planTiers");
+      const tierConfig = PLAN_TIERS[input.tier as keyof typeof PLAN_TIERS];
+
       await db.insert(licenses).values({
         licenseKey,
         clientName: input.clientName,
@@ -78,6 +81,8 @@ export const licenseManagementRouter = router({
         features: input.features || null,
         notes: input.notes || null,
         status: "active",
+        billingCycleStartDay: new Date().getDate(),
+        monthlyPageLimit: tierConfig?.monthlyPageLimit ?? null,
       });
 
       return { success: true, licenseKey };
