@@ -999,7 +999,17 @@ export const appRouter = router({
       batchDate: z.string().optional(), sourceEvent: z.string().optional(), sourceUrl: z.string().optional(),
       seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(), altText: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
-      const id = await db.createArticle({ ...input, authorId: ctx.user.id });
+      const plainText = (input.body ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const wordCount = plainText.split(' ').filter((w: string) => w.length > 0).length;
+      const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+      const id = await db.createArticle({
+        ...input,
+        authorId: ctx.user.id,
+        wordCount,
+        readingTimeMinutes,
+        generationModel: 'manual',
+        generationStyle: 'manual',
+      } as any);
       return { id };
     }),
     bulkCreate: adminProcedure.input(z.object({
@@ -1290,6 +1300,10 @@ export const appRouter = router({
     }),
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteArticle(input.id)),
     bulkDeleteRejected: adminProcedure.mutation(() => db.bulkDeleteRejectedArticles()),
+    backfillEnrichment: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+      const result = await db.backfillArticleEnrichmentFields(ctx.licenseId);
+      return { ...result, message: "Backfilled " + result.wordCountUpdated + " word counts and " + result.modelUpdated + " model fields" };
+    }),
     regenerateMissingImages: adminProcedure.mutation(async () => {
       const dbConn = await db.getDb();
       if (!dbConn) return { total: 0, succeeded: 0, failed: 0 };

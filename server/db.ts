@@ -876,6 +876,11 @@ export async function createArticleFromWorkflow(data: {
   sourceEvent: string;
   sourceUrl: string;
   feedSourceId?: number | null;
+  wordCount?: number;
+  readingTimeMinutes?: number;
+  generationModel?: string;
+  generationStyle?: string;
+  licenseId?: number;
 }): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;
@@ -893,6 +898,11 @@ export async function createArticleFromWorkflow(data: {
     sourceEvent: data.sourceEvent,
     sourceUrl: data.sourceUrl,
     feedSourceId: data.feedSourceId ?? null,
+    wordCount: data.wordCount ?? null,
+    readingTimeMinutes: data.readingTimeMinutes ?? null,
+    generationModel: data.generationModel ?? null,
+    generationStyle: data.generationStyle ?? null,
+    licenseId: data.licenseId ?? null,
   });
   return result[0].insertId;
 }
@@ -3747,4 +3757,64 @@ export async function countXRepliesInLastHour(licenseId: number): Promise<number
       )
     );
   return Number(result[0]?.count) || 0;
+}
+
+/** Backfill wordCount, readingTimeMinutes, generationModel for articles missing them */
+export async function backfillArticleEnrichmentFields(licenseId: number): Promise<{
+  wordCountUpdated: number;
+  modelUpdated: number;
+}> {
+  const db = await getDb();
+  if (!db) return { wordCountUpdated: 0, modelUpdated: 0 };
+
+  const articlesNeedingWordCount = await db
+    .select({ id: articles.id, body: articles.body })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.licenseId, licenseId),
+        isNull(articles.wordCount)
+      )
+    );
+
+  let wordCountUpdated = 0;
+  for (const article of articlesNeedingWordCount) {
+    try {
+      const plainText = (article.body ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const wordCount = plainText.split(" ").filter((w: string) => w.length > 0).length;
+      const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+      await db
+        .update(articles)
+        .set({ wordCount, readingTimeMinutes })
+        .where(eq(articles.id, article.id));
+      wordCountUpdated++;
+    } catch (err) {
+      console.error("[Backfill] Failed to update word count for article " + article.id + ":", err);
+    }
+  }
+
+  const articlesNeedingModel = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.licenseId, licenseId),
+        isNull(articles.generationModel)
+      )
+    );
+
+  let modelUpdated = 0;
+  for (const article of articlesNeedingModel) {
+    try {
+      await db
+        .update(articles)
+        .set({ generationModel: "unknown", generationStyle: "unknown" })
+        .where(eq(articles.id, article.id));
+      modelUpdated++;
+    } catch (err) {
+      console.error("[Backfill] Failed to update model for article " + article.id + ":", err);
+    }
+  }
+
+  return { wordCountUpdated, modelUpdated };
 }

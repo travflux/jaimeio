@@ -705,6 +705,10 @@ export async function generateArticleFromTopic(opts: {
     if (guessedSlug && catMap[guessedSlug]) categoryId = catMap[guessedSlug];
   }
 
+  const manualPlainText = (body ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const manualWordCount = manualPlainText.split(' ').filter((w: string) => w.length > 0).length;
+  const manualReadingTime = Math.max(1, Math.ceil(manualWordCount / 200));
+
   const articleId = await createArticle({
     headline: article.headline || "Untitled",
     subheadline: article.subheadline || "",
@@ -714,6 +718,10 @@ export async function generateArticleFromTopic(opts: {
     categoryId,
     licenseId: lid,
     sourceEvent: "Manual: " + opts.topic.substring(0, 100),
+    wordCount: manualWordCount,
+    readingTimeMinutes: manualReadingTime,
+    generationModel: "manual-generation",
+    generationStyle: writingTone.substring(0, 100),
   } as any);
 
   // Background SEO generation with logging
@@ -1459,7 +1467,9 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
         feedSourceId: article.feedSourceId,
         wordCount,
         readingTimeMinutes,
-        generationModel: styleName || "auto",
+        generationModel: llmModel || "auto",
+        generationStyle: styleName || "standard",
+        licenseId: licenseId!,
       });
       if (id) {
         importedIds.push(id);
@@ -1672,13 +1682,16 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
           const result = await generateImage({ prompt: finalPrompt, licenseId: tenantId });
           if (result?.url) {
             await db.updateArticle(articleId, { featuredImage: result.url });
+            await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'generated');
             imagesGenerated++;
             console.log(`    ✓ LLM image generated and saved`);
           } else {
+            await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'failed').catch(() => {});
             imagesFailed++;
             console.log(`    ✗ Image generation returned no URL`);
           }
         } catch (err: any) {
+          await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'failed').catch(() => {});
           imagesFailed++;
           console.log(`    ✗ Image generation failed: ${err.message?.slice(0, 80)}`);
         }
