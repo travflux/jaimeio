@@ -24,6 +24,7 @@ import {
   merchLeads, InsertMerchLead,
   imageLicenses,
   selectorCandidates,
+  generationLog,
 } from "../drizzle/schema";
 
 import { ENV } from './_core/env';
@@ -3692,4 +3693,40 @@ export function sponsorIsActive(activeFrom: string, activeUntil: string): boolea
   if (from && now < from) return false;
   if (until && now > until) return false;
   return true;
+}
+
+// ─── Generation Log & Enrichment Status ─────────────────────────────────────
+
+export async function logGenerationStep({
+  articleId, licenseId, step, status, errorMessage,
+}: {
+  articleId: number; licenseId: number;
+  step: "image" | "seo" | "geo";
+  status: "success" | "failed" | "skipped";
+  errorMessage?: string;
+}): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.insert(generationLog).values({
+      articleId, licenseId, step, status,
+      errorMessage: errorMessage ?? null,
+    } as any);
+  } catch (err) {
+    console.error("[GenerationLog] Failed to write log entry:", err);
+  }
+}
+
+export async function updateArticleEnrichmentStatus(
+  articleId: number,
+  field: "geoStatus" | "seoStatus" | "imageStatus",
+  status: string
+): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.update(articles).set({ [field]: status } as any).where(eq(articles.id, articleId));
+  } catch (err) {
+    console.error("[ArticleStatus] Failed to update:", err);
+  }
 }

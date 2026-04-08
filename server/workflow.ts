@@ -663,14 +663,26 @@ export async function generateArticleFromTopic(opts: {
     sourceEvent: "Manual: " + opts.topic.substring(0, 100),
   } as any);
 
-  // Sprint 3.15: Background SEO generation
-  generateAndSaveSEO(articleId, lid).catch(err => {
-    console.error("[SEO] Background generation failed for article " + articleId + ":", err);
-  });
+  // Background SEO generation with logging
+  (async () => {
+    try {
+      await generateAndSaveSEO(articleId, lid);
+      await db.logGenerationStep({ articleId, licenseId: lid, step: "seo", status: "success" });
+      await db.updateArticleEnrichmentStatus(articleId, "seoStatus", "generated");
+    } catch (err: any) {
+      console.error("[SEO] Background generation failed for article " + articleId + ":", err);
+      await db.logGenerationStep({ articleId, licenseId: lid, step: "seo", status: "failed", errorMessage: err?.message });
+      await db.updateArticleEnrichmentStatus(articleId, "seoStatus", "failed");
+    }
+  })();
 
-  // Generate image in background
+  // Background image generation with logging
   const autoImages = (await getLicenseSetting(lid, "auto_generate_images"))?.value;
-  if (autoImages !== "false") {
+  const imageProvider = (await getLicenseSettingOrGlobal(lid, "image_provider"))?.value ?? (await db.getLicenseSettingOrGlobal(lid, "image_provider"));
+  if (autoImages === "false" || !imageProvider || imageProvider === "none") {
+    await db.logGenerationStep({ articleId, licenseId: lid, step: "image", status: "skipped", errorMessage: autoImages === "false" ? "Auto-generate disabled" : "No image provider configured" });
+    await db.updateArticleEnrichmentStatus(articleId, "imageStatus", "skipped");
+  } else {
     (async () => {
       try {
         const { buildImagePrompt } = await import("./imagePromptBuilder");
@@ -680,9 +692,14 @@ export async function generateArticleFromTopic(opts: {
         if (result?.url) {
           const { updateArticle } = await import("./db");
           await updateArticle(articleId, { featuredImage: result.url } as any);
-          console.log("[ManualGen] Image generated for article " + articleId);
         }
-      } catch (e) { console.error("[ManualGen] Image failed:", e); }
+        await db.logGenerationStep({ articleId, licenseId: lid, step: "image", status: "success" });
+        await db.updateArticleEnrichmentStatus(articleId, "imageStatus", "generated");
+      } catch (e: any) {
+        console.error("[ManualGen] Image failed:", e);
+        await db.logGenerationStep({ articleId, licenseId: lid, step: "image", status: "failed", errorMessage: e?.message });
+        await db.updateArticleEnrichmentStatus(articleId, "imageStatus", "failed");
+      }
     })();
   }
 
@@ -1364,6 +1381,9 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
   const importedIds: number[] = [];
   for (const article of articlesToImport) {
     try {
+      const plainText = (article.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const wordCount = plainText.split(" ").filter((w: string) => w.length > 0).length;
+      const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
       const id = await db.createArticleFromWorkflow({
         headline: article.headline,
         subheadline: article.subheadline,
@@ -1375,6 +1395,9 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
         sourceEvent: article.sourceEvent,
         sourceUrl: article.sourceUrl,
         feedSourceId: article.feedSourceId,
+        wordCount,
+        readingTimeMinutes,
+        generationModel: styleName || "auto",
       });
       if (id) {
         importedIds.push(id);
@@ -1382,9 +1405,14 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
         if (article.candidateId) {
           linkCandidateToArticle(article.candidateId, id).catch(() => { /* non-critical */ });
         }
-        // Sprint 3.15: Background SEO generation
-        generateAndSaveSEO(id, tenantId).catch(err => {
+        // Background SEO generation with logging
+        generateAndSaveSEO(id, tenantId).then(() => {
+          db.logGenerationStep({ articleId: id, licenseId: tenantId, step: "seo", status: "success" });
+          db.updateArticleEnrichmentStatus(id, "seoStatus", "generated");
+        }).catch(err => {
           console.error("[SEO] Background generation failed for article " + id + ":", err);
+          db.logGenerationStep({ articleId: id, licenseId: tenantId, step: "seo", status: "failed", errorMessage: err?.message });
+          db.updateArticleEnrichmentStatus(id, "seoStatus", "failed");
         });
       }
     } catch (err: any) {
@@ -1689,8 +1717,17 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
       };
       const geoResult = await processArticlesGeo(importedIds, geoSettings);
       console.log(`  [GEO] Processed ${geoResult.processed}/${importedIds.length} articles, avg score: ${geoResult.avgScore}/100${geoResult.errors > 0 ? `, errors: ${geoResult.errors}` : ""}`);
+      // Log GEO success for each article
+      for (const aid of importedIds) {
+        await db.logGenerationStep({ articleId: aid, licenseId: tenantId, step: "geo", status: "success" });
+        await db.updateArticleEnrichmentStatus(aid, "geoStatus", "generated");
+      }
     } catch (err: any) {
       console.log(`  [GEO] Step error (non-fatal): ${err.message?.slice(0, 100)}`);
+      for (const aid of importedIds) {
+        await db.logGenerationStep({ articleId: aid, licenseId: tenantId, step: "geo", status: "failed", errorMessage: err?.message?.slice(0, 500) });
+        await db.updateArticleEnrichmentStatus(aid, "geoStatus", "failed");
+      }
     }
   }
 
