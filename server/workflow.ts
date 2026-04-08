@@ -965,10 +965,9 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
   const crossBatchMemoryDays = await getSettingInt("cross_batch_memory_days", 2);
   // Fix 7: Category quotas toggle
   const categoryQuotasEnabled = await getSettingBool("category_quotas_enabled", false);
-  // Fix 9: Single source of truth — always read from rss_feed_weights table.
-  // The rss_feeds JSON setting is legacy; rss_feed_weights is authoritative.
-  let feeds: { name: string; url: string; weight?: number; feedId?: number }[] = DEFAULT_RSS_FEEDS;
-  const feedWeightRows = await db.getRssFeedWeights(); // only enabled feeds
+  // Single source of truth — rss_feed_weights table only. No legacy fallback.
+  let feeds: { name: string; url: string; weight?: number; feedId?: number }[] = [];
+  const feedWeightRows = await db.getRssFeedWeights(tenantId);
   if (feedWeightRows.length > 0) {
     feeds = feedWeightRows.map(w => ({
       name: w.feedUrl.split("/")[2] || w.feedUrl,
@@ -976,20 +975,10 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
       weight: w.weight,
       feedId: w.id,
     }));
-    console.log(`  Using ${feeds.length} custom RSS feeds from rss_feed_weights table`);
+    console.log(`  Using ${feeds.length} RSS feeds from rss_feed_weights for license ${tenantId}`);
   } else {
-    // Fall back to rss_feeds JSON setting for backward compatibility
-    const customFeedsJson = await getSettingJson<Array<string | { name: string; url: string }>>("rss_feeds", []);
-    if (customFeedsJson.length > 0) {
-      feeds = customFeedsJson.map(item => {
-        if (typeof item === "string") return { name: item.split("/")[2] || item, url: item, weight: 50 };
-        const feedObj = item as { name: string; url: string };
-        return { ...feedObj, weight: 50 };
-      });
-      console.log(`  Using ${feeds.length} RSS feeds from legacy rss_feeds setting (consider migrating to feed weights)`);
-    } else {
-      console.log(`  Using ${feeds.length} default RSS feeds`);
-    }
+    console.warn(`[Workflow] No RSS feed weights configured for license ${tenantId}. Using default feeds.`);
+    feeds = DEFAULT_RSS_FEEDS;
   }
 
   console.log(`  Articles per batch: ${targetCount}`);
