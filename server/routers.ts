@@ -1915,6 +1915,7 @@ export const appRouter = router({
       .input(z.object({
         topic: z.string().min(10).max(500),
         categoryId: z.number().optional(),
+        templateId: z.number().optional(),
         tone: z.string().optional(),
         wordCount: z.number().optional(),
         additionalInstructions: z.string().optional(),
