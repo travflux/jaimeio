@@ -249,23 +249,31 @@ export default function TenantDashboardPage() {
 
             {/* System Health */}
             <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb" }}>
-              <h4 style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Activity size={13} /> System Health</h4>
-              {fast.isLoading ? <Skeleton h={80} /> : (
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: (d?.systemHealth?.loopEnabled ?? f?.loopEnabled) ? "#22c55e" : "#ef4444" }} />
-                    Loop: {(d?.systemHealth?.loopEnabled ?? f?.loopEnabled) ? "Active" : "Paused"}
+              <h4 style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><Activity size={12} /> System Health</h4>
+              {full.isLoading ? <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} h={18} />)}</div> : (() => {
+                const h = (d as any)?.systemHealth;
+                if (!h) return null;
+                const rows: { label: string; dot: string; text: string; textColor: string }[] = [
+                  { label: "Production loop", dot: h.loopEnabled ? "#1D9E75" : "#E53E3E", text: h.loopEnabled ? (h.loopRunning ? "Running\u2026" : "Active") : "Paused", textColor: h.loopEnabled ? "#1D9E75" : "#E53E3E" },
+                  { label: "LLM provider", dot: "#94A3B8", text: h.llmProvider || "Not set", textColor: "#374151" },
+                  { label: "Image provider", dot: "#94A3B8", text: (!h.imageProvider || h.imageProvider === "none") ? "Not configured" : h.imageProvider, textColor: (!h.imageProvider || h.imageProvider === "none") ? "#94A3B8" : "#374151" },
+                  { label: "RSS feeds", dot: h.rssFeedErrors > 0 ? "#EF9F27" : "#1D9E75", text: String(h.rssFeedCount) + " active" + (h.rssFeedErrors > 0 ? " \u00b7 " + h.rssFeedErrors + " failing" : ""), textColor: h.rssFeedErrors > 0 ? "#EF9F27" : "#1D9E75" },
+                  { label: "Blotato", dot: h.blatotatoEnabled ? "#1D9E75" : "#94A3B8", text: h.blatotatoEnabled ? "Connected" : "Not connected", textColor: h.blatotatoEnabled ? "#1D9E75" : "#94A3B8" },
+                  { label: "Email (Resend)", dot: h.emailEnabled ? "#1D9E75" : "#94A3B8", text: h.emailEnabled ? "Connected" : "Not connected", textColor: h.emailEnabled ? "#1D9E75" : "#94A3B8" },
+                  { label: "S3 storage", dot: h.s3Enabled ? "#1D9E75" : "#94A3B8", text: h.s3Enabled ? "Online" : "Not configured", textColor: h.s3Enabled ? "#1D9E75" : "#94A3B8" },
+                ];
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {rows.map(r => (
+                      <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.dot, flexShrink: 0 }} />
+                        <span style={{ flex: 1, color: "#6b7280" }}>{r.label}</span>
+                        <span style={{ color: r.textColor, fontWeight: 500 }}>{r.text}</span>
+                      </div>
+                    ))}
                   </div>
-                  {d?.systemHealth && <>
-                    <div style={{ padding: "4px 0" }}>LLM: {d.systemHealth.llmProvider}</div>
-                    <div style={{ padding: "4px 0" }}>Images: {d.systemHealth.imageProvider}</div>
-                    <div style={{ padding: "4px 0" }}>RSS Feeds: {d.systemHealth.rssFeedCount}{d.systemHealth.rssFeedErrors > 0 && <span style={{ color: "#ef4444" }}> ({d.systemHealth.rssFeedErrors} errors)</span>}</div>
-                    <div style={{ padding: "4px 0" }}>Email: {d.systemHealth.emailEnabled ? "Configured" : "Not set"}</div>
-                    <div style={{ padding: "4px 0" }}>S3: {d.systemHealth.s3Enabled ? "Configured" : "Not set"}</div>
-                  </>}
-                  {d?.newsletter && <div style={{ padding: "4px 0" }}>Subscribers: {d.newsletter.subscribers ?? 0}</div>}
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>

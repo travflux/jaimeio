@@ -4207,7 +4207,7 @@ export const appRouter = router({
     getSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
       const { getDb } = await import("./db");
       const { articles, distributionQueue, newsletterSubscribers } = await import("../drizzle/schema");
-      const { eq, and, or, isNull, desc, gte, sql } = await import("drizzle-orm");
+      const { eq, and, or, isNull, desc, gte, sql, inArray } = await import("drizzle-orm");
       const dbConn = await getDb();
       if (!dbConn) return null;
 
@@ -4334,12 +4334,29 @@ export const appRouter = router({
         .catch(() => [{ total: 0, failing: 0 }]);
       const loopSettingFull = await (await import("./db")).getLicenseSetting(licenseId!, "workflow_enabled");
 
+      // Check if a batch is currently running (status is gathering or generating)
+      const { workflowBatches } = await import('../drizzle/schema');
+      const runningBatchResult = await dbConn
+        .select({ id: workflowBatches.id })
+        .from(workflowBatches)
+        .where(
+          and(
+            eq(workflowBatches.licenseId, licenseId),
+            inArray(workflowBatches.status, ['gathering', 'generating'] as any)
+          )
+        )
+        .limit(1)
+        .catch(() => []);
+      const blatotatoKey = await getLicenseSettingOrGlobal(licenseId!, 'blotato_api_key');
+
       const systemHealth = {
         loopEnabled: loopSettingFull?.value === "true",
+        loopRunning: runningBatchResult.length > 0,
         llmProvider: llmProv ?? "anthropic",
         imageProvider: imgProv ?? "none",
         rssFeedCount: Number(rssFeedStats[0]?.total ?? 0),
         rssFeedErrors: Number(rssFeedStats[0]?.failing ?? 0),
+        blatotatoEnabled: !!(blatotatoKey && blatotatoKey.length > 0),
         emailEnabled: !!process.env.RESEND_API_KEY,
         s3Enabled: !!process.env.AWS_S3_BUCKET,
       };
