@@ -205,11 +205,25 @@ async function runWorkflow(): Promise<{ status: string; message: string }> {
       return result;
     }
 
-    const workflowResult = await runFullPipeline(undefined, 7); // TODO: per-tenant scheduling
+    // Run pipeline for all active licenses (multi-tenant)
+    const licenseIds = await db.getActiveLicenseIds();
+    let totalGenerated = 0;
+    let totalImported = 0;
+    for (const licenseId of licenseIds) {
+      try {
+        const workflowResult = await runFullPipeline(undefined, licenseId);
+        totalGenerated += workflowResult.articlesGenerated || 0;
+        totalImported += workflowResult.articlesImported || 0;
+      } catch (err) {
+        console.error(`[Scheduler] Pipeline failed for license ${licenseId}:`, err);
+      }
+      // Stagger tenant runs by 10 seconds to avoid simultaneous LLM hammering
+      if (licenseIds.length > 1) await new Promise(resolve => setTimeout(resolve, 10000));
+    }
 
     const result = {
-      status: workflowResult.status === "success" ? "success" : "warning",
-      message: workflowResult.message || `Workflow completed at ${new Date().toISOString()}. ${workflowResult.articlesGenerated || 0} articles generated, ${workflowResult.articlesImported || 0} imported.`,
+      status: "success",
+      message: `Workflow completed at ${new Date().toISOString()}. ${totalGenerated} articles generated, ${totalImported} imported across ${licenseIds.length} license(s).`,
     };
 
     lastRunResult = { time: startTime, ...result };
