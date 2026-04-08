@@ -4386,6 +4386,243 @@ export const appRouter = router({
         systemHealth,
       };
     }),
+
+    getSocialSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { articles, distributionQueue, xReplies } = await import("../drizzle/schema");
+      const { eq, and, desc, gte, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { postsThisWeek: 0, totalReachThisWeek: 0, totalEngagement: 0, postsQueued: 0, platforms: [], postQueue: [], topPosts: [], engagementByDay: [], xReplyStats: { repliesTotalWeek: 0, hourlyLimit: 5, recentReplies: [] } };
+      const lid = ctx.licenseId!;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+
+      // Posts this week (join through articles for license filter)
+      const postsThisWeek = await dbConn
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(and(eq(articles.licenseId, lid), gte(distributionQueue.createdAt, sevenDaysAgo)))
+        .catch(() => [{ count: 0 }]);
+
+      // Total engagement this week
+      const engagementThisWeek = await dbConn
+        .select({
+          reach: sql<number>`COALESCE(SUM(${distributionQueue.engagementLikes} + ${distributionQueue.engagementShares} + ${distributionQueue.engagementComments}), 0)`,
+          likes: sql<number>`COALESCE(SUM(${distributionQueue.engagementLikes}), 0)`,
+        })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(and(eq(articles.licenseId, lid), gte(distributionQueue.createdAt, sevenDaysAgo)))
+        .catch(() => [{ reach: 0, likes: 0 }]);
+
+      // Posts queued
+      const postsQueued = await dbConn
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(and(eq(articles.licenseId, lid), eq(distributionQueue.status, "pending")))
+        .catch(() => [{ count: 0 }]);
+
+      // Platform breakdown
+      const platformStats = await dbConn
+        .select({
+          platform: distributionQueue.platform,
+          posts: sql<number>`COUNT(*)`,
+          likes: sql<number>`COALESCE(SUM(${distributionQueue.engagementLikes}), 0)`,
+        })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(and(eq(articles.licenseId, lid), gte(distributionQueue.createdAt, sevenDaysAgo)))
+        .groupBy(distributionQueue.platform)
+        .catch(() => []);
+
+      // Post queue (next 5)
+      const postQueue = await dbConn
+        .select({
+          id: distributionQueue.id,
+          content: distributionQueue.content,
+          platform: distributionQueue.platform,
+          scheduledAt: distributionQueue.scheduledAt,
+          status: distributionQueue.status,
+          sentAt: distributionQueue.sentAt,
+        })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(eq(articles.licenseId, lid))
+        .orderBy(desc(distributionQueue.createdAt))
+        .limit(5)
+        .catch(() => []);
+
+      // Top posts by engagement
+      const topPosts = await dbConn
+        .select({
+          id: distributionQueue.id,
+          content: distributionQueue.content,
+          platform: distributionQueue.platform,
+          likes: distributionQueue.engagementLikes,
+          shares: distributionQueue.engagementShares,
+          comments: distributionQueue.engagementComments,
+          totalEngagement: sql<number>`${distributionQueue.engagementLikes} + ${distributionQueue.engagementShares} + ${distributionQueue.engagementComments}`,
+        })
+        .from(distributionQueue)
+        .innerJoin(articles, eq(distributionQueue.articleId, articles.id))
+        .where(and(eq(articles.licenseId, lid), eq(distributionQueue.status, "sent")))
+        .orderBy(desc(sql`${distributionQueue.engagementLikes} + ${distributionQueue.engagementShares} + ${distributionQueue.engagementComments}`))
+        .limit(4)
+        .catch(() => []);
+
+      // X reply stats
+      const xReplyCount = await dbConn
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(xReplies)
+        .where(and(eq(xReplies.licenseId, lid), gte(xReplies.createdAt, sevenDaysAgo)))
+        .catch(() => [{ count: 0 }]);
+
+      const recentReplies = await dbConn
+        .select({
+          id: xReplies.id,
+          replyText: xReplies.replyContent,
+          originalHandle: xReplies.tweetAuthorHandle,
+          createdAt: xReplies.createdAt,
+          likesOnOriginal: xReplies.tweetLikes,
+        })
+        .from(xReplies)
+        .where(eq(xReplies.licenseId, lid))
+        .orderBy(desc(xReplies.createdAt))
+        .limit(5)
+        .catch(() => []);
+
+      return {
+        postsThisWeek: Number(postsThisWeek[0]?.count ?? 0),
+        totalReachThisWeek: Number(engagementThisWeek[0]?.reach ?? 0),
+        totalEngagement: Number(engagementThisWeek[0]?.reach ?? 0),
+        postsQueued: Number(postsQueued[0]?.count ?? 0),
+        platforms: (platformStats as any[]).map(p => ({
+          platform: p.platform,
+          posts: Number(p.posts),
+          likes: Number(p.likes),
+          impressions: 0,
+          status: "connected",
+        })),
+        postQueue: postQueue as any[],
+        topPosts: (topPosts as any[]).map(p => ({ ...p, likes: Number(p.likes), shares: Number(p.shares), comments: Number(p.comments), totalEngagement: Number(p.totalEngagement) })),
+        engagementByDay: [],
+        xReplyStats: {
+          repliesTotalWeek: Number(xReplyCount[0]?.count ?? 0),
+          hourlyLimit: 5,
+          recentReplies: recentReplies as any[],
+        },
+      };
+    }),
+
+    getCommsSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb, getLicenseSetting } = await import("./db");
+      const { newsletterSends, newsletterSubscribers, smsSubscribers } = await import("../drizzle/schema");
+      const { eq, and, desc, gte, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { subscribersTotal: 0, subscribersThisWeek: 0, unsubscribedThisWeek: 0, openRateLastSend: null, clickRateLastSend: null, smsSubscribers: 0, smsThisMonth: 0, sendHistory: [], nextNewsletter: null, smsHistory: [], commsHealth: { resendConnected: false, twilioConnected: false, segmentConfigured: false, fromEmail: null, fromName: null, smsDailyLimit: null, quietHours: null } };
+      const lid = ctx.licenseId!;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+
+      const [subTotal, subThisWeek, sendHist, smsSubCount] = await Promise.all([
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(newsletterSubscribers).where(eq(newsletterSubscribers.status, "active")).catch(() => [{ count: 0 }]),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(newsletterSubscribers).where(and(eq(newsletterSubscribers.status, "active"), gte(newsletterSubscribers.createdAt, sevenDaysAgo))).catch(() => [{ count: 0 }]),
+        dbConn.select().from(newsletterSends).where(eq(newsletterSends.licenseId, lid)).orderBy(desc(newsletterSends.createdAt)).limit(3).catch(() => []),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(smsSubscribers).where(eq(smsSubscribers.status, "active")).catch(() => [{ count: 0 }]),
+      ]);
+
+      const lastSend = sendHist[0];
+      const openRate = lastSend && lastSend.recipientCount && lastSend.recipientCount > 0 ? Math.round(((lastSend.openCount ?? 0) / lastSend.recipientCount) * 100) : null;
+      const clickRate = lastSend && lastSend.recipientCount && lastSend.recipientCount > 0 ? Math.round(((lastSend.clickCount ?? 0) / lastSend.recipientCount) * 100) : null;
+
+      const commsHealth = {
+        resendConnected: !!process.env.RESEND_API_KEY,
+        twilioConnected: !!process.env.TWILIO_ACCOUNT_SID,
+        segmentConfigured: false,
+        fromEmail: (await getLicenseSetting(lid, "newsletter_from_email"))?.value ?? null,
+        fromName: (await getLicenseSetting(lid, "newsletter_from_name"))?.value ?? null,
+        smsDailyLimit: (await getLicenseSetting(lid, "sms_daily_limit"))?.value ?? null,
+        quietHours: (await getLicenseSetting(lid, "sms_quiet_hours"))?.value ?? null,
+      };
+
+      return {
+        subscribersTotal: Number(subTotal[0]?.count ?? 0),
+        subscribersThisWeek: Number(subThisWeek[0]?.count ?? 0),
+        unsubscribedThisWeek: 0,
+        openRateLastSend: openRate,
+        clickRateLastSend: clickRate,
+        smsSubscribers: Number(smsSubCount[0]?.count ?? 0),
+        smsThisMonth: 0,
+        sendHistory: (sendHist as any[]).map(s => ({
+          id: s.id,
+          subject: s.subject,
+          sentAt: s.sentAt,
+          recipientCount: s.recipientCount ?? 0,
+          opens: s.openCount ?? 0,
+          clicks: s.clickCount ?? 0,
+          unsubscribes: 0,
+          openRate: s.recipientCount > 0 ? Math.round(((s.openCount ?? 0) / s.recipientCount) * 100) : 0,
+        })),
+        nextNewsletter: null,
+        smsHistory: [],
+        commsHealth,
+      };
+    }),
+
+    getMonetizationSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb, getLicenseSetting, getLicenseSettingOrGlobal } = await import("./db");
+      const { affiliateClicks, sponsorSchedules } = await import("../drizzle/schema");
+      const { eq, and, desc, gte, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { revenueThisWeek: 0, revenuePrevWeek: 0, sponsorRevenueThisWeek: 0, affiliateClicksThisWeek: 0, affiliateClicksPrevWeek: 0, adsenseThisWeek: 0, revenueByDay: [], revenueBySource: [], activeSponsorships: [], upcomingSponsorships: [], topAmazonProducts: [], monetizationSetup: { sponsorshipsActive: false, amazonConnected: false, associateTag: null, productPlacement: null, adsenseConfigured: false, merchConfigured: false, paApiStatus: null, minProductRating: null }, totalLast30Days: 0, totalLast90Days: 0, growthVsPrior30: null, topEarningArticle: null };
+      const lid = ctx.licenseId!;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000);
+
+      const [affThisWeek, affPrevWeek, sponsors] = await Promise.all([
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(affiliateClicks).where(and(eq(affiliateClicks.licenseId, lid), gte(affiliateClicks.createdAt, sevenDaysAgo))).catch(() => [{ count: 0 }]),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(affiliateClicks).where(and(eq(affiliateClicks.licenseId, lid), gte(affiliateClicks.createdAt, fourteenDaysAgo))).catch(() => [{ count: 0 }]),
+        dbConn.select().from(sponsorSchedules).where(and(eq(sponsorSchedules.licenseId, lid), eq(sponsorSchedules.isActive, true))).catch(() => []),
+      ]);
+
+      const [paTag, paStatus, imgProv, minRating, prodPlacement] = await Promise.all([
+        getLicenseSettingOrGlobal(lid, "pa_partner_tag"),
+        getLicenseSettingOrGlobal(lid, "pa_api_status"),
+        getLicenseSettingOrGlobal(lid, "image_provider"),
+        getLicenseSettingOrGlobal(lid, "amazon_min_rating"),
+        getLicenseSettingOrGlobal(lid, "amazon_placement"),
+      ]);
+
+      return {
+        revenueThisWeek: 0,
+        revenuePrevWeek: 0,
+        sponsorRevenueThisWeek: 0,
+        affiliateClicksThisWeek: Number(affThisWeek[0]?.count ?? 0),
+        affiliateClicksPrevWeek: Number(affPrevWeek[0]?.count ?? 0) - Number(affThisWeek[0]?.count ?? 0),
+        adsenseThisWeek: 0,
+        revenueByDay: [],
+        revenueBySource: [],
+        activeSponsorships: (sponsors as any[]).map(s => ({
+          id: s.id, sponsorName: s.sponsorName, dayOfWeek: s.dayOfWeek,
+        })),
+        upcomingSponsorships: [],
+        topAmazonProducts: [],
+        monetizationSetup: {
+          sponsorshipsActive: sponsors.length > 0,
+          amazonConnected: !!process.env.PA_ACCESS_KEY,
+          associateTag: paTag ?? null,
+          productPlacement: prodPlacement ?? null,
+          adsenseConfigured: false,
+          merchConfigured: false,
+          paApiStatus: paStatus ?? null,
+          minProductRating: minRating ?? null,
+        },
+        totalLast30Days: 0,
+        totalLast90Days: 0,
+        growthVsPrior30: null,
+        topEarningArticle: null,
+      };
+    }),
   }),
 
 });
