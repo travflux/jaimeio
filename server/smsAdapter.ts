@@ -110,6 +110,10 @@ async function getTwilioCredentials(): Promise<{ accountSid: string; authToken: 
 }
 
 async function sendViaTwilio(to: string, body: string, creds: { accountSid: string; authToken: string; fromNumber: string }): Promise<{ success: boolean; sid?: string; error?: string }> {
+  if (process.env.JAIME_ENV === "staging") {
+    console.log("[SMS] Staging mode — skipping send:", body?.substring(0, 50));
+    return { success: true, sid: "staging_skipped" };
+  }
   try {
     const auth = Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString("base64");
     const url = `https://api.twilio.com/2010-04-01/Accounts/${creds.accountSid}/Messages.json`;

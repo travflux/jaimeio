@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useBranding } from "@/hooks/useBranding";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { StagingBanner } from "@/components/StagingBanner";
 import CommandPalette from "@/components/CommandPalette";
 import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
@@ -266,8 +267,12 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
     </aside>
   );
 
+  const isStagingEnv = typeof window !== "undefined" && (window as any).__JAIME_ENV === "staging";
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f9fafb" }}>
+    <>
+    <StagingBanner />
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f9fafb", paddingTop: isStagingEnv ? 32 : 0 }}>
       <div className="tenant-sidebar-desktop" style={{ width: 240, flexShrink: 0 }}>{sidebar}</div>
       {sidebarOpen && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 40 }} onClick={() => setSidebarOpen(false)} />}
       <div className="tenant-sidebar-mobile" style={{ display: "none", position: "fixed", left: 0, top: 0, zIndex: 50, transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform 0.2s" }}>{sidebar}</div>
@@ -325,5 +330,6 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
         }
       `}</style>
     </div>
+    </>
   );
 }

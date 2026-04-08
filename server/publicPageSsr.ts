@@ -75,7 +75,9 @@ export async function getBrandSsrData(hostname: string): Promise<BrandSsrData> {
 export function injectBrandTheme(html: string, data: BrandSsrData): string {
   if (!data.cssVars && !data.fontLink && !data.gaScript) return html;
 
+  const envScript = `<script>window.__JAIME_ENV='${process.env.JAIME_ENV || "production"}';</script>`;
   const injection = [
+    envScript,
     data.fontLink,
     data.cssVars ? `<style id="brand-theme">${data.cssVars}</style>` : "",
     data.gaScript || "",
