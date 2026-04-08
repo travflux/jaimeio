@@ -492,7 +492,7 @@ export async function getUsedSourceUrls(daysBack: number = 30): Promise<Set<stri
 export async function subscribeNewsletter(email: string, licenseId?: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.insert(newsletterSubscribers).values({ email }).onDuplicateKeyUpdate({ set: { status: "active" } });
+  await db.insert(newsletterSubscribers).values({ email, ...(licenseId ? { licenseId } : {}) } as any).onDuplicateKeyUpdate({ set: { status: "active" } });
 }
 
 export async function unsubscribeNewsletter(email: string) {
@@ -504,6 +504,9 @@ export async function unsubscribeNewsletter(email: string) {
 export async function listSubscribers(licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (licenseId) {
+    return db.select().from(newsletterSubscribers).where(eq(newsletterSubscribers.licenseId, licenseId)).orderBy(desc(newsletterSubscribers.createdAt));
+  }
   return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt));
 }
 
@@ -2355,14 +2358,16 @@ export async function getDailyArticleCounts(days: number): Promise<{ date: strin
   return (Array.isArray(result) ? result : []).map((r: any) => ({ date: String(r.date ?? '').slice(0, 10), count: Number(r.count) }));
 }
 
-/** Count active newsletter subscribers. */
+/** Count active newsletter subscribers, optionally filtered by license. */
 export async function countNewsletterSubscribers(status: string, licenseId?: number): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
+  const conditions = [eq(newsletterSubscribers.status, status as "active" | "unsubscribed")];
+  if (licenseId) conditions.push(eq(newsletterSubscribers.licenseId, licenseId));
   const rows = await db
     .select({ id: newsletterSubscribers.id })
     .from(newsletterSubscribers)
-    .where(eq(newsletterSubscribers.status, status as "active" | "unsubscribed"));
+    .where(and(...conditions));
   return rows.length;
 }
 
