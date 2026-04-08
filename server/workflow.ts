@@ -890,7 +890,8 @@ Return ONLY the JSON object.`,
 export async function runFullPipeline(batchDate?: string, licenseId?: number): Promise<WorkflowResult> {
   const { getTodayForTenant } = await import("./db");
   const date = batchDate || await getTodayForTenant(licenseId);
-  const tenantId = licenseId || 7; // Default to nikijames for backward compat
+  if (!licenseId) throw new Error("licenseId is required for runFullPipeline");
+  const tenantId = licenseId;
   console.log(`  License ID: ${tenantId}`);
 
   console.log(`\n${"#".repeat(60)}`);

@@ -151,7 +151,7 @@ export const pagesRouter = router({
   list: tenantOrAdminProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return { pages: [] };
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const rows = await db.select().from(publicationPages).where(eq(publicationPages.licenseId, lid));
       return { pages: rows.map(r => ({ id: r.id, title: r.title || r.pageSlug, slug: r.pageSlug, content: r.content || "", isPublished: true })) };
     }),
@@ -162,7 +162,7 @@ export const pagesRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [existing] = await db.select().from(publicationPages)
         .where(and(eq(publicationPages.licenseId, lid), eq(publicationPages.pageSlug, input.slug)))
         .limit(1);
@@ -180,7 +180,7 @@ export const pagesRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const DEFAULT_SLUGS = ["advertise", "privacy", "contact", "sitemap-page", "about"];
       const [page] = await db.select().from(publicationPages).where(and(eq(publicationPages.id, input.id), eq(publicationPages.licenseId, lid))).limit(1);
       if (page && DEFAULT_SLUGS.includes(page.pageSlug)) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete default pages" });

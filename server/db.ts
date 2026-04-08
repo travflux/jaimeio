@@ -1628,15 +1628,18 @@ export async function isSourceBlocked(sourceName: string): Promise<boolean> {
 
 
 // ─── RSS Feed Weights ────────────────────────────────────
-export async function getRssFeedWeights() {
+export async function getRssFeedWeights(licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(rssFeedWeights).where(eq(rssFeedWeights.enabled, true)).orderBy(desc(rssFeedWeights.weight));
+  const conditions = [eq(rssFeedWeights.enabled, true)];
+  if (licenseId) conditions.push(eq(rssFeedWeights.licenseId, licenseId));
+  return db.select().from(rssFeedWeights).where(and(...conditions)).orderBy(desc(rssFeedWeights.weight));
 }
 
-export async function getAllRssFeedWeights() {
+export async function getAllRssFeedWeights(licenseId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (licenseId) return db.select().from(rssFeedWeights).where(eq(rssFeedWeights.licenseId, licenseId)).orderBy(desc(rssFeedWeights.weight));
   return db.select().from(rssFeedWeights).orderBy(desc(rssFeedWeights.weight));
 }
 
@@ -2428,21 +2431,23 @@ export async function deleteCeoDirective(id: number) {
 
 // ─── Covered Topics (cross-batch memory, Fix 6) ───────────────────────────────
 /** Store a list of topic strings for a given batch date. */
-export async function storeCoveredTopics(topics: string[], batchDate: string): Promise<void> {
+export async function storeCoveredTopics(topics: string[], batchDate: string, licenseId?: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
   if (topics.length === 0) return;
-  await db.insert(coveredTopics).values(topics.map(t => ({ topic: t, batchDate })));
+  await db.insert(coveredTopics).values(topics.map(t => ({ topic: t, batchDate, ...(licenseId ? { licenseId } : {}) } as any)));
 }
 
-/** Return topics covered in the last N days (deduped). */
-export async function getRecentCoveredTopics(days: number = 2): Promise<string[]> {
+/** Return topics covered in the last N days (deduped), filtered by license. */
+export async function getRecentCoveredTopics(days: number = 2, licenseId?: number): Promise<string[]> {
   const db = await getDb();
   if (!db) return [];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const conditions = [gte(coveredTopics.createdAt, cutoff)];
+  if (licenseId) conditions.push(eq(coveredTopics.licenseId, licenseId));
   const rows = await db.select({ topic: coveredTopics.topic })
     .from(coveredTopics)
-    .where(gte(coveredTopics.createdAt, cutoff));
+    .where(and(...conditions));
   const seen = new Set<string>();
   return rows.map(r => r.topic).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; });
 }
@@ -3195,27 +3200,31 @@ export async function getNewsletterSendHistory(limit = 20) {
 
 // ─── Platform Credentials ────────────────────────────────────────────────────
 
-export async function getPlatformCredential(platform: string) {
+export async function getPlatformCredential(platform: string, licenseId?: number) {
   const db = await getDb();
   if (!db) return null;
   const { platformCredentials } = await import("../drizzle/schema");
-  const { eq } = await import("drizzle-orm");
-  const [cred] = await db.select().from(platformCredentials).where(eq(platformCredentials.platform, platform)).limit(1);
+  const { eq, and: andOp } = await import("drizzle-orm");
+  const conditions = [eq(platformCredentials.platform, platform)];
+  if (licenseId) conditions.push(eq(platformCredentials.licenseId, licenseId));
+  const [cred] = await db.select().from(platformCredentials).where(andOp(...conditions)).limit(1);
   return cred ?? null;
 }
 
-export async function upsertPlatformCredential(platform: string, data: { apiKey?: string; apiSecret?: string; extra?: string; isActive?: boolean }) {
+export async function upsertPlatformCredential(platform: string, data: { apiKey?: string; apiSecret?: string; extra?: string; isActive?: boolean }, licenseId?: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const { platformCredentials } = await import("../drizzle/schema");
-  const { eq } = await import("drizzle-orm");
-  const existing = await getPlatformCredential(platform);
+  const { eq, and: andOp } = await import("drizzle-orm");
+  const existing = await getPlatformCredential(platform, licenseId);
   if (existing) {
-    await db.update(platformCredentials).set({ ...data }).where(eq(platformCredentials.platform, platform));
+    const conditions = [eq(platformCredentials.platform, platform)];
+    if (licenseId) conditions.push(eq(platformCredentials.licenseId, licenseId));
+    await db.update(platformCredentials).set({ ...data }).where(andOp(...conditions));
   } else {
-    await db.insert(platformCredentials).values({ platform, ...data });
+    await db.insert(platformCredentials).values({ platform, ...data, ...(licenseId ? { licenseId } : {}) } as any);
   }
-  return getPlatformCredential(platform);
+  return getPlatformCredential(platform, licenseId);
 }
 
 // ─── Social Distribution Queue ────────────────────────────────────────────────
