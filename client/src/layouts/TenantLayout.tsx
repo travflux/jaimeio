@@ -2,6 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useBranding } from "@/hooks/useBranding";
+import { useTenantContext } from "@/hooks/useTenantContext";
 import CommandPalette from "@/components/CommandPalette";
 import SetupWizardModal from "@/components/wizard/SetupWizardModal";
 import {
@@ -92,6 +93,8 @@ function getActiveSection(path: string): string {
 export default function TenantLayout({ children, pageTitle, pageSubtitle, section, saveAction, headerActions }: TenantLayoutProps) {
   const [location] = useLocation();
   const { branding } = useBranding();
+  const { license } = useTenantContext();
+  const isEnterprise = (license as any)?.tier === "enterprise";
   const statsQuery = trpc.articles.stats.useQuery(undefined, { staleTime: 60000 });
   const pendingCount = statsQuery.data?.pending || 0;
   const pubName = branding.siteName || "Publication";
@@ -199,6 +202,38 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
             </div>
           );
         })}
+
+        {/* Enterprise-only: White Label section */}
+        {isEnterprise && (() => {
+          const wlOpen = openSections["whitelabel"] || false;
+          const wlItems = [
+            { icon: Settings, label: "White Label", href: "/admin/white-label" },
+            { icon: Users, label: "Client Management", href: "/admin/clients" },
+          ];
+          return (
+            <div style={{ marginBottom: 2 }}>
+              <button onClick={() => toggleSection("whitelabel")} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", border: "none", background: "none", cursor: "pointer", padding: "7px 14px", color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
+                <ChevronRight size={10} style={{ transform: wlOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
+                WHITE LABEL
+              </button>
+              {wlOpen && (
+                <div style={{ padding: "0 6px" }}>
+                  {wlItems.map(item => {
+                    const active = isActive(item.href);
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.href} href={item.href} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, textDecoration: "none", color: active ? "#ffffff" : "#9ca3af", background: active ? "#1f2937" : "transparent", borderLeft: active ? "2px solid #2dd4bf" : "2px solid transparent", fontSize: 12, transition: "background 0.1s" }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#1f2937"; }} onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                        <Icon size={14} style={{ color: active ? "#ffffff" : "#9ca3af" }} />
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Settings — single link */}
         <div style={{ padding: "0 6px", marginTop: 4 }}>
