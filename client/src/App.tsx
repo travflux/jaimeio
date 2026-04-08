@@ -146,6 +146,8 @@ import TenantSponsorAttribution from "./pages/tenant/TenantSponsorAttribution";
 import TenantMerchStore from "./pages/tenant/TenantMerchStore";
 import TenantMerchPipeline from "./pages/tenant/TenantMerchPipeline";
 import TenantTicket from "./pages/tenant/TenantTicket";
+import TenantWhiteLabel from "./pages/tenant/TenantWhiteLabel";
+import ResellerMissionControl from "./pages/tenant/ResellerMissionControl";
 
 // Detect if we're on app.getjaime.io or a tenant subdomain
 function useIsAppDomain() {
@@ -283,6 +285,8 @@ function Router() {
           <Route path="/admin/merch-store" component={TenantMerchStore} />
           <Route path="/admin/merch-pipeline" component={TenantMerchPipeline} />
           <Route path="/admin/ticket" component={TenantTicket} />
+          <Route path="/admin/white-label" component={TenantWhiteLabel} />
+          <Route path="/admin/clients" component={ResellerMissionControl} />
           <Route path="/admin/settings" component={TenantSettings} />
           <Route path="/admin/setup-wizard" component={TenantSetup} />
         </>
@@ -343,9 +347,6 @@ function Router() {
           <Route path="/admin/pages" component={AdminPages} />
         </>
       )}
-      <Route path="/admin/image-sources" component={AdminImageSources} />
-      <Route path="/admin/pages" component={AdminPages} />
-
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
