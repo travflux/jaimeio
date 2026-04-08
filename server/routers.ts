@@ -4029,6 +4029,50 @@ export const appRouter = router({
         return { library: libStatsResult[0] ?? null, domains: domainStatsResult[0] ?? null };
       }),
   }),
+  // ─── Generation Log ──────────────────────────────────
+  generation: router({
+    getRecentErrors: tenantOrAdminProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ ctx, input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { generationLog } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, desc: descOp, gte: gteOp } = await import("drizzle-orm");
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return dbConn.select().from(generationLog)
+        .where(andOp(eqOp(generationLog.licenseId, ctx.licenseId!), eqOp(generationLog.status, "failed"), gteOp(generationLog.attemptedAt, sevenDaysAgo)))
+        .orderBy(descOp(generationLog.attemptedAt))
+        .limit(input?.limit ?? 50);
+    }),
+    getArticleLog: tenantOrAdminProcedure.input(z.object({ articleId: z.number() })).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { generationLog } = await import("../drizzle/schema");
+      const { eq: eqOp, asc: ascOp } = await import("drizzle-orm");
+      return dbConn.select().from(generationLog)
+        .where(eqOp(generationLog.articleId, input.articleId))
+        .orderBy(ascOp(generationLog.attemptedAt));
+    }),
+    retryStep: tenantOrAdminProcedure.input(z.object({ articleId: z.number(), step: z.enum(["image", "seo", "geo"]) })).mutation(async ({ input, ctx }) => {
+      const licenseId = ctx.licenseId!;
+      if (input.step === "seo") {
+        const { generateAndSaveSEO } = await import("./workflow");
+        generateAndSaveSEO(input.articleId, licenseId).catch(() => {});
+      } else if (input.step === "image") {
+        const { generateImage } = await import("./_core/imageGeneration");
+        const { buildImagePrompt } = await import("./imagePromptBuilder");
+        const article = await db.getArticleById(input.articleId);
+        if (article) {
+          const prompt = await buildImagePrompt(article.headline, article.subheadline, { licenseId });
+          generateImage({ prompt, licenseId }).then(async (r: any) => {
+            if (r?.url) await db.updateArticle(input.articleId, { featuredImage: r.url } as any);
+          }).catch(() => {});
+        }
+      } else if (input.step === "geo") {
+        const { processArticlesGeo } = await import("./geo/geoService");
+        processArticlesGeo([input.articleId], { geo_enabled: "true" }).catch(() => {});
+      }
+      return { queued: true };
+    }),
+  }),
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
     getSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
