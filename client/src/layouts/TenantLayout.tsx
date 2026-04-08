@@ -31,7 +31,6 @@ interface NavSection { label: string; key: string; icon: any; items: NavItem[]; 
 
 const NAV_SECTIONS: NavSection[] = [
   { label: "CONTENT", key: "content", icon: FileText, items: [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
     { icon: FileText, label: "Articles", href: "/admin/articles" },
     { icon: PenLine, label: "Create Article", href: "/admin/articles/create" },
     { icon: CalendarDays, label: "Content Calendar", href: "/admin/calendar" },
@@ -167,6 +166,22 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+        {/* Dashboard — standalone top-level item */}
+        <div style={{ padding: "0 6px", marginBottom: 4 }}>
+          <Link href="/admin/dashboard" style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, textDecoration: "none",
+            color: isActive("/admin/dashboard") ? "#ffffff" : "#9ca3af",
+            background: isActive("/admin/dashboard") ? "#1f2937" : "transparent",
+            borderLeft: isActive("/admin/dashboard") ? "2px solid #2dd4bf" : "2px solid transparent",
+            fontSize: 12, transition: "background 0.1s",
+          }}
+            onMouseEnter={e => { if (!isActive("/admin/dashboard")) e.currentTarget.style.background = "#1f2937"; }}
+            onMouseLeave={e => { if (!isActive("/admin/dashboard")) e.currentTarget.style.background = "transparent"; }}>
+            <LayoutDashboard size={14} style={{ color: isActive("/admin/dashboard") ? "#ffffff" : "#9ca3af" }} />
+            <span style={{ flex: 1 }}>Dashboard</span>
+          </Link>
+        </div>
+
         {/* Collapsible sections */}
         {NAV_SECTIONS.map(sec => {
           const isOpen = openSections[sec.key] || false;

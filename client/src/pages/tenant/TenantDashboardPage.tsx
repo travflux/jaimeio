@@ -34,6 +34,10 @@ export default function TenantDashboardPage() {
   const fast = trpc.dashboard.getFastSnapshot.useQuery(undefined, { staleTime: 15000 });
   const full = trpc.dashboard.getSnapshot.useQuery(undefined, { staleTime: 60000 });
   const runMut = trpc.workflow.runProductionLoop.useMutation({ onSuccess: () => toast.success("Generation run started"), onError: (e: any) => toast.error(e.message) });
+  const utils = trpc.useUtils();
+  const approveMut = trpc.articles.approve.useMutation({ onSuccess: () => { toast.success("Approved"); utils.dashboard.getSnapshot.invalidate(); utils.dashboard.getFastSnapshot.invalidate(); }, onError: (e: any) => toast.error(e.message) });
+  const rejectMut = trpc.articles.reject.useMutation({ onSuccess: () => { toast.success("Rejected"); utils.dashboard.getSnapshot.invalidate(); utils.dashboard.getFastSnapshot.invalidate(); }, onError: (e: any) => toast.error(e.message) });
+  const backfillGeoMut = trpc.geo.generateBulk.useMutation({ onSuccess: () => toast.success("GEO backfill started"), onError: (e: any) => toast.error(e.message) });
   const f = fast.data;
   const d = full.data;
 
@@ -85,6 +89,23 @@ export default function TenantDashboardPage() {
                 {f.missingImages > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingImages} missing images</span>}
                 {f.missingGeo > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingGeo} missing GEO</span>}
                 {f.candidatePoolDepth < 10 && <a href="/admin/source-feeds" style={{ fontSize: 12, color: "#92400E", textDecoration: "underline" }}>Pool low</a>}
+              </div>
+            )}
+
+            {/* Pending Review */}
+            {d?.pendingArticles && d.pendingArticles.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><AlertCircle size={14} style={{ color: "#D97706" }} /> Pending Review</h3>
+                {d.pendingArticles.map((a: any) => (
+                  <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.headline}</div>
+                      <div style={{ fontSize: 10, color: "#9ca3af" }}>{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ""}</div>
+                    </div>
+                    <button onClick={() => approveMut.mutate({ id: a.id })} disabled={approveMut.isPending} style={{ background: "none", border: "none", cursor: "pointer", color: "#22c55e", padding: 2 }} title="Approve"><CheckCircle2 size={15} /></button>
+                    <button onClick={() => rejectMut.mutate({ id: a.id })} disabled={rejectMut.isPending} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }} title="Reject"><XCircle size={15} /></button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -219,6 +240,10 @@ export default function TenantDashboardPage() {
                 <a href="/admin/articles/create" style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12, textDecoration: "none", color: "#374151" }}>
                   <PenLine size={12} /> Create Article
                 </a>
+                <button onClick={() => backfillGeoMut.mutate()} disabled={backfillGeoMut.isPending}
+                  style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer", color: "#374151" }}>
+                  {backfillGeoMut.isPending ? <Loader2 size={12} className="animate-spin" /> : <Globe size={12} />} Backfill GEO
+                </button>
               </div>
             </div>
 
@@ -228,9 +253,16 @@ export default function TenantDashboardPage() {
               {fast.isLoading ? <Skeleton h={80} /> : (
                 <div style={{ fontSize: 12, color: "#6b7280" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: f?.loopEnabled ? "#22c55e" : "#ef4444" }} />
-                    Loop: {f?.loopEnabled ? "Active" : "Paused"}
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: (d?.systemHealth?.loopEnabled ?? f?.loopEnabled) ? "#22c55e" : "#ef4444" }} />
+                    Loop: {(d?.systemHealth?.loopEnabled ?? f?.loopEnabled) ? "Active" : "Paused"}
                   </div>
+                  {d?.systemHealth && <>
+                    <div style={{ padding: "4px 0" }}>LLM: {d.systemHealth.llmProvider}</div>
+                    <div style={{ padding: "4px 0" }}>Images: {d.systemHealth.imageProvider}</div>
+                    <div style={{ padding: "4px 0" }}>RSS Feeds: {d.systemHealth.rssFeedCount}{d.systemHealth.rssFeedErrors > 0 && <span style={{ color: "#ef4444" }}> ({d.systemHealth.rssFeedErrors} errors)</span>}</div>
+                    <div style={{ padding: "4px 0" }}>Email: {d.systemHealth.emailEnabled ? "Configured" : "Not set"}</div>
+                    <div style={{ padding: "4px 0" }}>S3: {d.systemHealth.s3Enabled ? "Configured" : "Not set"}</div>
+                  </>}
                   {d?.newsletter && <div style={{ padding: "4px 0" }}>Subscribers: {d.newsletter.subscribers ?? 0}</div>}
                 </div>
               )}

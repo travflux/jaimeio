@@ -28,6 +28,8 @@ export default function TenantCreateArticle() {
   const [templateId, setTemplateId] = useState<number | undefined>();
   const [status, setStatus] = useState<"draft" | "pending" | "published">("draft");
   const [saving, setSaving] = useState(false);
+  const [isEditorsPick, setIsEditorsPick] = useState(false);
+  const [isTrending, setIsTrending] = useState(false);
 
   // Generate tab state
   const [topic, setTopic] = useState("");
@@ -57,7 +59,7 @@ export default function TenantCreateArticle() {
     if (!headline.trim()) { toast.error("Headline is required"); return; }
     setSaving(true);
     const slug = headline.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80) + "-" + Math.random().toString(36).slice(2, 5);
-    createMut.mutate({ headline, subheadline, body, slug, status, categoryId, featuredImage: imageUrl || undefined });
+    createMut.mutate({ headline, subheadline, body, slug, status, categoryId, featuredImage: imageUrl || undefined, isEditorsPick: isEditorsPick || undefined, isTrending: isTrending || undefined });
   };
 
   const handleGenerate = () => {
@@ -161,6 +163,25 @@ export default function TenantCreateArticle() {
                   <button key={s} onClick={() => setStatus(s)} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
                     borderColor: status === s ? "#2dd4bf" : "#e5e7eb", background: status === s ? "#f0fdfa" : "#fff", color: status === s ? "#0f766e" : "#6b7280" }}>{s}</button>
                 ))}
+              </div>
+            </div>
+
+            {/* Editor Pick & Trending */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb", marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 10 }}>Flags</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#374151" }}>{"Editor\u2019s Pick"}</span>
+                  <button onClick={() => setIsEditorsPick(!isEditorsPick)} style={{ width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative", background: isEditorsPick ? "#2dd4bf" : "#d1d5db", transition: "background 0.2s" }}>
+                    <span style={{ position: "absolute", top: 2, left: isEditorsPick ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }} />
+                  </button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#374151" }}>Trending</span>
+                  <button onClick={() => setIsTrending(!isTrending)} style={{ width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative", background: isTrending ? "#2dd4bf" : "#d1d5db", transition: "background 0.2s" }}>
+                    <span style={{ position: "absolute", top: 2, left: isTrending ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }} />
+                  </button>
+                </div>
               </div>
             </div>
 

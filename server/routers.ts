@@ -998,6 +998,7 @@ export const appRouter = router({
       categoryId: z.number().optional(), featuredImage: z.string().optional(),
       batchDate: z.string().optional(), sourceEvent: z.string().optional(), sourceUrl: z.string().optional(),
       seoTitle: z.string().optional(), seoDescription: z.string().optional(), focusKeyword: z.string().optional(), altText: z.string().optional(),
+      isEditorsPick: z.boolean().optional(), isTrending: z.boolean().optional(),
     })).mutation(async ({ input, ctx }) => {
       const plainText = (input.body ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const wordCount = plainText.split(' ').filter((w: string) => w.length > 0).length;
@@ -1303,6 +1304,14 @@ export const appRouter = router({
     backfillEnrichment: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
       const result = await db.backfillArticleEnrichmentFields(ctx.licenseId);
       return { ...result, message: "Backfilled " + result.wordCountUpdated + " word counts and " + result.modelUpdated + " model fields" };
+    }),
+    approve: tenantOrAdminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.updateArticleStatus(input.id, "approved");
+      return { success: true };
+    }),
+    reject: tenantOrAdminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.updateArticleStatus(input.id, "rejected");
+      return { success: true };
     }),
     regenerateMissingImages: adminProcedure.mutation(async () => {
       const dbConn = await db.getDb();
@@ -4303,6 +4312,38 @@ export const appRouter = router({
       let aiTips: string[] = [];
       try { if (tipsRaw?.value) aiTips = JSON.parse(tipsRaw.value); } catch {}
 
+      // Pending articles for review card
+      const pendingArticles = await dbConn
+        .select({ id: articles.id, headline: articles.headline, createdAt: articles.createdAt, categoryId: articles.categoryId })
+        .from(articles)
+        .where(and(eq(articles.licenseId, licenseId), eq(articles.status, "pending")))
+        .orderBy(desc(articles.createdAt))
+        .limit(5);
+
+      // System health
+      const { getLicenseSettingOrGlobal } = await import("./db");
+      const [llmProv, imgProv] = await Promise.all([
+        getLicenseSettingOrGlobal(licenseId!, "llm_provider"),
+        getLicenseSettingOrGlobal(licenseId!, "image_provider"),
+      ]);
+      const { rssFeedWeights } = await import("../drizzle/schema");
+      const rssFeedStats = await dbConn
+        .select({ total: sql<number>`COUNT(*)`, failing: sql<number>`SUM(CASE WHEN ${rssFeedWeights.errorCount} > 0 THEN 1 ELSE 0 END)` })
+        .from(rssFeedWeights)
+        .where(and(eq(rssFeedWeights.licenseId, licenseId), eq(rssFeedWeights.enabled, true)))
+        .catch(() => [{ total: 0, failing: 0 }]);
+      const loopSettingFull = await (await import("./db")).getLicenseSetting(licenseId!, "workflow_enabled");
+
+      const systemHealth = {
+        loopEnabled: loopSettingFull?.value === "true",
+        llmProvider: llmProv ?? "anthropic",
+        imageProvider: imgProv ?? "none",
+        rssFeedCount: Number(rssFeedStats[0]?.total ?? 0),
+        rssFeedErrors: Number(rssFeedStats[0]?.failing ?? 0),
+        emailEnabled: !!process.env.RESEND_API_KEY,
+        s3Enabled: !!process.env.AWS_S3_BUCKET,
+      };
+
       return {
         articles: {
           total: totalArticles,
@@ -4324,6 +4365,8 @@ export const appRouter = router({
         newsletter: { subscribers: Number(subscriberCount[0]?.count ?? 0) },
         sourcePerformance,
         aiTips,
+        pendingArticles,
+        systemHealth,
       };
     }),
   }),

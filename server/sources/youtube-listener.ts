@@ -10,7 +10,7 @@
  */
 
 import { writeRssCandidates, type NewsEventInput } from "./rss-bridge";
-import { getLicenseSetting } from "../db";
+import { getLicenseSettingOrGlobal } from "../db";
 
 interface YouTubeSearchItem {
   id: { videoId?: string };
@@ -53,23 +53,23 @@ function extractChannelId(input: string): string {
  */
 export async function fetchYouTubeCandidates(licenseId: number, batchDate: string): Promise<number> {
   // Check if YouTube listener is enabled for this license
-  const enabledSetting = await getLicenseSetting(licenseId, "youtube_listening_enabled");
-  if (!enabledSetting || enabledSetting.value !== "true") {
+  const enabledSetting = await getLicenseSettingOrGlobal(licenseId, "youtube_listening_enabled");
+  if (!enabledSetting || enabledSetting !== "true") {
     console.log("[YouTube] Not enabled for license", licenseId, "— skipping");
     return 0;
   }
 
   // Read channel list
-  const channelSetting = await getLicenseSetting(licenseId, "youtube_listening_channels");
-  const rawChannels = channelSetting?.value || "";
+  const channelSetting = await getLicenseSettingOrGlobal(licenseId, "youtube_listening_channels");
+  const rawChannels = channelSetting || "";
   const channels = rawChannels
     .split("\n")
     .map((c) => extractChannelId(c))
     .filter(Boolean);
 
   // Read keyword list
-  const keywordSetting = await getLicenseSetting(licenseId, "youtube_listening_keywords");
-  const rawKeywords = keywordSetting?.value || "";
+  const keywordSetting = await getLicenseSettingOrGlobal(licenseId, "youtube_listening_keywords");
+  const rawKeywords = keywordSetting || "";
   const keywords = rawKeywords
     .split("\n")
     .map((k) => k.trim())

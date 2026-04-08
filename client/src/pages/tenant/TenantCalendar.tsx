@@ -32,7 +32,8 @@ export default function TenantCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(() => (typeof localStorage !== "undefined" ? localStorage.getItem("calendar_view_mode") as ViewMode : null) || "month");
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
-  const statusMut = trpc.articles.updateStatus.useMutation({ onSuccess: () => { toast.success("Updated"); eventsQuery.refetch(); } });
+  const approveMutation = trpc.articles.approve.useMutation({ onSuccess: () => { toast.success("Approved"); eventsQuery.refetch(); }, onError: (e: any) => toast.error(e.message) });
+  const rejectMutation = trpc.articles.reject.useMutation({ onSuccess: () => { toast.success("Rejected"); eventsQuery.refetch(); }, onError: (e: any) => toast.error(e.message) });
 
   useEffect(() => { localStorage.setItem("calendar_view_mode", viewMode); }, [viewMode]);
 
@@ -229,8 +230,8 @@ export default function TenantCalendar() {
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <span style={{ padding: "1px 6px", borderRadius: 3, fontSize: 10, background: COLORS[a.status] + "20", color: COLORS[a.status] }}>{a.status}</span>
                       {a.status === "pending" && <>
-                        <button onClick={() => statusMut.mutate({ id: a.id, status: "approved" })} style={{ background: "none", border: "none", cursor: "pointer", color: "#22c55e", padding: 2 }} title="Approve"><CheckCircle2 size={13} /></button>
-                        <button onClick={() => statusMut.mutate({ id: a.id, status: "rejected" })} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }} title="Reject"><XCircle size={13} /></button>
+                        <button onClick={() => approveMutation.mutate({ id: a.id })} style={{ background: "none", border: "none", cursor: "pointer", color: "#22c55e", padding: 2 }} title="Approve"><CheckCircle2 size={13} /></button>
+                        <button onClick={() => rejectMutation.mutate({ id: a.id })} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }} title="Reject"><XCircle size={13} /></button>
                       </>}
                       {a.status === "published" && a.slug && <a href={`/article/${a.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "#9ca3af" }}><ExternalLink size={11} /></a>}
                     </div>

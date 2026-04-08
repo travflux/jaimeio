@@ -1683,15 +1683,18 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
           if (result?.url) {
             await db.updateArticle(articleId, { featuredImage: result.url });
             await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'generated');
+            await db.logGenerationStep({ articleId, licenseId: tenantId, step: "image", status: "success" });
             imagesGenerated++;
             console.log(`    ✓ LLM image generated and saved`);
           } else {
             await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'failed').catch(() => {});
+            await db.logGenerationStep({ articleId, licenseId: tenantId, step: "image", status: "failed", errorMessage: "No URL returned" }).catch(() => {});
             imagesFailed++;
             console.log(`    ✗ Image generation returned no URL`);
           }
         } catch (err: any) {
           await db.updateArticleEnrichmentStatus(articleId, 'imageStatus', 'failed').catch(() => {});
+          await db.logGenerationStep({ articleId, licenseId: tenantId, step: "image", status: "failed", errorMessage: err?.message?.slice(0, 500) }).catch(() => {});
           imagesFailed++;
           console.log(`    ✗ Image generation failed: ${err.message?.slice(0, 80)}`);
         }
