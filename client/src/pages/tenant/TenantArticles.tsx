@@ -564,7 +564,10 @@ export default function TenantArticles() {
                   </td>
                   <td style={{ padding: "10px 16px", textAlign: "center", color: "#6b7280" }}>{a.views || 0}</td>
                   <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                    <button onClick={() => setReviewArticle(a)} style={{ padding: "4px 12px", borderRadius: 4, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>Review</button>
+                    <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                      <a href={`/admin/articles/${a.id}`} style={{ padding: "4px 12px", borderRadius: 4, border: "1px solid #2dd4bf", background: "#f0fdfa", fontSize: 12, fontWeight: 500, cursor: "pointer", textDecoration: "none", color: "#0f766e" }}>Edit</a>
+                      <button onClick={() => setReviewArticle(a)} style={{ padding: "4px 12px", borderRadius: 4, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>Review</button>
+                    </div>
                   </td>
                 </tr>
               );
