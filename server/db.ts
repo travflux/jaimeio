@@ -986,16 +986,7 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "video_provider_custom_api_url", value: "", label: "Custom API URL", description: "Full URL for custom video generation API endpoint.", category: "video_providers", type: "string" },
   { key: "video_provider_custom_api_key", value: "", label: "Custom API Key", description: "API key for custom video generation API (if required).", category: "video_providers", type: "string" },
 
-  // News Sources
-  { key: "rss_feeds", value: JSON.stringify([
-    "https://feeds.reuters.com/reuters/topNews",
-    "https://feeds.bbci.co.uk/news/rss.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-    "https://feeds.npr.org/1001/rss.xml",
-    "https://feeds.washingtonpost.com/rss/national",
-    "https://rss.cnn.com/rss/edition.rss",
-    "https://feeds.theguardian.com/theguardian/world/rss",
-  ]), label: "RSS Feed Sources", description: "JSON array of RSS feed URLs to gather news from.", category: "sources", type: "json" },
+  // News Sources — RSS feeds managed exclusively via rss_feed_weights table
   { key: "use_google_news", value: "true", label: "Include Google News", description: "Also gather trending stories from Google News.", category: "sources", type: "boolean" },
   { key: "news_regions", value: "US,GB", label: "News Regions", description: "Comma-separated region codes for news gathering (e.g., US, GB, AU).", category: "sources", type: "string" },
 
