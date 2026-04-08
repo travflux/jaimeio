@@ -16,6 +16,8 @@ export interface GenerationSettings {
   templateId?: number;
   templateName?: string;
   categoryId?: number;
+  articleFormatType?: string;
+  sentenceRhythm?: string;
 }
 
 export async function applyTemplateSettings(
@@ -42,6 +44,8 @@ export async function applyTemplateSettings(
   if (template.category_id || template.categoryId) merged.categoryId = template.category_id || template.categoryId;
   merged.templateId = template.id;
   merged.templateName = template.name;
+  if (template.article_format_type) merged.articleFormatType = template.article_format_type;
+  if (template.sentence_rhythm) merged.sentenceRhythm = template.sentence_rhythm;
 
   // Update usage stats
   await db.execute(sql`UPDATE article_templates SET last_used_at = NOW(), use_count = COALESCE(use_count, 0) + 1 WHERE id = ${templateId}`);
