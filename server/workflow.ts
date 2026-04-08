@@ -548,6 +548,16 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
   if (templateSettings?.tone) stylePrompt = `Write in a ${templateSettings.tone} tone. ${stylePrompt}`;
   if (templateSettings?.userMessage) stylePrompt = templateSettings.userMessage;
 
+  // Template-specific format and rhythm
+  let templatePromptSuffix = "";
+  const formatType = templateSettings?.articleFormatType || templateSettings?.article_format_type;
+  if (formatType) templatePromptSuffix += `\n\nARTICLE FORMAT: Write this article as a ${formatType}. Structure the content accordingly.`;
+  const rhythm = templateSettings?.sentenceRhythm || templateSettings?.sentence_rhythm;
+  if (rhythm) {
+    const ri: Record<string, string> = { "short-punchy": "Use short, punchy sentences averaging fewer than 15 words.", "long-flowing": "Use long, flowing sentences averaging more than 25 words.", "varied": "Vary sentence length — mix short punchy with longer flowing.", "fragment-led": "Use sentence fragments deliberately for impact.", "academic": "Use formal academic sentence structure throughout." };
+    if (ri[rhythm]) templatePromptSuffix += `\n\nSENTENCE RHYTHM: ${ri[rhythm]}`;
+  }
+
   // Build prompts — per-tenant if licenseId available, otherwise legacy
   let systemPrompt: string;
   let userMessage: string;
@@ -558,6 +568,7 @@ export async function generateSatiricalArticle(event: NewsEvent, stylePrompt: st
     systemPrompt = `${buildSystemPrompt(targetWords, structureOpts)}\n\n${stylePrompt}`;
     userMessage = buildArticleUserPrompt({ title: event.title, summary: event.summary, source: event.source }, String(targetWords));
   }
+  if (templatePromptSuffix) systemPrompt += templatePromptSuffix;
 
   const response = await invokeLLM({
     messages: [

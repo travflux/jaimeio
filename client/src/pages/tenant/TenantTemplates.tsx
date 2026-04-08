@@ -29,9 +29,9 @@ export default function TenantTemplates() {
   const handleSave = async () => {
     if (!f.name?.trim()) return;
     if (editId) {
-      await updateMut?.mutateAsync?.({ id: editId, licenseId, name: f.name, description: f.description, promptTemplate: f.promptTemplate, headlineFormat: f.headline_format || f.headlineFormat, tone: f.tone, targetWordCount: f.target_word_count || f.targetWordCount, scheduleFrequency: f.schedule_frequency || f.scheduleFrequency, scheduleColor: f.schedule_color || f.scheduleColor });
+      await updateMut?.mutateAsync?.({ id: editId, licenseId, name: f.name, description: f.description, promptTemplate: f.promptTemplate, headlineFormat: f.headline_format || f.headlineFormat, tone: f.tone, targetWordCount: f.target_word_count || f.targetWordCount, scheduleFrequency: f.schedule_frequency || f.scheduleFrequency, scheduleColor: f.schedule_color || f.scheduleColor, articleFormatType: f.article_format_type || f.articleFormatType, sentenceRhythm: f.sentence_rhythm || f.sentenceRhythm });
     } else {
-      await createMut?.mutateAsync?.({ licenseId, name: f.name, description: f.description, promptTemplate: f.promptTemplate, headlineFormat: f.headline_format, tone: f.tone, targetWordCount: f.target_word_count, categoryId: f.category_id, imageStylePrompt: f.image_style_prompt, scheduleFrequency: f.schedule_frequency, scheduleDayOfWeek: f.schedule_day_of_week, scheduleHour: f.schedule_hour, scheduleColor: f.schedule_color });
+      await createMut?.mutateAsync?.({ licenseId, name: f.name, description: f.description, promptTemplate: f.promptTemplate, headlineFormat: f.headline_format, tone: f.tone, targetWordCount: f.target_word_count, categoryId: f.category_id, imageStylePrompt: f.image_style_prompt, scheduleFrequency: f.schedule_frequency, scheduleDayOfWeek: f.schedule_day_of_week, scheduleHour: f.schedule_hour, scheduleColor: f.schedule_color, articleFormatType: f.article_format_type, sentenceRhythm: f.sentence_rhythm });
     }
     resetForm();
   };
@@ -72,6 +72,26 @@ export default function TenantTemplates() {
                   {TONES.map(t => <option key={t} value={t}>{t === "default" ? "Use publication default" : t}</option>)}</select></div>
               <div><label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Target Words</label>
                 <input type="number" min={400} max={2000} value={f.target_word_count || f.targetWordCount || 800} onChange={e => upd("target_word_count", parseInt(e.target.value))} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} /></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+              <div><label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Article Format</label>
+                <select value={f.article_format_type || f.articleFormatType || ""} onChange={e => upd("article_format_type", e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }}>
+                  <option value="">Use default</option>
+                  <option value="news-report">News Report</option><option value="feature">Feature</option><option value="listicle">Listicle</option>
+                  <option value="how-to">How-To Guide</option><option value="qa">Q&A</option><option value="opinion">Opinion / Column</option>
+                  <option value="roundup">Roundup</option><option value="profile">Profile</option><option value="data-story">Data Story</option>
+                </select>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Structural archetype for articles from this template</div></div>
+              <div><label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Sentence Rhythm</label>
+                <select value={f.sentence_rhythm || f.sentenceRhythm || ""} onChange={e => upd("sentence_rhythm", e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }}>
+                  <option value="">Use default</option>
+                  <option value="short-punchy">Short & Punchy (&lt;15 words)</option>
+                  <option value="long-flowing">Long & Flowing (&gt;25 words)</option>
+                  <option value="varied">Varied (mix)</option>
+                  <option value="fragment-led">Fragment-Led</option>
+                  <option value="academic">Academic</option>
+                </select>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Prose cadence — short feels like wire copy, varied like magazine</div></div>
             </div>
           </>)}
 

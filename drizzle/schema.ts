@@ -1292,6 +1292,8 @@ export const articleTemplates = mysqlTable("article_templates", {
   isActive: int("is_active").default(1),
   lastUsedAt: timestamp("last_used_at"),
   useCount: int("use_count").default(0),
+  articleFormatType: varchar("article_format_type", { length: 50 }),
+  sentenceRhythm: varchar("sentence_rhythm", { length: 50 }),
 });
 export type ArticleTemplate = typeof articleTemplates.$inferSelect;
 
