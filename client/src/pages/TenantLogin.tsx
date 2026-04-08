@@ -10,6 +10,10 @@ import { Loader2, ArrowRight, Globe, Zap, Shield, BarChart3 } from "lucide-react
 export default function TenantLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const forgotMut = trpc.userManagement.requestPasswordReset.useMutation({ onSuccess: () => setForgotSent(true) });
   const [error, setError] = useState("");
 
   // Resolve license from hostname via tRPC
@@ -136,7 +140,10 @@ export default function TenantLogin() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="text-sm font-medium block mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
+                <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-primary hover:underline">Forgot password?</button>
+              </div>
               <input
                 id="password" type="password" value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -161,6 +168,25 @@ export default function TenantLogin() {
               {loginMutation.isPending ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+
+          {/* Forgot password inline */}
+          {showForgot && (
+            <div className="mt-4 p-4 border border-border rounded-lg bg-muted/30">
+              {forgotSent ? (
+                <p className="text-sm text-muted-foreground text-center">If that email is registered, a reset link has been sent.</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium mb-2">Reset your password</p>
+                  <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Enter your email"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm mb-2" />
+                  <button onClick={() => forgotMut.mutate({ email: forgotEmail })} disabled={!forgotEmail.includes("@") || forgotMut.isPending}
+                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+                    {forgotMut.isPending ? "Sending..." : "Send Reset Link"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           <p className="text-center text-xs text-muted-foreground mt-8">
             &copy; {new Date().getFullYear()} Powered by JAIME.IO

@@ -51,11 +51,14 @@ export async function sendEmail(
   const resend = await getResendClient(licenseId);
   if (!resend) return { success: false, error: "No email provider configured" };
 
+  const isStaging = process.env.JAIME_ENV === "staging";
+  const finalSubject = isStaging ? `[STAGING] ${subject}` : subject;
+
   try {
     await resend.emails.send({
       from: from || "JAIME.IO <noreply@getjaime.io>",
       to,
-      subject,
+      subject: finalSubject,
       html,
     });
     return { success: true };
