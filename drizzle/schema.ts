@@ -209,6 +209,7 @@ export const licenses = mysqlTable("licenses", {
   resellerDefaults: json("reseller_defaults"),
   customDomain: varchar("custom_domain", { length: 255 }),
   customDomainVerified: boolean("custom_domain_verified").default(false),
+  customDomainVerifiedAt: timestamp("custom_domain_verified_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -729,7 +730,9 @@ export const platformCredentials = mysqlTable("platform_credentials", {
   lastError: text("last_error"),                          // last error message from Test Connection
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  platformLicenseUnique: uniqueIndex("idx_platform_license").on(table.platform, table.licenseId),
+}));
 export type PlatformCredential = typeof platformCredentials.$inferSelect;
 export type InsertPlatformCredential = typeof platformCredentials.$inferInsert;
 
