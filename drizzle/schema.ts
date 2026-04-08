@@ -72,6 +72,18 @@ export const articles = mysqlTable("articles", {
   isFeatured: boolean("is_featured").default(false).notNull(),
   isSponsored: boolean("is_sponsored").default(false).notNull(),
   isBreaking: boolean("is_breaking").default(false).notNull(),
+  // Sprint 4 additions
+  wordCount: int("word_count"),
+  readingTimeMinutes: int("reading_time_minutes"),
+  generationModel: varchar("generation_model", { length: 100 }),
+  generationStyle: varchar("generation_style", { length: 100 }),
+  geoStatus: mysqlEnum("geo_status", ["pending", "generated", "failed"]).default("pending"),
+  seoStatus: mysqlEnum("seo_status", ["pending", "generated", "failed"]).default("pending"),
+  imageStatus: mysqlEnum("image_status", ["pending", "generated", "failed", "skipped"]).default("pending"),
+  qualityScore: int("quality_score"),
+  amazonProducts: text("amazon_products"),
+  amazonPlacement: mysqlEnum("amazon_placement", ["inline", "sidebar", "both", "none"]).default("none"),
+  templateId: int("template_id"),
 });
 
 export type Article = typeof articles.$inferSelect;
@@ -81,6 +93,7 @@ export const newsletterSubscribers = mysqlTable("newsletter_subscribers", {
   id: int("id").autoincrement().primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   status: mysqlEnum("status", ["active", "unsubscribed"]).default("active").notNull(),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -138,6 +151,7 @@ export type InsertSocialPost = typeof socialPosts.$inferInsert;
 
 export const workflowBatches = mysqlTable("workflow_batches", {
   id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id"),
   batchDate: varchar("batchDate", { length: 10 }).notNull(),
   status: mysqlEnum("status", ["gathering", "generating", "pending_approval", "approved", "publishing", "completed", "failed"]).default("gathering").notNull(),
   totalEvents: int("totalEvents").default(0).notNull(),
@@ -183,6 +197,18 @@ export const licenses = mysqlTable("licenses", {
   expiresAt: timestamp("expiresAt"),
   lastValidated: timestamp("lastValidated"),
   notes: text("notes"),
+  // Sprint 4 additions
+  isTest: boolean("is_test").default(false),
+  parentLicenseId: int("parent_license_id"),
+  baseArticleCommitment: int("base_article_commitment"),
+  perArticleRate: decimal("per_article_rate", { precision: 10, scale: 4 }),
+  monthlyPageLimit: int("monthly_page_limit"),
+  billingCycleStartDay: int("billing_cycle_start_day").default(1),
+  whiteLabelConfig: json("white_label_config"),
+  resellerPlanConfig: json("reseller_plan_config"),
+  resellerDefaults: json("reseller_defaults"),
+  customDomain: varchar("custom_domain", { length: 255 }),
+  customDomainVerified: boolean("custom_domain_verified").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -208,6 +234,7 @@ export type InsertClientDeployment = typeof clientDeployments.$inferInsert;
 
 export const searchAnalytics = mysqlTable("search_analytics", {
   id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id"),
   query: varchar("query", { length: 500 }).notNull(),
   resultsCount: int("resultsCount").default(0).notNull(),
   categoryFilter: int("categoryFilter"),
@@ -270,8 +297,9 @@ export type InsertCrosswordSolve = typeof crosswordSolves.$inferInsert;
 
 export const contentCalendar = mysqlTable("content_calendar", {
   id: int("id").autoincrement().primaryKey(),
-  date: varchar("date", { length: 10 }).notNull().unique(), // YYYY-MM-DD format
-  notes: text("notes"), // Admin notes about the day's content
+  date: varchar("date", { length: 10 }).notNull().unique(),
+  notes: text("notes"),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -364,10 +392,10 @@ export type InsertMadLibCompletion = typeof madLibCompletions.$inferInsert;
 
 export const blockedSources = mysqlTable("blocked_sources", {
   id: int("id").autoincrement().primaryKey(),
-  sourceName: varchar("sourceName", { length: 255 }).notNull().unique(), // e.g., "CNN", "Fox News"
-  sourceUrl: text("sourceUrl"), // Optional: the base URL of the source
-  sourceName: varchar("sourceName", { length: 255 }),
-  reason: text("reason"), // Optional: why it was blocked
+  sourceName: varchar("sourceName", { length: 255 }).notNull().unique(),
+  sourceUrl: text("sourceUrl"),
+  reason: text("reason"),
+  licenseId: int("license_id"),
   blockedAt: timestamp("blockedAt").defaultNow().notNull(),
 });
 
@@ -397,6 +425,7 @@ export type InsertRssFeedWeight = typeof rssFeedWeights.$inferInsert;
 // ─── Rebalance Log ──────────────────────────────────────────
 export const rebalanceLogs = mysqlTable("rebalance_logs", {
   id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id"),
   triggeredAt: timestamp("triggeredAt").defaultNow().notNull(),
   triggerType: mysqlEnum("triggerType", ["manual", "auto", "initial"]).default("manual").notNull(),
   articleCountSinceLastRebalance: int("articleCountSinceLastRebalance").default(0).notNull(),
@@ -415,6 +444,7 @@ export type InsertRebalanceLog = typeof rebalanceLogs.$inferInsert;
 // ─── X Auto-Replies ──────────────────────────────────────────
 export const xReplies = mysqlTable("x_replies", {
   id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id"),
   // The tweet we're replying to
   tweetId: varchar("tweetId", { length: 64 }).notNull(),
   tweetText: text("tweetText").notNull(),
@@ -484,6 +514,7 @@ export const coveredTopics = mysqlTable("covered_topics", {
   id: int("id").autoincrement().primaryKey(),
   topic: varchar("topic", { length: 255 }).notNull(),
   batchDate: varchar("batch_date", { length: 20 }).notNull(),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type CoveredTopic = typeof coveredTopics.$inferSelect;
@@ -496,9 +527,10 @@ export const affiliateClicks = mysqlTable("affiliate_clicks", {
   articleId: int("articleId"),
   articleSlug: varchar("articleSlug", { length: 200 }),
   targetUrl: varchar("targetUrl", { length: 1000 }).notNull(),
-  clickType: varchar("clickType", { length: 50 }).default("amazon").notNull(), // 'amazon' | 'sponsor'
+  clickType: varchar("clickType", { length: 50 }).default("amazon").notNull(),
   referrer: varchar("referrer", { length: 500 }),
   userAgent: varchar("userAgent", { length: 500 }),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type AffiliateClick = typeof affiliateClicks.$inferSelect;
@@ -510,10 +542,11 @@ export const pageViews = mysqlTable("page_views", {
   id: int("id").autoincrement().primaryKey(),
   articleId: int("articleId"),
   articleSlug: varchar("articleSlug", { length: 200 }),
-  source: varchar("source", { length: 50 }),   // "x", "google", "direct", "reddit", "other"
-  medium: varchar("medium", { length: 50 }),    // "organic", "paid", "email", "social"
+  source: varchar("source", { length: 50 }),
+  medium: varchar("medium", { length: 50 }),
   referrer: varchar("referrer", { length: 500 }),
   path: varchar("path", { length: 500 }),
+  licenseId: int("license_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type PageView = typeof pageViews.$inferSelect;
@@ -684,7 +717,8 @@ export type InsertSearchEnginePerformance = typeof searchEnginePerformance.$infe
 // White-label compatible: each deployment uses its own credentials stored here.
 export const platformCredentials = mysqlTable("platform_credentials", {
   id: int("id").autoincrement().primaryKey(),
-  platform: varchar("platform", { length: 64 }).notNull().unique(), // e.g. "resend", "twilio"
+  platform: varchar("platform", { length: 64 }).notNull(), // e.g. "resend", "twilio"
+  licenseId: int("license_id"),
   apiKey: text("apiKey"),           // primary credential (API key, token)
   apiSecret: text("apiSecret"),     // secondary credential (secret, SID)
   extra: text("extra"),             // JSON blob for additional fields (e.g. from_email, from_name)
@@ -1038,6 +1072,7 @@ export const licenseUsers = mysqlTable("license_users", {
   avatarUrl: text("avatarUrl"),
   isActive: boolean("isActive").default(true).notNull(),
   lastLoginAt: timestamp("lastLoginAt"),
+  resetTokenHash: varchar("reset_token_hash", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -1113,3 +1148,80 @@ export const sponsorSchedules = mysqlTable("sponsor_schedules", {
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Sprint 4: New Tables ──────────────────────────────────────────────────
+
+export const generationLog = mysqlTable("generation_log", {
+  id: int("id").autoincrement().primaryKey(),
+  articleId: int("article_id"),
+  licenseId: int("license_id"),
+  step: mysqlEnum("step", ["image", "seo", "geo"]).notNull(),
+  status: mysqlEnum("status", ["success", "failed", "skipped"]).notNull(),
+  errorMessage: text("error_message"),
+  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
+});
+export type GenerationLog = typeof generationLog.$inferSelect;
+
+export const networkLinks = mysqlTable("network_links", {
+  id: int("id").autoincrement().primaryKey(),
+  label: varchar("label", { length: 255 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type NetworkLink = typeof networkLinks.$inferSelect;
+
+export const impersonationLog = mysqlTable("impersonation_log", {
+  id: int("id").autoincrement().primaryKey(),
+  impersonatorUserId: varchar("impersonator_user_id", { length: 255 }).notNull(),
+  impersonatorEmail: varchar("impersonator_email", { length: 320 }).notNull(),
+  targetLicenseId: int("target_license_id").notNull(),
+  targetSubdomain: varchar("target_subdomain", { length: 100 }).notNull(),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+});
+export type ImpersonationLogEntry = typeof impersonationLog.$inferSelect;
+
+export const staffAccounts = mysqlTable("staff_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  clerkUserId: varchar("clerk_user_id", { length: 255 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: mysqlEnum("role", ["owner", "admin"]).default("admin").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+export type StaffAccount = typeof staffAccounts.$inferSelect;
+
+export const platformSettings = mysqlTable("platform_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+
+export const customDomainVerificationLog = mysqlTable("custom_domain_verification_log", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  customDomain: varchar("custom_domain", { length: 255 }).notNull(),
+  verified: boolean("verified").notNull(),
+  checkedAt: timestamp("checked_at").defaultNow().notNull(),
+  errorMessage: text("error_message"),
+});
+export type CustomDomainVerificationLogEntry = typeof customDomainVerificationLog.$inferSelect;
+
+export const resellerNetworkLinks = mysqlTable("reseller_network_links", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type ResellerNetworkLink = typeof resellerNetworkLinks.$inferSelect;
