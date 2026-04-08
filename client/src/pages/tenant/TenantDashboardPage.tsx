@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import {
   FileText, Eye, Users, Send, AlertCircle, BarChart2, Zap, Star,
   Image, Globe, ExternalLink, RefreshCw, Loader2, Play, Mail,
-  PenLine, CheckCircle2, XCircle, Lightbulb, Activity
+  PenLine, CheckCircle2, XCircle, Lightbulb, Activity, TrendingUp
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 function Skeleton({ w, h }: { w?: string; h?: number }) {
   return <div style={{ width: w || "100%", height: h || 16, borderRadius: 4, background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />;
@@ -16,7 +17,7 @@ function KpiCard({ label, value, sub, color, href, loading }: { label: string; v
   const inner = (
     <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", transition: "border-color 0.15s" }}
       onMouseEnter={e => (e.currentTarget.style.borderColor = "#2dd4bf")} onMouseLeave={e => (e.currentTarget.style.borderColor = "#e5e7eb")}>
-      {loading ? <><Skeleton h={12} w="60%" /><Skeleton h={28} w="40%" /><Skeleton h={10} w="80%" /></> : <>
+      {loading ? <><Skeleton h={12} w="60%" /><div style={{ height: 6 }} /><Skeleton h={28} w="40%" /><div style={{ height: 4 }} /><Skeleton h={10} w="80%" /></> : <>
         <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{label}</div>
         <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
         {sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{sub}</div>}
@@ -26,16 +27,27 @@ function KpiCard({ label, value, sub, color, href, loading }: { label: string; v
   return href ? <a href={href} style={{ textDecoration: "none", color: "inherit" }}>{inner}</a> : inner;
 }
 
+const SOURCE_LABELS: Record<string, string> = { rss: "RSS Feeds", google_news: "Google News", reddit: "Reddit", x: "X (Twitter)", youtube: "YouTube", manual: "Manual", scraper: "Web Scraper" };
+
 export default function TenantDashboardPage() {
   const [tab, setTab] = useState("content");
   const fast = trpc.dashboard.getFastSnapshot.useQuery(undefined, { staleTime: 15000 });
   const full = trpc.dashboard.getSnapshot.useQuery(undefined, { staleTime: 60000 });
   const runMut = trpc.workflow.runProductionLoop.useMutation({ onSuccess: () => toast.success("Generation run started"), onError: (e: any) => toast.error(e.message) });
-  const statusMut = trpc.articles.updateStatus.useMutation({ onSuccess: () => { toast.success("Updated"); fast.refetch(); full.refetch(); } });
   const f = fast.data;
   const d = full.data;
 
   const TABS = ["Content", "Social", "Communications", "Monetization"];
+
+  const byDay = (d?.articles?.byDay ?? []).map((r: any) => ({
+    day: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }),
+    Published: r.published ?? 0,
+    Pending: r.pending ?? 0,
+    Rejected: r.rejected ?? 0,
+  }));
+
+  const sourcePerf = (d as any)?.sourcePerformance ?? [];
+  const maxSource = Math.max(1, ...sourcePerf.map((s: any) => s.candidateCount));
 
   return (
     <TenantLayout pageTitle="Dashboard" pageSubtitle="Performance overview" section="Content">
@@ -67,8 +79,8 @@ export default function TenantDashboardPage() {
 
             {/* Alert strip */}
             {f && (f.pending > 0 || f.missingImages > 0 || f.missingGeo > 0 || f.candidatePoolDepth < 10) && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 14px", borderRadius: 8, background: "#FEF3C7", border: "1px solid #F59E0B", marginBottom: 16 }}>
-                <AlertCircle size={14} style={{ color: "#92400E", marginTop: 2 }} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 14px", borderRadius: 8, background: "#FEF3C7", border: "1px solid #F59E0B", marginBottom: 16, alignItems: "center" }}>
+                <AlertCircle size={14} style={{ color: "#92400E", flexShrink: 0 }} />
                 {f.pending > 0 && <a href="/admin/articles?status=pending" style={{ fontSize: 12, color: "#92400E", textDecoration: "underline" }}>{f.pending} pending review</a>}
                 {f.missingImages > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingImages} missing images</span>}
                 {f.missingGeo > 0 && <span style={{ fontSize: 12, color: "#92400E" }}>{f.missingGeo} missing GEO</span>}
@@ -76,16 +88,32 @@ export default function TenantDashboardPage() {
               </div>
             )}
 
-            {/* Pending Review */}
-            {d?.articles?.pending && Number(d.articles.pending) > 0 && (
-              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} /> Pending Review</h3>
-                  <a href="/admin/articles?status=pending" style={{ fontSize: 11, color: "#2dd4bf", textDecoration: "none" }}>View all →</a>
-                </div>
-                <p style={{ fontSize: 12, color: "#6b7280" }}>Review pending articles from the Articles page.</p>
+            {/* 7-Day Activity Chart */}
+            <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><BarChart2 size={14} /> 7-Day Activity</h3>
+              {full.isLoading ? <Skeleton h={160} /> : byDay.length > 0 && byDay.some((d: any) => d.Published > 0 || d.Pending > 0 || d.Rejected > 0) ? (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={byDay} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Published" fill="#1D9E75" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Pending" fill="#EF9F27" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Rejected" fill="#E53E3E" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: 100, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 13 }}>No activity this week</div>
+              )}
+              <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8 }}>
+                {[["Published", "#1D9E75"], ["Pending", "#EF9F27"], ["Rejected", "#E53E3E"]].map(([label, color]) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6b7280" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />{label}
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
 
             {/* Top Articles */}
             {d?.topArticles && d.topArticles.length > 0 && (
@@ -104,25 +132,46 @@ export default function TenantDashboardPage() {
               </div>
             )}
 
-            {/* Content Health */}
-            <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Zap size={14} /> Content Health</h3>
-              {fast.isLoading ? <Skeleton h={60} /> : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                  <div style={{ textAlign: "center", padding: 10, borderRadius: 6, background: f && f.missingImages > 0 ? "#fef2f2" : "#f9fafb" }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: f && f.missingImages > 0 ? "#dc2626" : "#374151" }}>{f?.missingImages ?? 0}</div>
-                    <div style={{ fontSize: 10, color: "#6b7280" }}>Missing Images</div>
+            {/* Content Health + Source Performance row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              {/* Content Health */}
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Zap size={13} /> Content Health</h3>
+                {fast.isLoading ? <Skeleton h={60} /> : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { label: "Missing Images", value: f?.missingImages ?? 0, bad: (f?.missingImages ?? 0) > 0, href: "/admin/articles?missingImage=true" },
+                      { label: "Missing GEO", value: f?.missingGeo ?? 0, bad: (f?.missingGeo ?? 0) > 0, href: "/admin/articles?missingGeo=true" },
+                      { label: "Missing SEO", value: f?.missingSeo ?? 0, bad: (f?.missingSeo ?? 0) > 0, href: "/admin/articles" },
+                    ].map(item => (
+                      <a key={item.label} href={item.href} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>{item.label}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: item.bad ? "#dc2626" : "#22c55e" }}>{item.value}</span>
+                      </a>
+                    ))}
                   </div>
-                  <div style={{ textAlign: "center", padding: 10, borderRadius: 6, background: f && f.missingGeo > 0 ? "#fffbeb" : "#f9fafb" }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: f && f.missingGeo > 0 ? "#d97706" : "#374151" }}>{f?.missingGeo ?? 0}</div>
-                    <div style={{ fontSize: 10, color: "#6b7280" }}>Missing GEO</div>
+                )}
+              </div>
+
+              {/* Source Performance */}
+              <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Source Performance</h3>
+                {full.isLoading ? <Skeleton h={60} /> : sourcePerf.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: 16 }}>No candidate data this week</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sourcePerf.map((s: any) => (
+                      <div key={s.sourceType} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "#6b7280", width: 70, flexShrink: 0 }}>{SOURCE_LABELS[s.sourceType] || s.sourceType}</span>
+                        <div style={{ flex: 1, height: 6, background: "#f3f4f6", borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", background: "#2dd4bf", borderRadius: 99, width: `${(s.candidateCount / maxSource) * 100}%` }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: "#6b7280", width: 24, textAlign: "right" }}>{s.candidateCount}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ textAlign: "center", padding: 10, borderRadius: 6, background: f && f.missingSeo > 0 ? "#fffbeb" : "#f9fafb" }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: f && f.missingSeo > 0 ? "#d97706" : "#374151" }}>{f?.missingSeo ?? 0}</div>
-                    <div style={{ fontSize: 10, color: "#6b7280" }}>Missing SEO</div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Social Distribution */}
@@ -147,10 +196,10 @@ export default function TenantDashboardPage() {
               <h4 style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><Lightbulb size={13} style={{ color: "#f59e0b" }} /> AI Insights</h4>
               {full.isLoading ? <Skeleton h={40} /> : (
                 <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
-                  {f && f.candidatePoolDepth < 10 && <p style={{ marginBottom: 6 }}>Your candidate pool is low. Add more RSS feeds to increase content variety.</p>}
-                  {f && f.missingImages > 5 && <p style={{ marginBottom: 6 }}>{f.missingImages} articles need images. Run a backfill to improve engagement.</p>}
-                  {f && f.pending > 10 && <p style={{ marginBottom: 6 }}>You have {f.pending} pending articles. Clearing the queue keeps your calendar on track.</p>}
-                  {(!f || (f.candidatePoolDepth >= 10 && f.missingImages <= 5 && f.pending <= 10)) && <p>Your publication is running smoothly.</p>}
+                  {((d as any)?.aiTips ?? []).length > 0
+                    ? ((d as any).aiTips as string[]).map((tip, i) => <p key={i} style={{ marginBottom: 6 }}>{tip}</p>)
+                    : <p style={{ fontStyle: "italic" }}>Generating insights for your publication...</p>
+                  }
                   <p style={{ fontSize: 10, color: "#d1d5db", marginTop: 6 }}>Updated hourly</p>
                 </div>
               )}

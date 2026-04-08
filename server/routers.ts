@@ -4226,6 +4226,28 @@ export const appRouter = router({
         else socialMap[row.platform].pending += Number(row.count);
       }
 
+      // 7-day byDay with status breakdown
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const byDayRaw = await dbConn.select({ date: sql<string>`DATE(created_at)`, status: articles.status, count: sql<number>`COUNT(*)` })
+        .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo)))
+        .groupBy(sql`DATE(created_at)`, articles.status).catch(() => []);
+      const byDayMap: Record<string, { published: number; pending: number; rejected: number }> = {};
+      for (let i = 6; i >= 0; i--) { const d2 = new Date(Date.now() - i * 86400000); byDayMap[d2.toISOString().split("T")[0]] = { published: 0, pending: 0, rejected: 0 }; }
+      for (const r of byDayRaw as any[]) { const key = String(r.date); if (byDayMap[key] && r.status in byDayMap[key]) (byDayMap[key] as any)[r.status] = Number(r.count); }
+      const byDay = Object.entries(byDayMap).map(([date, counts]) => ({ date, ...counts }));
+
+      // Source performance
+      const { selectorCandidates } = await import("../drizzle/schema");
+      const sourcePerf = await dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` })
+        .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), gte(selectorCandidates.createdAt, sevenDaysAgo)))
+        .groupBy(selectorCandidates.sourceType).catch(() => []);
+      const sourcePerformance = (sourcePerf as any[]).map(r => ({ sourceType: r.sourceType, candidateCount: Number(r.count) }));
+
+      // AI tips from license_settings
+      const tipsRaw = await (await import("./db")).getLicenseSetting(licenseId!, "ai_dashboard_tips");
+      let aiTips: string[] = [];
+      try { if (tipsRaw?.value) aiTips = JSON.parse(tipsRaw.value); } catch {}
+
       return {
         articles: {
           total: totalArticles,
@@ -4238,13 +4260,15 @@ export const appRouter = router({
           missingImage: Number(missingImageCount[0]?.count ?? 0),
           missingGeo: Number(missingGeoCount[0]?.count ?? 0),
           editorsPicks: Number(editorPicksCount[0]?.count ?? 0),
-          byDay: articlesByDay,
+          byDay,
         },
         views: { total: Number(totalViews[0]?.total ?? 0) },
         topArticles,
         trendingArticles,
         social: socialMap,
         newsletter: { subscribers: Number(subscriberCount[0]?.count ?? 0) },
+        sourcePerformance,
+        aiTips,
       };
     }),
   }),
