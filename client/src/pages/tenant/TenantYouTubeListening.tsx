@@ -36,13 +36,14 @@ export default function TenantYouTubeListening() {
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Keywords</label>
               <input value={s["youtube_listening_keywords"] || ""} onChange={e => update("youtube_listening_keywords", e.target.value)}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff" }} />
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Comma-separated</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>One keyword per line</div>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Channels to Monitor</label>
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>YouTube Channel IDs</label>
               <textarea value={s["youtube_listening_channels"] || ""} onChange={e => update("youtube_listening_channels", e.target.value)} rows={3}
+                placeholder="UCxxxxxxxxxxxxxxxxxxxxxx (one per line)"
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, resize: "vertical" }} />
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>One YouTube channel URL per line</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>One channel ID per line (UCxxxxxxxxxxxxxxxxxxxxxxxxx). Find yours in YouTube Studio → Settings → Channel → Basic Info</div>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Max Videos per Run</label>

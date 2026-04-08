@@ -1122,6 +1122,15 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
     console.log(`  [v4/Reddit] Warning: ${err.message}`);
   }
 
+
+  // v4.0 Phase 3: Fetch YouTube video candidates
+  try {
+    const { fetchYouTubeCandidates } = await import("./sources/youtube-listener");
+    const ytInserted = await fetchYouTubeCandidates(licenseId!, date);
+    if (ytInserted > 0) console.log(`  [v4/YouTube] ${ytInserted} new YouTube candidates added`);
+  } catch (err: any) {
+    console.log(`  [v4/YouTube] Warning: ${err.message}`);
+  }
   // v4.0: Expire stale candidates from previous batches
   try {
     const expired = await expireOldCandidates();
