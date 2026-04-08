@@ -332,7 +332,7 @@ ${entriesText}
 Return ONLY a JSON array of the numbers (1-indexed) of your top ${count} selections, in order of relevance and interest.
 Example: [3, 7, 12, 1, 15, 22, 8, 45, 33, 11, 5, 28, 19, 42, 37, 2, 14, 25, 31, 9]
 Return ONLY the JSON array, nothing else.`;
-  const prompt = selectorPromptSetting?.value
+  let prompt = selectorPromptSetting?.value
     ? selectorPromptSetting.value
         .replace("{{COUNT}}", String(count))
         .replace("{COUNT}", String(count))
@@ -341,6 +341,16 @@ Return ONLY the JSON array, nothing else.`;
         .replace("{{CATEGORY_GUIDANCE}}", categoryGuidance)
         .replace("{CATEGORY_GUIDANCE}", categoryGuidance)
     : defaultSelectorPrompt;
+
+  // Inject tenant-specific topic exclusions if available
+  // Reads from any entry's licenseId (all entries in a batch share the same license)
+  const batchLicenseId = entries[0]?.licenseId;
+  if (batchLicenseId) {
+    const avoidTopics = (await db.getLicenseSetting(batchLicenseId, "avoid_topics"))?.value;
+    if (avoidTopics) prompt += `\n\nDo not select any topic related to:\n${avoidTopics}`;
+    const selectorInstructions = (await db.getLicenseSetting(batchLicenseId, "event_selector_prompt"))?.value;
+    if (selectorInstructions) prompt += `\n\nADDITIONAL SELECTION INSTRUCTIONS:\n${selectorInstructions}`;
+  }
 
   try {
     const response = await invokeLLM({
@@ -456,7 +466,7 @@ export async function buildTenantSystemPrompt(licenseId: number): Promise<string
     includeCta !== "false" ? "End with a brief call-to-action for readers." : "",
   ].filter(Boolean).join(" ");
 
-  return `You are an expert writer for ${siteName}${tagline ? " — " + tagline : ""}.
+  let prompt = `You are an expert writer for ${siteName}${tagline ? " — " + tagline : ""}.
 
 PUBLICATION: ${siteName} is a ${genre} publication.
 
@@ -475,9 +485,41 @@ ORIGINALITY (CRITICAL):
 - Write a completely original article from ${siteName}'s unique perspective
 - Add analysis, context, and angles the source did not cover
 - NEVER copy sentences or phrases from the source
-- The reader should feel they are getting ${siteName}'s original take
+- The reader should feel they are getting ${siteName}'s original take`;
 
-${custom ? "EDITOR INSTRUCTIONS:\n" + custom : ""}`;
+  // TIER 1 — Voice identity
+  const brandVoicePersona = await get("brand_voice_persona", "");
+  if (brandVoicePersona) prompt += `\n\nWRITER PERSONA:\n${brandVoicePersona}`;
+  const targetAudience = await get("target_audience_description", "");
+  if (targetAudience) prompt += `\n\nTARGET AUDIENCE:\n${targetAudience}`;
+  const contentPillars = await get("content_pillars", "");
+  if (contentPillars) prompt += `\n\nEDITORIAL PILLARS (filter every story through these lenses):\n${contentPillars}`;
+  const brandVocab = await get("brand_vocabulary", "");
+  if (brandVocab) prompt += `\n\nSIGNATURE LANGUAGE (use these words and avoid the listed ones):\n${brandVocab}`;
+  const stance = await get("editorial_stance", "");
+  if (stance) prompt += `\n\nEDITORIAL STANCE: Approach every topic as a ${stance}.`;
+  const opening = await get("opening_style", "");
+  if (opening) prompt += `\n\nARTICLE OPENING STYLE: Always begin articles with a ${opening}.`;
+
+  // TIER 3 — Topic rules
+  const avoid = await get("avoid_topics", "");
+  if (avoid) prompt += `\n\nTOPICS TO NEVER COVER:\n${avoid}`;
+  const avoidBrands = await get("avoid_brands", "");
+  if (avoidBrands) prompt += `\n\nBRANDS AND NAMES TO NEVER MENTION:\n${avoidBrands}`;
+  const angle = await get("always_angle", "");
+  if (angle) prompt += `\n\nSTANDING EDITORIAL ANGLE (apply to every article):\n${angle}`;
+  const geoFocus = await get("geographic_focus", "");
+  if (geoFocus && geoFocus !== "Global") prompt += `\n\nGEOGRAPHIC FRAMING: Frame all stories through the lens of ${geoFocus}.`;
+  const hedging = await get("hedging_level", "");
+  if (hedging) {
+    const hi: Record<string, string> = { definitive: "State all facts definitively and confidently.", hedged: "Use hedging language: reportedly, according to, sources say.", cautious: "Use cautious language: alleged, claimed, unconfirmed reports suggest." };
+    if (hi[hedging]) prompt += `\n\nFACTUAL CERTAINTY: ${hi[hedging]}`;
+  }
+  const seasonal = await get("seasonal_context", "");
+  if (seasonal) prompt += `\n\nCURRENT SEASONAL CONTEXT:\n${seasonal}`;
+
+  if (custom) prompt += `\n\nEDITOR INSTRUCTIONS:\n${custom}`;
+  return prompt;
 }
 
 // ─── User Prompt Builder ──────────────────────────────────────────────────

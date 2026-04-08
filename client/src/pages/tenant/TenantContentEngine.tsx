@@ -225,6 +225,96 @@ export default function TenantContentEngine() {
         </a>
       </Section>
 
+      {/* Publication Voice */}
+      <Section title="Publication Voice" desc="Defines who writes this publication and how they sound. Highest impact on output uniqueness.">
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Writer Persona <Tip text="Defines the narrator's identity. Shapes diction, references, and perspective." /></label>
+          <textarea value={s.brand_voice_persona || ""} onChange={e => upd("brand_voice_persona", e.target.value)} rows={3}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="You are a veteran outdoor sports journalist with 15 years covering ultra-endurance events..." />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Who Reads This <Tip text="The LLM picks references, analogies, and assumed knowledge from this." /></label>
+          <textarea value={s.target_audience_description || ""} onChange={e => upd("target_audience_description", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Readers are 30-50 year old professionals interested in..." />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Editorial Pillars <Tip text="3-5 recurring angles that every story gets filtered through." /></label>
+          <textarea value={s.content_pillars || ""} onChange={e => upd("content_pillars", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="1. Gear that earns its weight. 2. Science-backed training." />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Signature Language <Tip text="Words and phrases to use and avoid. Creates the verbal fingerprint." /></label>
+          <textarea value={s.brand_vocabulary || ""} onChange={e => upd("brand_vocabulary", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Say 'kit' not 'gear'. Never use 'synergy'." />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ce-grid">
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Editorial Stance <Tip text="The publication's default posture before any story starts." /></label>
+            <select style={selectStyle} value={s.editorial_stance || ""} onChange={e => upd("editorial_stance", e.target.value)}>
+              <option value="">Not set</option>
+              {["neutral reporter","skeptical challenger","enthusiastic advocate","contrarian","investigative critic","community voice"].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Article Opening Style <Tip text="How every article begins." /></label>
+            <select style={selectStyle} value={s.opening_style || ""} onChange={e => upd("opening_style", e.target.value)}>
+              <option value="">Not set</option>
+              {["scene-setting anecdote","bold claim","surprising statistic","direct news lead","question","historical parallel"].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+      </Section>
+
+      {/* Topic Rules */}
+      <Section title="Topic Rules" desc="Controls what the AI covers, avoids, and how it frames topics.">
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Topics to Never Cover <Tip text="Injected into both the topic selector and article prompt." /></label>
+          <textarea value={s.avoid_topics || ""} onChange={e => upd("avoid_topics", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Never write about cryptocurrency, NFTs, or politics." />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Brands and Names to Avoid <Tip text="Competitor names or people to never mention." /></label>
+          <textarea value={s.avoid_brands || ""} onChange={e => upd("avoid_brands", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Never mention Nike by name." />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Standing Editorial Angle <Tip text="A permanent point-of-view applied to every article." /></label>
+          <textarea value={s.always_angle || ""} onChange={e => upd("always_angle", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Always frame technology stories through the lens of their environmental impact." />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} className="ce-grid">
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Geographic Framing <Tip text="Localises global stories to a region." /></label>
+            <select style={selectStyle} value={s.geographic_focus || ""} onChange={e => upd("geographic_focus", e.target.value)}>
+              {["Global","United States","United Kingdom","Australia/NZ","Canada","Europe","Asia"].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Factual Certainty <Tip text="How definitive the LLM sounds." /></label>
+            <select style={selectStyle} value={s.hedging_level || ""} onChange={e => upd("hedging_level", e.target.value)}>
+              <option value="">Not set</option>
+              <option value="definitive">Definitive</option>
+              <option value="hedged">Hedged (reportedly, sources say)</option>
+              <option value="cautious">Cautious (alleged, claimed)</option>
+            </select>
+          </div>
+        </div>
+      </Section>
+
+      {/* Workflow & Selector */}
+      <Section title="Workflow & Selector" desc="Controls what the AI picks to write about.">
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Custom Selector Instructions <Tip text="Direct instructions to the AI that picks which topics become articles." /></label>
+          <textarea value={s.event_selector_prompt || ""} onChange={e => upd("event_selector_prompt", e.target.value)} rows={3}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="Prioritise stories about amateur athletes over professionals." />
+        </div>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Seasonal Context <Tip text="What the publication cares about right now. Update weekly or seasonally." /></label>
+          <textarea value={s.seasonal_context || ""} onChange={e => upd("seasonal_context", e.target.value)} rows={2}
+            style={{ ...selectStyle, resize: "vertical", marginTop: 4 }} placeholder="It's Western States week. Prioritise trail running content." />
+        </div>
+      </Section>
+
       {/* Manual Run */}
       <Section title="Manual Generation Run" desc="Trigger one immediate generation run outside your normal schedule.">
         <ManualRunButton />
