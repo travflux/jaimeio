@@ -4108,6 +4108,46 @@ export const appRouter = router({
       return { queued: true };
     }),
   }),
+  // ─── Calendar ──────────────────────────────────────
+  calendar: router({
+    getLayeredEvents: tenantOrAdminProcedure.input(z.object({ startDate: z.string(), endDate: z.string() })).query(async ({ input, ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { articles: [], socialPosts: [], newsletters: [], smsEvents: [], sponsorships: [], templateSlots: [], stats: { articleCount: 0, socialCount: 0, newsletterCount: 0, smsCount: 0, sponsorshipCount: 0, templateSlotCount: 0 } };
+      const { articles: artT, distributionQueue, newsletterSends, sponsorSchedules, articleTemplates } = await import("../drizzle/schema");
+      const { eq, and, or, gte, lte, isNull, sql, desc } = await import("drizzle-orm");
+      const lid = ctx.licenseId!;
+      const sd = new Date(input.startDate); const ed = new Date(input.endDate);
+
+      const [artRows, socialRows, nlRows, sponsorRows, templateRows] = await Promise.all([
+        dbConn.select({ id: artT.id, headline: artT.headline, slug: artT.slug, status: artT.status, categoryId: artT.categoryId, createdAt: artT.createdAt, publishedAt: artT.publishedAt })
+          .from(artT).where(and(eq(artT.licenseId, lid), or(and(gte(artT.publishedAt, sd), lte(artT.publishedAt, ed)), and(isNull(artT.publishedAt), gte(artT.createdAt, sd), lte(artT.createdAt, ed))))).catch(() => []),
+        dbConn.select({ id: distributionQueue.id, content: distributionQueue.content, platform: distributionQueue.platform, status: distributionQueue.status, scheduledAt: distributionQueue.scheduledAt, sentAt: distributionQueue.sentAt })
+          .from(distributionQueue).innerJoin(artT, eq(distributionQueue.articleId, artT.id))
+          .where(and(eq(artT.licenseId, lid), or(and(gte(distributionQueue.scheduledAt, sd), lte(distributionQueue.scheduledAt, ed)), and(gte(distributionQueue.sentAt, sd), lte(distributionQueue.sentAt, ed))))).catch(() => []),
+        dbConn.select({ id: newsletterSends.id, subject: newsletterSends.subject, status: newsletterSends.status, sentAt: newsletterSends.sentAt, recipientCount: newsletterSends.recipientCount })
+          .from(newsletterSends).where(and(eq(newsletterSends.licenseId, lid), gte(newsletterSends.sentAt, sd), lte(newsletterSends.sentAt, ed))).catch(() => []),
+        dbConn.select({ id: sponsorSchedules.id, sponsorName: sponsorSchedules.sponsorName, dayOfWeek: sponsorSchedules.dayOfWeek, isActive: sponsorSchedules.isActive })
+          .from(sponsorSchedules).where(and(eq(sponsorSchedules.licenseId, lid), eq(sponsorSchedules.isActive, true))).catch(() => []),
+        dbConn.select({ id: articleTemplates.id, name: articleTemplates.name, scheduleDayOfWeek: articleTemplates.scheduleDayOfWeek, scheduleHour: articleTemplates.scheduleHour })
+          .from(articleTemplates).where(and(eq(articleTemplates.licenseIdOld, lid), sql`schedule_day_of_week IS NOT NULL`)).catch(() => []),
+      ]);
+
+      // Compute template slots for date range
+      const templateSlots: { templateId: number; templateName: string; date: string }[] = [];
+      for (const t of templateRows as any[]) {
+        const dow = t.scheduleDayOfWeek ?? t.schedule_day_of_week;
+        if (dow == null) continue;
+        const cur = new Date(sd);
+        while (cur <= ed) { if (cur.getDay() === dow) templateSlots.push({ templateId: t.id, templateName: t.name, date: cur.toISOString().split("T")[0] }); cur.setDate(cur.getDate() + 1); }
+      }
+
+      return {
+        articles: artRows, socialPosts: socialRows, newsletters: nlRows, smsEvents: [],
+        sponsorships: sponsorRows, templateSlots,
+        stats: { articleCount: artRows.length, socialCount: socialRows.length, newsletterCount: nlRows.length, smsCount: 0, sponsorshipCount: sponsorRows.length, templateSlotCount: templateSlots.length },
+      };
+    }),
+  }),
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
     getFastSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
