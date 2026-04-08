@@ -59,11 +59,11 @@ export default function TenantCommunications() {
               
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Resend Audience ID</label>
-              <input value={s["resend_audience_id"] || ""} onChange={e => update("resend_audience_id", e.target.value)}
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Resend Segment ID</label>
+              <input value={s["resend_segment_id"] || ""} onChange={e => update("resend_segment_id", e.target.value)}
                 placeholder="d0b4c034-15fc-4afe-8a7f-7e4ae2864a9b"
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, background: "#fff", fontFamily: "monospace" }} />
-              <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Found in Resend → Audiences. New subscribers are synced here automatically.</p>
+              <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Found in Resend → Audiences → Segments. Newsletter sends target this segment.</p>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>From Name</label>

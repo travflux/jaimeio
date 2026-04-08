@@ -196,7 +196,7 @@ export const appRouter = router({
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       // Join rss_feed_weights for actual lastFetchTime (rss_feeds.last_fetched is stale)
       const [rows] = await dbConn.execute(sqlFn`SELECT w.id, w.feedUrl as url, w.enabled, w.lastFetchTime, w.errorCount, w.lastError FROM rss_feed_weights w WHERE w.license_id = ${lid} ORDER BY w.lastFetchTime DESC`);
       return (rows as any[]).map(r => ({ id: r.id, url: r.url, enabled: !!r.enabled, lastFetched: r.lastFetchTime, errorCount: r.errorCount || 0, lastError: r.lastError }));
@@ -208,7 +208,7 @@ export const appRouter = router({
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
         await dbConn.execute(sqlFn`INSERT INTO rss_feed_weights (feedUrl, weight, enabled) VALUES (${input.url}, 1.0, 1)`);
-        await dbConn.execute(sqlFn`INSERT IGNORE INTO rss_feeds (license_id, url, name, is_active) VALUES (${ctx.licenseId || 7}, ${input.url}, ${input.url}, true)`);
+        await dbConn.execute(sqlFn`INSERT IGNORE INTO rss_feeds (license_id, url, name, is_active) VALUES (${ctx.licenseId!}, ${input.url}, ${input.url}, true)`);
         return { success: true };
       }),
     remove: tenantOrAdminProcedure
@@ -237,7 +237,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
-        const [feeds] = await dbConn.execute(sqlFn`SELECT id, url FROM rss_feeds WHERE id = ${input.feedId} AND license_id = ${ctx.licenseId || 7} LIMIT 1`);
+        const [feeds] = await dbConn.execute(sqlFn`SELECT id, url FROM rss_feeds WHERE id = ${input.feedId} AND license_id = ${ctx.licenseId!} LIMIT 1`);
         const feed = (feeds as any[])[0];
         if (!feed) throw new TRPCError({ code: "NOT_FOUND" });
         console.log("[SourceFeeds] Fetching feed:", feed.url);
@@ -249,7 +249,7 @@ export const appRouter = router({
       const dbConn = await db.getDb();
       if (!dbConn) return { stats: { total: 0, healthy: 0, unhealthy: 0, disabled: 0 }, feeds: [] };
       const { sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [rows] = await dbConn.execute(sqlFn`SELECT id, feedUrl, weight, enabled, lastFetchTime, errorCount, lastError, total_fetches, successful_fetches, candidates_generated, auto_disabled FROM rss_feed_weights WHERE license_id = ${lid} ORDER BY weight DESC`);
       const feeds = (rows as any[]).map(r => {
         const errorCount = r.errorCount || 0;
@@ -287,7 +287,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
-        const lid = ctx.licenseId || 7;
+        const lid = ctx.licenseId!;
         await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET enabled = 1, errorCount = 0, auto_disabled = 0, lastError = NULL WHERE id = ${input.feedId} AND license_id = ${lid}`);
         return { success: true };
       }),
@@ -297,7 +297,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
-        const lid = ctx.licenseId || 7;
+        const lid = ctx.licenseId!;
         await dbConn.execute(sqlFn`UPDATE rss_feed_weights SET weight = ${input.weight} WHERE id = ${input.feedId} AND license_id = ${lid}`);
         return { success: true };
       }),
@@ -306,7 +306,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
-        const lid = ctx.licenseId || 7;
+        const lid = ctx.licenseId!;
         const [rows] = await dbConn.execute(sqlFn`SELECT id, feedUrl FROM rss_feed_weights WHERE license_id = ${lid} AND (enabled = 0 OR errorCount >= 2)`);
         const feeds = rows as any[];
         let reactivatedCount = 0;
@@ -332,7 +332,7 @@ export const appRouter = router({
       const dbConn = await db.getDb();
       if (!dbConn) return { pending: 0, selected: 0, rejected: 0, expired: 0, high: 0, medium: 0, low: 0, sources: [] };
       const { sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [statusRows] = await dbConn.execute(sqlFn.raw("SELECT status, COUNT(*) as cnt FROM selector_candidates WHERE license_id = " + lid + " GROUP BY status"));
       const [potRows] = await dbConn.execute(sqlFn.raw("SELECT article_potential, COUNT(*) as cnt FROM selector_candidates WHERE license_id = " + lid + " AND status = 'pending' GROUP BY article_potential"));
       const [srcRows] = await dbConn.execute(sqlFn.raw("SELECT DISTINCT source_name FROM selector_candidates WHERE license_id = " + lid + " AND source_name IS NOT NULL LIMIT 50"));
@@ -348,7 +348,7 @@ export const appRouter = router({
         const { sql: sqlFn } = await import("drizzle-orm");
         const status = input?.status || "pending";
         const limit = input?.limit || 50;
-        const lid = ctx.licenseId || 7;
+        const lid = ctx.licenseId!;
         let where = "status = '" + status + "' AND license_id = " + lid;
         if (input?.potential) where += " AND article_potential = '" + input.potential + "'";
         if (input?.source) where += " AND source_name = '" + input.source.replace(/'/g, "''") + "'";
@@ -494,7 +494,7 @@ export const appRouter = router({
       if (!dbConn) return { categories: [], totalArticles: 0 };
       const { sql: sqlFn, eq: eqOp, and: andOp } = await import("drizzle-orm");
       const { categories: catTable, articles: artTable } = await import("../drizzle/schema");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const cats = await dbConn.select({ id: catTable.id, name: catTable.name, targetPercentage: catTable.targetPercentage }).from(catTable).where(eqOp(catTable.licenseId, lid));
       const counts = await dbConn.select({ categoryId: artTable.categoryId, count: sqlFn`COUNT(*)` as any }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).groupBy(artTable.categoryId);
       const countMap = new Map(counts.map((c: any) => [c.categoryId, Number(c.count)]));
@@ -506,7 +506,7 @@ export const appRouter = router({
       if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { categories: catTable } = await import("../drizzle/schema");
       const { eq: eqOp, and: andOp } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       for (const [catId, pct] of Object.entries(input.targets)) {
         await dbConn.update(catTable).set({ targetPercentage: pct } as any).where(andOp(eqOp(catTable.id, parseInt(catId)), eqOp(catTable.licenseId, lid)));
       }
@@ -556,7 +556,7 @@ export const appRouter = router({
       try {
         const { sponsorSchedules } = await import("../drizzle/schema");
         const { eq: eqOp } = await import("drizzle-orm");
-        const slots = await dbConn.select().from(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, ctx.licenseId || 7));
+        const slots = await dbConn.select().from(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, ctx.licenseId!));
         return { slots };
       } catch { return { slots: [] }; }
     }),
@@ -567,7 +567,7 @@ export const appRouter = router({
       if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { sponsorSchedules } = await import("../drizzle/schema");
       const { eq: eqOp, sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       await dbConn.delete(sponsorSchedules).where(eqOp(sponsorSchedules.licenseId, lid));
       if (input.slots.length > 0) {
         await dbConn.insert(sponsorSchedules).values(input.slots.map(s => ({ licenseId: lid, dayOfWeek: s.dayOfWeek, sponsorName: s.sponsorName, sponsorUrl: s.sponsorUrl, sponsorTagline: s.sponsorTagline, logoUrl: s.logoUrl, isActive: s.isActive })));
@@ -583,7 +583,7 @@ export const appRouter = router({
       if (!dbConn) return { publishedArticles: 0, totalViews: 0, subscribers: 0, socialPostsSent: 0, adsenseEnabled: false, sponsorEnabled: false, amazonEnabled: false };
       const { articles: artTable, distributionQueue: dq } = await import("../drizzle/schema");
       const { eq: eqOp, and: andOp, sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [pubCount] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
       const [viewsResult] = await dbConn.select({ total: sqlFn<number>`COALESCE(SUM(views), 0)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published")));
       const [subCount] = await dbConn.execute(sqlFn.raw("SELECT COUNT(*) as c FROM newsletter_subscribers WHERE license_id = " + lid));
@@ -598,7 +598,7 @@ export const appRouter = router({
       if (!dbConn) return { articles: [] };
       const { articles: artTable, categories: catTable } = await import("../drizzle/schema");
       const { eq: eqOp, and: andOp, desc } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const top = await dbConn.select({ id: artTable.id, headline: artTable.headline, slug: artTable.slug, views: artTable.views, publishedAt: artTable.publishedAt, categoryId: artTable.categoryId }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), eqOp(artTable.status, "published"))).orderBy(desc(artTable.views)).limit(10);
       const withCats = await Promise.all(top.map(async a => {
         if (!a.categoryId) return { ...a, categoryName: null };
@@ -611,7 +611,7 @@ export const appRouter = router({
       const dbConn = await db.getDb();
       if (!dbConn) return { stats: [] };
       const { sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [rows] = await dbConn.execute(sqlFn.raw("SELECT platform, status, COUNT(*) as cnt FROM distribution_queue WHERE license_id = " + lid + " GROUP BY platform, status"));
       const map = new Map<string, { sent: number; failed: number }>();
       for (const r of (rows as any[])) {
@@ -631,7 +631,7 @@ export const appRouter = router({
       if (!dbConn) return { plan: "professional", articlesUsedThisMonth: 0, articlesLimit: 500 };
       const { licenses, articles: artTable } = await import("../drizzle/schema");
       const { eq: eqOp, and: andOp, gte, sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [license] = await dbConn.select({ tier: licenses.tier }).from(licenses).where(eqOp(licenses.id, lid)).limit(1);
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
       const [countResult] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), gte(artTable.createdAt, startOfMonth)));
@@ -646,8 +646,8 @@ export const appRouter = router({
       const { eq: eqOp } = await import("drizzle-orm");
       const validTiers = ["starter", "professional", "enterprise"];
       if (!validTiers.includes(input.planKey)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid plan" });
-      await dbConn.update(licenses).set({ tier: input.planKey as any }).where(eqOp(licenses.id, ctx.licenseId || 7));
-      console.log("[Billing] licenseId " + (ctx.licenseId || 7) + " changed to " + input.planKey);
+      await dbConn.update(licenses).set({ tier: input.planKey as any }).where(eqOp(licenses.id, ctx.licenseId!));
+      console.log("[Billing] licenseId " + (ctx.licenseId!) + " changed to " + input.planKey);
       return { success: true, plan: input.planKey };
     }),
   }),
@@ -769,7 +769,7 @@ export const appRouter = router({
       if (!dbConn) return { all: 0, published: 0, pending: 0, approved: 0, draft: 0, rejected: 0 };
       const { articles: at } = await import("../drizzle/schema");
       const { eq: eqOp, sql: sqlFn } = await import("drizzle-orm");
-      const lid = ctx.licenseId || 7;
+      const lid = ctx.licenseId!;
       const [rows] = await dbConn.execute(sqlFn.raw("SELECT status, COUNT(*) as cnt FROM articles WHERE license_id = " + lid + " GROUP BY status"));
       const map = Object.fromEntries((rows as any[]).map(r => [r.status, Number(r.cnt)]));
       const total = Object.values(map).reduce((s: number, v) => s + (v as number), 0);
@@ -780,7 +780,7 @@ export const appRouter = router({
       if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { articles: at } = await import("../drizzle/schema");
       const { eq: eqOp, and: andOp } = await import("drizzle-orm");
-      await dbConn.delete(at).where(andOp(eqOp(at.id, input.articleId), eqOp(at.licenseId, ctx.licenseId || 7)));
+      await dbConn.delete(at).where(andOp(eqOp(at.id, input.articleId), eqOp(at.licenseId, ctx.licenseId!)));
       return { success: true };
     }),
     toggleTag: protectedProcedure
@@ -1594,7 +1594,7 @@ export const appRouter = router({
           try {
             const { Resend } = await import("resend");
             const resend = new Resend(resendKey);
-            const audienceId = await db.getLicenseSetting(licenseId, "resend_audience_id");
+            const audienceId = await db.getLicenseSetting(licenseId, "resend_segment_id");
             await resend.contacts.create({
               ...(audienceId ? { audienceId } : {}),
               email: input.email,
