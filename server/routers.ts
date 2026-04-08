@@ -635,9 +635,42 @@ export const appRouter = router({
       const [license] = await dbConn.select({ tier: licenses.tier }).from(licenses).where(eqOp(licenses.id, lid)).limit(1);
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
       const [countResult] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable).where(andOp(eqOp(artTable.licenseId, lid), gte(artTable.createdAt, startOfMonth)));
+      const { PLAN_TIERS } = await import("./constants/planTiers");
       const tier = license?.tier || "professional";
-      const limits: Record<string, number> = { starter: 100, professional: 500, enterprise: 1000 };
-      return { plan: tier, articlesUsedThisMonth: Number(countResult?.count || 0), articlesLimit: limits[tier] || 500 };
+      const tierConfig = PLAN_TIERS[tier as keyof typeof PLAN_TIERS];
+      return { plan: tier, articlesUsedThisMonth: Number(countResult?.count || 0), articlesLimit: tierConfig?.monthlyPageLimit ?? null };
+    }),
+    getQuotaStatus: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { monthlyPageLimit: null, articlesThisCycle: 0, cycleStartDate: new Date(), percentUsed: null, isAtLimit: false, daysRemainingInCycle: 30 };
+      const { licenses, articles: artTable } = await import("../drizzle/schema");
+      const { eq: eqOp, and: andOp, gte, sql: sqlFn } = await import("drizzle-orm");
+      const lid = ctx.licenseId!;
+      const [license] = await dbConn.select().from(licenses).where(eqOp(licenses.id, lid)).limit(1);
+      if (!license) return { monthlyPageLimit: null, articlesThisCycle: 0, cycleStartDate: new Date(), percentUsed: null, isAtLimit: false, daysRemainingInCycle: 30 };
+
+      const startDay = license.billingCycleStartDay ?? 1;
+      const now = new Date();
+      const cycleStart = now.getDate() >= startDay
+        ? new Date(now.getFullYear(), now.getMonth(), startDay)
+        : new Date(now.getFullYear(), now.getMonth() - 1, startDay);
+      const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, startDay);
+      const daysRemaining = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+      const [countResult] = await dbConn.select({ count: sqlFn<number>`COUNT(*)` }).from(artTable)
+        .where(andOp(eqOp(artTable.licenseId, lid), gte(artTable.createdAt, cycleStart)));
+      const used = Number(countResult?.count ?? 0);
+      const limit = license.monthlyPageLimit;
+      const isEnterpiseParent = license.tier === "enterprise" && !license.parentLicenseId;
+
+      return {
+        monthlyPageLimit: limit,
+        articlesThisCycle: used,
+        cycleStartDate: cycleStart,
+        percentUsed: limit ? Math.round((used / limit) * 100) : null,
+        isAtLimit: isEnterpiseParent ? false : (limit ? used >= limit : false),
+        daysRemainingInCycle: daysRemaining,
+      };
     }),
     changePlan: tenantOrAdminProcedure.input(z.object({ planKey: z.string(), stripeProductId: z.string() })).mutation(async ({ input, ctx }) => {
       const dbConn = await db.getDb();
