@@ -1228,3 +1228,97 @@ export const resellerNetworkLinks = mysqlTable("reseller_network_links", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type ResellerNetworkLink = typeof resellerNetworkLinks.$inferSelect;
+
+// ─── Tables from Block 4 manual migrations (aligning schema.ts with live DB) ─
+
+export const candidates = mysqlTable("candidates", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  title: varchar("title", { length: 1000 }),
+  sourceUrl: varchar("source_url", { length: 2000 }),
+  sourceName: varchar("source_name", { length: 255 }),
+  summary: text("summary"),
+  status: mysqlEnum("status", ["pending", "used", "ignored"]).default("pending"),
+  sourceType: varchar("source_type", { length: 50 }).default("rss"),
+  selectorCandidateId: int("selector_candidate_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  licenseStatusIdx: index("idx_license_status").on(table.licenseId, table.status),
+}));
+export type Candidate = typeof candidates.$inferSelect;
+
+export const rssFeeds = mysqlTable("rss_feeds", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  url: varchar("url", { length: 1000 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  category: varchar("category", { length: 100 }),
+  isActive: boolean("is_active").default(true),
+  lastFetched: timestamp("last_fetched"),
+  errorCount: int("error_count").default(0),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type RssFeed = typeof rssFeeds.$inferSelect;
+
+export const articleTemplates = mysqlTable("article_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseIdOld: int("licenseId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  categoryIdOld: int("categoryId"),
+  promptTemplate: text("promptTemplate"),
+  headlineTemplate: varchar("headlineTemplate", { length: 500 }),
+  writingStyle: text("writingStyle"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  licenseId: int("license_id"),
+  categoryId: int("category_id"),
+  headlineFormat: varchar("headline_format", { length: 300 }),
+  tone: varchar("tone", { length: 100 }).default("default"),
+  targetWordCount: int("target_word_count").default(800),
+  requiredElements: text("required_elements"),
+  imageStylePrompt: text("image_style_prompt"),
+  imageProvider: varchar("image_provider", { length: 50 }),
+  imageAspectRatio: varchar("image_aspect_ratio", { length: 10 }).default("16:9"),
+  seoTitleFormat: varchar("seo_title_format", { length: 300 }),
+  seoKeywordThemes: text("seo_keyword_themes"),
+  geoFaqTopics: text("geo_faq_topics"),
+  geoKeyTakeawayCount: int("geo_key_takeaway_count").default(5),
+  geoFaqCount: int("geo_faq_count").default(5),
+  scheduleFrequency: varchar("schedule_frequency", { length: 20 }).default("manual"),
+  scheduleDayOfWeek: int("schedule_day_of_week"),
+  scheduleHour: int("schedule_hour").default(9),
+  scheduleColor: varchar("schedule_color", { length: 7 }).default("#6366f1"),
+  isActive: int("is_active").default(1),
+  lastUsedAt: timestamp("last_used_at"),
+  useCount: int("use_count").default(0),
+});
+export type ArticleTemplate = typeof articleTemplates.$inferSelect;
+
+export const templateScheduleSkips = mysqlTable("template_schedule_skips", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("template_id").notNull(),
+  licenseId: int("license_id").notNull(),
+  skipDate: varchar("skip_date", { length: 10 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueSkip: uniqueIndex("unique_skip").on(table.templateId, table.licenseId, table.skipDate),
+}));
+export type TemplateScheduleSkip = typeof templateScheduleSkips.$inferSelect;
+
+export const supportTickets = mysqlTable("support_tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  licenseId: int("license_id").notNull(),
+  userId: int("user_id"),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  message: text("message").notNull(),
+  priority: mysqlEnum("priority", ["low", "normal", "high", "urgent"]).default("normal"),
+  category: varchar("category", { length: 100 }).default("general"),
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "closed"]).default("open"),
+  referenceNumber: varchar("reference_number", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => ({
+  licenseIdx: index("idx_license").on(table.licenseId),
+}));
+export type SupportTicket = typeof supportTickets.$inferSelect;
