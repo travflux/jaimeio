@@ -4110,6 +4110,36 @@ export const appRouter = router({
   }),
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
+    getFastSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { articles, candidates } = await import("../drizzle/schema");
+      const { eq, and, or, isNull, sql } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { published: 0, pending: 0, approved: 0, draft: 0, rejected: 0, todayCount: 0, candidatePoolDepth: 0, loopEnabled: false, missingImages: 0, missingSeo: 0, missingGeo: 0 };
+      const lid = ctx.licenseId!;
+      const [statusCounts, todayResult, poolResult, loopSetting, healthResult] = await Promise.all([
+        dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` }).from(articles).where(eq(articles.licenseId, lid)).groupBy(articles.status),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(and(eq(articles.licenseId, lid), sql`DATE(created_at) = CURDATE()`)),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(candidates).where(and(eq(candidates.licenseId, lid), eq(candidates.status, "pending"))).catch(() => [{ count: 0 }]),
+        (await import("./db")).getLicenseSetting(lid, "workflow_enabled"),
+        dbConn.select({
+          missingImages: sql<number>`SUM(CASE WHEN (${articles.featuredImage} IS NULL OR ${articles.featuredImage} = '') AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+          missingSeo: sql<number>`SUM(CASE WHEN ${articles.seoStatus} = 'pending' AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+          missingGeo: sql<number>`SUM(CASE WHEN ${articles.geoStatus} = 'pending' AND ${articles.status} = 'published' THEN 1 ELSE 0 END)`,
+        }).from(articles).where(eq(articles.licenseId, lid)),
+      ]);
+      const sm: Record<string, number> = {};
+      for (const r of statusCounts) sm[r.status] = Number(r.count);
+      return {
+        published: sm.published ?? 0, pending: sm.pending ?? 0, approved: sm.approved ?? 0, draft: sm.draft ?? 0, rejected: sm.rejected ?? 0,
+        todayCount: Number(todayResult[0]?.count ?? 0),
+        candidatePoolDepth: Number(poolResult[0]?.count ?? 0),
+        loopEnabled: loopSetting?.value === "true",
+        missingImages: Number(healthResult[0]?.missingImages ?? 0),
+        missingSeo: Number(healthResult[0]?.missingSeo ?? 0),
+        missingGeo: Number(healthResult[0]?.missingGeo ?? 0),
+      };
+    }),
     getSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
       const { getDb } = await import("./db");
       const { articles, distributionQueue, newsletterSubscribers } = await import("../drizzle/schema");
