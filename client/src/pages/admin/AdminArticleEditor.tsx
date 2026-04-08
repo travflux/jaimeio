@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { toast } from "sonner";
 import {
   ArrowLeft, Save, Sparkles, Eye, Code, FileText, Loader2,
@@ -51,6 +53,24 @@ export default function AdminArticleEditor() {
   const [aiAssistMode, setAiAssistMode] = useState(false);
   const [aiStyle, setAiStyle] = useState("onion");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Tiptap rich text editor
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: form.body || "",
+    onUpdate: ({ editor: e }) => {
+      const html = e.getHTML();
+      setForm(f => ({ ...f, body: html }));
+      setHasUnsavedChanges(true);
+    },
+  });
+
+  // Sync editor content when article loads
+  useEffect(() => {
+    if (editor && article?.body && !hasUnsavedChanges) {
+      editor.commands.setContent(article.body);
+    }
+  }, [editor, article?.body]);
 
   // Validation state
   const { data: validation } = trpc.articles.validate.useQuery(
@@ -334,12 +354,20 @@ export default function AdminArticleEditor() {
               <Send className="w-4 h-4 mr-1" /> Publish
             </Button>
           )}
-          <Button onClick={handleSave} disabled={isSaving || (validation && !validation.valid)} className="whitespace-nowrap">
+          <Button onClick={handleSave} disabled={isSaving} className="whitespace-nowrap">
             <Save className="w-4 h-4 mr-1" />
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>
+
+      {/* Published article warning */}
+      {!isNew && form.status === "published" && (
+        <div style={{ background: "#FEF3C7", border: "1px solid #F59E0B", borderRadius: 6, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#92400E" }}>
+          <span>⚠️</span>
+          <span>You are editing a published article. Changes go live immediately upon saving.</span>
+        </div>
+      )}
 
       {/* Validation warnings/errors */}
       {validation && (validation.errors.length > 0 || validation.warnings.length > 0) && (
@@ -507,16 +535,36 @@ export default function AdminArticleEditor() {
                         </div>
                       </div>
                     )}
-                    <textarea
-                      value={form.body}
-                      onChange={e => updateForm(f => ({ ...f, body: e.target.value }))}
-                      rows={12}
-                      className="w-full px-4 py-3 border border-input rounded text-sm bg-background font-mono resize-y focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all leading-relaxed"
-                      placeholder={aiAssistMode
-                        ? "Write your headline above, then click 'Draft Body from Headline' to let AI write the article. You can then edit the result here."
-                        : "<p>Write your article here using HTML tags...</p>\n\n<p>Use &lt;p&gt; tags for paragraphs, &lt;blockquote&gt; for quotes, etc.</p>"
-                      }
-                    />
+                    {/* Tiptap toolbar */}
+                    {editor && (
+                      <div style={{ display: "flex", gap: 2, padding: "6px 8px", borderBottom: "1px solid #e5e7eb", background: "#f9fafb", borderRadius: "6px 6px 0 0", flexWrap: "wrap" }}>
+                        {[
+                          { cmd: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), label: "B", style: { fontWeight: 700 } },
+                          { cmd: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), label: "I", style: { fontStyle: "italic" } },
+                          { cmd: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), label: "H2" },
+                          { cmd: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive("heading", { level: 3 }), label: "H3" },
+                          { cmd: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), label: "•—" },
+                          { cmd: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), label: "1." },
+                          { cmd: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), label: '"' },
+                          { cmd: () => editor.chain().focus().setHorizontalRule().run(), active: false, label: "—" },
+                        ].map((btn, i) => (
+                          <button key={i} onClick={btn.cmd} type="button"
+                            style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #e5e7eb", background: btn.active ? "#e5e7eb" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", ...btn.style }}>
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <EditorContent editor={editor} className="tiptap-editor" />
+                    <style>{`
+                      .tiptap-editor .ProseMirror { min-height: 400px; padding: 16px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 6px 6px; font-size: 14px; line-height: 1.7; outline: none; }
+                      .tiptap-editor .ProseMirror h2 { font-size: 1.4em; font-weight: 600; margin: 1em 0 0.5em; }
+                      .tiptap-editor .ProseMirror h3 { font-size: 1.2em; font-weight: 600; margin: 1em 0 0.5em; }
+                      .tiptap-editor .ProseMirror p { margin: 0 0 0.75em; }
+                      .tiptap-editor .ProseMirror ul, .tiptap-editor .ProseMirror ol { padding-left: 1.5em; margin: 0 0 0.75em; }
+                      .tiptap-editor .ProseMirror blockquote { border-left: 3px solid #e5e7eb; padding-left: 1em; color: #6b7280; margin: 0 0 0.75em; }
+                      .tiptap-editor .ProseMirror hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5em 0; }
+                    `}</style>
                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                       <span>{form.body.length} characters</span>
                       <span>HTML supported: &lt;p&gt;, &lt;h2&gt;, &lt;blockquote&gt;, &lt;ul&gt;, &lt;em&gt;, &lt;strong&gt;</span>
