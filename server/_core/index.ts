@@ -1,4 +1,5 @@
 import "dotenv/config";
+console.log("[JAIME.IO] Environment:", process.env.JAIME_ENV || "production");
 import express from "express";
 import { createServer } from "http";
 import net from "net";

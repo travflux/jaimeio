@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, adminProcedure, tenantOrAdminProcedure } from "../_core/trpc";
+import crypto from "crypto";
+import { router, publicProcedure, adminProcedure, tenantOrAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { licenseUsers, licenses } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, gte } from "drizzle-orm";
 import { hashPassword } from "../auth";
 import { sendEmail } from "../communications/emailService";
 
@@ -191,6 +192,47 @@ export const userManagementRouter = router({
       await db.delete(licenseUsers).where(
         and(eq(licenseUsers.id, input.userId), eq(licenseUsers.licenseId, ctx.licenseId))
       );
+      return { success: true };
+    }),
+
+  /** Request password reset — public, does not reveal if email exists */
+  requestPasswordReset: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { sent: true };
+      const [user] = await db.select().from(licenseUsers).where(sql`LOWER(${licenseUsers.email}) = LOWER(${input.email})`).limit(1);
+      if (!user) return { sent: true };
+      const [license] = await db.select().from(licenses).where(eq(licenses.id, user.licenseId)).limit(1);
+      const subdomain = license?.subdomain || "app";
+      const token = crypto.randomBytes(32).toString("hex");
+      const hash = crypto.createHash("sha256").update(token).digest("hex");
+      await db.update(licenseUsers).set({ resetTokenHash: hash, resetTokenExpiresAt: new Date(Date.now() + 3600000) } as any).where(eq(licenseUsers.id, user.id));
+      const resetUrl = `https://${subdomain}.getjaime.io/admin/reset-password?token=${token}`;
+      try {
+        await sendEmail(user.licenseId, input.email, "Reset your password", `
+          <div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:32px;">
+            <h2 style="margin:0 0 16px;">Reset Your Password</h2>
+            <p>Click the button below to set a new password. This link expires in 1 hour.</p>
+            <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#111827;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;margin:16px 0;">Reset Password</a>
+            <p style="font-size:12px;color:#9ca3af;margin-top:24px;">If you didn't request this, you can safely ignore this email.</p>
+          </div>
+        `);
+      } catch (err) { console.error("[PasswordReset] Email failed:", err); }
+      return { sent: true };
+    }),
+
+  /** Reset password with token */
+  resetPassword: publicProcedure
+    .input(z.object({ token: z.string(), newPassword: z.string().min(8) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const hash = crypto.createHash("sha256").update(input.token).digest("hex");
+      const [user] = await db.select().from(licenseUsers).where(and(eq(licenseUsers.resetTokenHash, hash), gte(licenseUsers.resetTokenExpiresAt, new Date()))).limit(1);
+      if (!user) throw new TRPCError({ code: "BAD_REQUEST", message: "Reset link is invalid or has expired." });
+      const passwordHash = await hashPassword(input.newPassword);
+      await db.update(licenseUsers).set({ passwordHash, resetTokenHash: null, resetTokenExpiresAt: null } as any).where(eq(licenseUsers.id, user.id));
       return { success: true };
     }),
 });

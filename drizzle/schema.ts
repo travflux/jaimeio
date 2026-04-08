@@ -1076,6 +1076,7 @@ export const licenseUsers = mysqlTable("license_users", {
   isActive: boolean("isActive").default(true).notNull(),
   lastLoginAt: timestamp("lastLoginAt"),
   resetTokenHash: varchar("reset_token_hash", { length: 255 }),
+  resetTokenExpiresAt: timestamp("reset_token_expires_at"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

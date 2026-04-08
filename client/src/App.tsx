@@ -147,6 +147,7 @@ import TenantMerchStore from "./pages/tenant/TenantMerchStore";
 import TenantMerchPipeline from "./pages/tenant/TenantMerchPipeline";
 import TenantTicket from "./pages/tenant/TenantTicket";
 import TenantWhiteLabel from "./pages/tenant/TenantWhiteLabel";
+import ResetPassword from "./pages/ResetPassword";
 import ResellerMissionControl from "./pages/tenant/ResellerMissionControl";
 
 // Detect if we're on app.getjaime.io or a tenant subdomain
@@ -228,6 +229,8 @@ function Router() {
       <Route path="/sitemap-page" component={SiteMapPage} />
       <Route path="/support/:slug" component={SupportArticlePage} />
 
+      {/* Public auth routes */}
+      <Route path="/admin/reset-password" component={ResetPassword} />
       {/* /admin — login on tenant subdomains, mission control on app domain */}
       <Route path="/admin" component={AdminRootPage} />
 
