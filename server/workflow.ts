@@ -1467,6 +1467,8 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
           db.logGenerationStep({ articleId: id, licenseId: tenantId, step: "seo", status: "failed", errorMessage: err?.message });
           db.updateArticleEnrichmentStatus(id, "seoStatus", "failed");
         });
+        // Amazon affiliate enrichment (fire and forget)
+        import("./amazonEnrich").then(m => m.amazonEnrichArticle(id, tenantId, article.headline, article.categorySlug || "", article.body)).catch(() => {});
       }
     } catch (err: any) {
       // Skip duplicates silently
