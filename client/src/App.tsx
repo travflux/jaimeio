@@ -129,6 +129,7 @@ import TenantFeedPerformance from "./pages/tenant/TenantFeedPerformance";
 import TenantSourceManager from "./pages/tenant/TenantSourceManager";
 import TenantXListening from "./pages/tenant/TenantXListening";
 import TenantYouTubeListening from "./pages/tenant/TenantYouTubeListening";
+import TenantRedditListening from "./pages/tenant/TenantRedditListening";
 import TenantCandidates from "./pages/tenant/TenantCandidates";
 import TenantMediaLibrary from "./pages/tenant/TenantMediaLibrary";
 import TenantSEO from "./pages/tenant/TenantSEO";
@@ -268,6 +269,7 @@ function Router() {
           <Route path="/admin/feed-performance" component={TenantFeedPerformance} />
           <Route path="/admin/source-manager" component={TenantSourceManager} />
           <Route path="/admin/x-listening" component={TenantXListening} />
+          <Route path="/admin/reddit-listening" component={TenantRedditListening} />
           <Route path="/admin/youtube-listening" component={TenantYouTubeListening} />
           <Route path="/admin/candidates" component={TenantCandidates} />
           <Route path="/admin/media-library" component={TenantMediaLibrary} />

@@ -207,8 +207,12 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { sql: sqlFn } = await import("drizzle-orm");
-        await dbConn.execute(sqlFn`INSERT INTO rss_feed_weights (feedUrl, weight, enabled) VALUES (${input.url}, 1.0, 1)`);
-        await dbConn.execute(sqlFn`INSERT IGNORE INTO rss_feeds (license_id, url, name, is_active) VALUES (${ctx.licenseId!}, ${input.url}, ${input.url}, true)`);
+        const lid = ctx.licenseId!;
+        // Enforce 300 feed max per license
+        const [countResult] = await dbConn.execute(sqlFn`SELECT COUNT(*) as cnt FROM rss_feed_weights WHERE license_id = ${lid}`);
+        if ((countResult as any[])[0]?.cnt >= 300) throw new TRPCError({ code: "BAD_REQUEST", message: "Maximum 300 RSS feeds allowed per publication" });
+        await dbConn.execute(sqlFn`INSERT INTO rss_feed_weights (feedUrl, weight, enabled, license_id) VALUES (${input.url}, 1.0, 1, ${lid})`);
+        await dbConn.execute(sqlFn`INSERT IGNORE INTO rss_feeds (license_id, url, name, is_active) VALUES (${lid}, ${input.url}, ${input.url}, true)`);
         return { success: true };
       }),
     remove: tenantOrAdminProcedure

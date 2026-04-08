@@ -55,7 +55,16 @@ export async function isXListenerEnabled(licenseId: number): Promise<boolean> {
 /** Build an authenticated X client from env vars */
 function getXClient(): TwitterApi | null {
   const { X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET } = process.env;
-  if (!X_API_KEY || !X_API_SECRET || !X_ACCESS_TOKEN || !X_ACCESS_TOKEN_SECRET) return null;
+  if (!X_API_KEY || !X_API_SECRET || !X_ACCESS_TOKEN || !X_ACCESS_TOKEN_SECRET) {
+    const missing = [
+      !X_API_KEY && "X_API_KEY",
+      !X_API_SECRET && "X_API_SECRET",
+      !X_ACCESS_TOKEN && "X_ACCESS_TOKEN",
+      !X_ACCESS_TOKEN_SECRET && "X_ACCESS_TOKEN_SECRET",
+    ].filter(Boolean);
+    console.warn("[x-listener] Missing credentials: " + missing.join(", ") + " — skipping X listening");
+    return null;
+  }
   return new TwitterApi({
     appKey: X_API_KEY,
     appSecret: X_API_SECRET,

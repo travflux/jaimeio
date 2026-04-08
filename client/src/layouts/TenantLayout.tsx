@@ -41,6 +41,7 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
     { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
     { icon: Twitter, label: "X Listening", href: "/admin/x-listening" },
+    { icon: MessageCircle, label: "Reddit", href: "/admin/reddit-listening" },
     { icon: Youtube, label: "YouTube", href: "/admin/youtube-listening" },
     { icon: BarChart2, label: "Feed Performance", href: "/admin/feed-performance" },
     { icon: PieChart, label: "Category Balance", href: "/admin/category-balance" },
