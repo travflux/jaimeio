@@ -254,7 +254,7 @@ export default function TenantCalendar() {
                       }}>
                         <div style={{ fontSize: 12, fontWeight: isTd ? 700 : 400, color: isTd ? COLORS.published : "#374151", textAlign: "right", marginBottom: 2 }}>{date.getDate()}</div>
                         {ev?.articles.map(a => <EventChip key={`a${a.id}`} label={a.headline} color={a.status === "published" ? COLORS.published : COLORS.pending} />)}
-                        {ev?.socialPosts.map(s => <EventChip key={`s${s.id}`} label={`${s.platform} \u00b7 ${(s.content || "").substring(0, 30)}`} color={COLORS.social} />)}
+                        {ev?.socialPosts.map(s => <EventChip key={`s${s.id}`} label={`${s.platform} · ${(s.content || "").substring(0, 30)}`} color={COLORS.social} />)}
                         {ev?.newsletters.map(n => <EventChip key={`n${n.id}`} label={n.subject} color={COLORS.email} />)}
                         {ev?.sponsorships.map(sp => <EventChip key={`sp${sp.id}`} label={sp.sponsorName} color={COLORS.sponsorship} />)}
                         {ev?.templateSlots.map(t => <EventChip key={`t${t.templateId}-${ds}`} label={t.templateName} color={COLORS.templateSlot} dashed />)}
@@ -295,7 +295,7 @@ export default function TenantCalendar() {
                         ))}
                         {ev?.socialPosts.map(s => (
                           <div key={`s${s.id}`} style={{ marginBottom: 4, padding: "5px 7px", borderRadius: 6, background: `${COLORS.social}15`, borderLeft: `3px solid ${COLORS.social}` }}>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: "#1F2937", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", lineHeight: 1.4 }}>{s.platform} \u00b7 {(s.content || "").substring(0, 40)}</div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: "#1F2937", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", lineHeight: 1.4 }}>{s.platform} · {(s.content || "").substring(0, 40)}</div>
                           </div>
                         ))}
                         {ev?.sponsorships.map(sp => (
@@ -350,8 +350,8 @@ export default function TenantCalendar() {
                     </div>
                     {a.status === "pending" && (
                       <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => approveMut.mutate({ id: a.id })} disabled={approveMut.isPending} style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${COLORS.published}`, background: "transparent", cursor: "pointer", color: COLORS.published, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{"\u2713"}</button>
-                        <button onClick={() => rejectMut.mutate({ id: a.id })} disabled={rejectMut.isPending} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #EF4444", background: "transparent", cursor: "pointer", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{"\u2717"}</button>
+                        <button onClick={() => approveMut.mutate({ id: a.id })} disabled={approveMut.isPending} style={{ width: 28, height: 28, borderRadius: "50%", border: `1px solid ${COLORS.published}`, background: "transparent", cursor: "pointer", color: COLORS.published, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{"✓"}</button>
+                        <button onClick={() => rejectMut.mutate({ id: a.id })} disabled={rejectMut.isPending} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #EF4444", background: "transparent", cursor: "pointer", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{"✗"}</button>
                       </div>
                     )}
                     {a.status === "published" && <span style={{ fontSize: 11, padding: "2px 8px", background: `${COLORS.published}20`, color: COLORS.published, borderRadius: 20, fontWeight: 500 }}>live</span>}
@@ -412,7 +412,7 @@ export default function TenantCalendar() {
               <>
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{selDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>{selectedDate === today ? "Today \u00b7 " : ""}{total} event{total !== 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 12, color: "#6B7280" }}>{selectedDate === today ? "Today · " : ""}{total} event{total !== 1 ? "s" : ""}</div>
                 </div>
 
                 {ev.articles.length > 0 && (
@@ -428,8 +428,8 @@ export default function TenantCalendar() {
                           </div>
                           {a.status === "pending" && (
                             <div style={{ display: "flex", gap: 3 }}>
-                              <button onClick={() => approveMut.mutate({ id: a.id })} disabled={approveMut.isPending} style={{ width: 22, height: 22, borderRadius: "50%", border: `1px solid ${COLORS.published}`, background: "transparent", cursor: "pointer", color: COLORS.published, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2713"}</button>
-                              <button onClick={() => rejectMut.mutate({ id: a.id })} disabled={rejectMut.isPending} style={{ width: 22, height: 22, borderRadius: "50%", border: "1px solid #EF4444", background: "transparent", cursor: "pointer", color: "#EF4444", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2717"}</button>
+                              <button onClick={() => approveMut.mutate({ id: a.id })} disabled={approveMut.isPending} style={{ width: 22, height: 22, borderRadius: "50%", border: `1px solid ${COLORS.published}`, background: "transparent", cursor: "pointer", color: COLORS.published, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{"✓"}</button>
+                              <button onClick={() => rejectMut.mutate({ id: a.id })} disabled={rejectMut.isPending} style={{ width: 22, height: 22, borderRadius: "50%", border: "1px solid #EF4444", background: "transparent", cursor: "pointer", color: "#EF4444", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{"✗"}</button>
                             </div>
                           )}
                           {a.status === "published" && <span style={{ fontSize: 10, padding: "1px 6px", background: `${COLORS.published}20`, color: COLORS.published, borderRadius: 20 }}>live</span>}

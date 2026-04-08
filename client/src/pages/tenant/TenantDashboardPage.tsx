@@ -39,7 +39,7 @@ function KpiCard({ icon, label, value, sub, change, positive, loading, href }: {
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
-            {change && <span style={{ fontSize: 12, fontWeight: 500, color: positive ? "#059669" : "#DC2626" }}>{positive ? "\u2191" : "\u2192"} {change}</span>}
+            {change && <span style={{ fontSize: 12, fontWeight: 500, color: positive ? "#059669" : "#DC2626" }}>{positive ? "↑" : "→"} {change}</span>}
           </div>
           <div style={{ fontSize: 28, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{value}</div>
           <div style={{ fontSize: 13, color: "#6B7280" }}>{label}</div>
@@ -145,17 +145,17 @@ export default function TenantDashboardPage() {
             <>
               {/* KPI cards */}
               <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                <KpiCard icon={<TrendingUp size={16} color="#059669" />} label="Published" value={f ? String(f.published) : "\u2014"} sub={`${f?.todayCount ?? 0} today \u00b7 ${f?.pending ?? 0} pending`} loading={fast.isLoading} href="/admin/articles?status=published" />
-                <KpiCard icon={<Eye size={16} color="#3B82F6" />} label="Total views" value={d?.views ? fmt(d.views.total) : "\u2014"} sub={d?.articles ? `${d.articles.thisMonth} this month` : undefined} loading={full.isLoading} />
-                <KpiCard icon={<Users size={16} color="#8B5CF6" />} label="Subscribers" value={d?.newsletter ? String(d.newsletter.subscribers) : "\u2014"} loading={full.isLoading} />
-                <KpiCard icon={<DollarSign size={16} color="#F59E0B" />} label="Candidate pool" value={f ? String(f.candidatePoolDepth) : "\u2014"} sub={f && f.candidatePoolDepth < 10 ? "Pool low" : "Ready"} loading={fast.isLoading} href="/admin/candidates" />
+                <KpiCard icon={<TrendingUp size={16} color="#059669" />} label="Published" value={f ? String(f.published) : "—"} sub={`${f?.todayCount ?? 0} today · ${f?.pending ?? 0} pending`} loading={fast.isLoading} href="/admin/articles?status=published" />
+                <KpiCard icon={<Eye size={16} color="#3B82F6" />} label="Total views" value={d?.views ? fmt(d.views.total) : "—"} sub={d?.articles ? `${d.articles.thisMonth} this month` : undefined} loading={full.isLoading} />
+                <KpiCard icon={<Users size={16} color="#8B5CF6" />} label="Subscribers" value={d?.newsletter ? String(d.newsletter.subscribers) : "—"} loading={full.isLoading} />
+                <KpiCard icon={<DollarSign size={16} color="#F59E0B" />} label="Candidate pool" value={f ? String(f.candidatePoolDepth) : "—"} sub={f && f.candidatePoolDepth < 10 ? "Pool low" : "Ready"} loading={fast.isLoading} href="/admin/candidates" />
               </div>
 
               {/* Chart + Pending review row */}
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 {/* 7-day chart */}
                 <div style={{ flex: 3 }}>
-                  <SectionCard title="Article output \u2014 7 days" right={<a href="/admin/calendar" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>View calendar \u2192</a>} loading={full.isLoading} empty={byDay.length === 0} emptyMsg="No activity this week">
+                  <SectionCard title="Article output — 7 days" right={<a href="/admin/calendar" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>View calendar →</a>} loading={full.isLoading} empty={byDay.length === 0} emptyMsg="No activity this week">
                     <ResponsiveContainer width="100%" height={160}>
                       <LineChart data={byDay} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -178,7 +178,7 @@ export default function TenantDashboardPage() {
 
                 {/* Pending review */}
                 <div style={{ flex: 2 }}>
-                  <SectionCard title="Pending review" right={f && f.pending > 0 ? <a href="/admin/articles?status=pending" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>View all {f.pending} \u2192</a> : undefined} loading={full.isLoading} empty={!d?.pendingArticles?.length} emptyMsg="No articles pending review \u2713">
+                  <SectionCard title="Pending review" right={f && f.pending > 0 ? <a href="/admin/articles?status=pending" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>View all {f.pending} →</a> : undefined} loading={full.isLoading} empty={!d?.pendingArticles?.length} emptyMsg="No articles pending review ✓">
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {(d?.pendingArticles ?? []).slice(0, 5).map((a: any) => (
                         <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -210,7 +210,7 @@ export default function TenantDashboardPage() {
 
                 {/* Content health */}
                 <div style={{ flex: 1 }}>
-                  <SectionCard title="Content health" right={<a href="/admin/articles" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Fix all \u2192</a>} loading={fast.isLoading}>
+                  <SectionCard title="Content health" right={<a href="/admin/articles" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Fix all →</a>} loading={fast.isLoading}>
                     {[
                       { label: "Missing images", value: f?.missingImages ?? 0, bad: (f?.missingImages ?? 0) > 0 },
                       { label: "Missing GEO", value: f?.missingGeo ?? 0, bad: (f?.missingGeo ?? 0) > 0 },
@@ -226,7 +226,7 @@ export default function TenantDashboardPage() {
 
                 {/* Source performance */}
                 <div style={{ flex: 1 }}>
-                  <SectionCard title="Source performance" right={<a href="/admin/source-feeds" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure \u2192</a>} loading={full.isLoading} empty={!d?.sourcePerformance?.length} emptyMsg="No candidate data">
+                  <SectionCard title="Source performance" right={<a href="/admin/source-feeds" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure →</a>} loading={full.isLoading} empty={!d?.sourcePerformance?.length} emptyMsg="No candidate data">
                     {(() => {
                       const sp = d?.sourcePerformance ?? [];
                       const maxV = Math.max(1, ...sp.map((s: any) => s.candidateCount));
@@ -250,16 +250,16 @@ export default function TenantDashboardPage() {
           {activeTab === "social" && (
             <>
               <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                <KpiCard icon={<Send size={16} color="#7F77DD" />} label="Posts this week" value={s ? String(s.postsThisWeek) : "\u2014"} loading={social.isLoading} />
-                <KpiCard icon={<TrendingUp size={16} color="#059669" />} label="Total engagement" value={s ? fmt(s.totalEngagement) : "\u2014"} loading={social.isLoading} />
-                <KpiCard icon={<Eye size={16} color="#3B82F6" />} label="Total reach" value={s ? fmt(s.totalReachThisWeek) : "\u2014"} loading={social.isLoading} />
-                <KpiCard icon={<BarChart2 size={16} color="#F59E0B" />} label="Posts queued" value={s ? String(s.postsQueued) : "\u2014"} loading={social.isLoading} />
+                <KpiCard icon={<Send size={16} color="#7F77DD" />} label="Posts this week" value={s ? String(s.postsThisWeek) : "—"} loading={social.isLoading} />
+                <KpiCard icon={<TrendingUp size={16} color="#059669" />} label="Total engagement" value={s ? fmt(s.totalEngagement) : "—"} loading={social.isLoading} />
+                <KpiCard icon={<Eye size={16} color="#3B82F6" />} label="Total reach" value={s ? fmt(s.totalReachThisWeek) : "—"} loading={social.isLoading} />
+                <KpiCard icon={<BarChart2 size={16} color="#F59E0B" />} label="Posts queued" value={s ? String(s.postsQueued) : "—"} loading={social.isLoading} />
               </div>
 
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 {/* Platform breakdown */}
                 <div style={{ flex: 1 }}>
-                  <SectionCard title="Platforms" right={<a href="/admin/distribution" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Manage \u2192</a>} loading={social.isLoading} empty={!s?.platforms?.length} emptyMsg="No social accounts connected">
+                  <SectionCard title="Platforms" right={<a href="/admin/distribution" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Manage →</a>} loading={social.isLoading} empty={!s?.platforms?.length} emptyMsg="No social accounts connected">
                     {(s?.platforms ?? []).map((p: any) => (
                       <div key={p.platform} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
                         <span style={{ fontSize: 12, fontWeight: 500, textTransform: "capitalize", width: 80 }}>{PLATFORM_LABELS[p.platform] || p.platform}</span>
@@ -305,16 +305,16 @@ export default function TenantDashboardPage() {
           {activeTab === "communications" && (
             <>
               <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                <KpiCard icon={<Mail size={16} color="#378ADD" />} label="Subscribers" value={c ? String(c.subscribersTotal) : "\u2014"} sub={c ? `+${c.subscribersThisWeek} this week` : undefined} loading={comms.isLoading} />
-                <KpiCard icon={<Eye size={16} color="#059669" />} label="Open rate" value={c?.openRateLastSend != null ? `${c.openRateLastSend}%` : "\u2014"} sub="Last send" loading={comms.isLoading} />
-                <KpiCard icon={<TrendingUp size={16} color="#3B82F6" />} label="Click rate" value={c?.clickRateLastSend != null ? `${c.clickRateLastSend}%` : "\u2014"} sub="Last send" loading={comms.isLoading} />
-                <KpiCard icon={<MessageCircle size={16} color="#D85A30" />} label="SMS subscribers" value={c ? String(c.smsSubscribers) : "\u2014"} loading={comms.isLoading} />
+                <KpiCard icon={<Mail size={16} color="#378ADD" />} label="Subscribers" value={c ? String(c.subscribersTotal) : "—"} sub={c ? `+${c.subscribersThisWeek} this week` : undefined} loading={comms.isLoading} />
+                <KpiCard icon={<Eye size={16} color="#059669" />} label="Open rate" value={c?.openRateLastSend != null ? `${c.openRateLastSend}%` : "—"} sub="Last send" loading={comms.isLoading} />
+                <KpiCard icon={<TrendingUp size={16} color="#3B82F6" />} label="Click rate" value={c?.clickRateLastSend != null ? `${c.clickRateLastSend}%` : "—"} sub="Last send" loading={comms.isLoading} />
+                <KpiCard icon={<MessageCircle size={16} color="#D85A30" />} label="SMS subscribers" value={c ? String(c.smsSubscribers) : "—"} loading={comms.isLoading} />
               </div>
 
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 {/* Newsletter history */}
                 <div style={{ flex: 2 }}>
-                  <SectionCard title="Newsletter send history" right={<a href="/admin/newsletter" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Compose new \u2192</a>} loading={comms.isLoading} empty={!c?.sendHistory?.length} emptyMsg="No newsletters sent yet">
+                  <SectionCard title="Newsletter send history" right={<a href="/admin/newsletter" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Compose new →</a>} loading={comms.isLoading} empty={!c?.sendHistory?.length} emptyMsg="No newsletters sent yet">
                     {(c?.sendHistory ?? []).map((s: any) => (
                       <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Mail size={14} color="#378ADD" /></div>
@@ -359,16 +359,16 @@ export default function TenantDashboardPage() {
           {activeTab === "monetization" && (
             <>
               <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-                <KpiCard icon={<DollarSign size={16} color="#F59E0B" />} label="Est. revenue" value={m ? `$${m.revenueThisWeek}` : "\u2014"} sub="This week" loading={monet.isLoading} />
-                <KpiCard icon={<CreditCard size={16} color="#8B5CF6" />} label="Sponsor revenue" value={m ? `$${m.sponsorRevenueThisWeek}` : "\u2014"} loading={monet.isLoading} />
-                <KpiCard icon={<TrendingUp size={16} color="#2DD4BF" />} label="Affiliate clicks" value={m ? String(m.affiliateClicksThisWeek) : "\u2014"} change={m ? pct(m.affiliateClicksThisWeek, m.affiliateClicksPrevWeek) : undefined} positive={(m?.affiliateClicksThisWeek ?? 0) >= (m?.affiliateClicksPrevWeek ?? 0)} loading={monet.isLoading} />
-                <KpiCard icon={<BarChart2 size={16} color="#3B82F6" />} label="AdSense" value={m ? `$${m.adsenseThisWeek}` : "\u2014"} loading={monet.isLoading} />
+                <KpiCard icon={<DollarSign size={16} color="#F59E0B" />} label="Est. revenue" value={m ? `$${m.revenueThisWeek}` : "—"} sub="This week" loading={monet.isLoading} />
+                <KpiCard icon={<CreditCard size={16} color="#8B5CF6" />} label="Sponsor revenue" value={m ? `$${m.sponsorRevenueThisWeek}` : "—"} loading={monet.isLoading} />
+                <KpiCard icon={<TrendingUp size={16} color="#2DD4BF" />} label="Affiliate clicks" value={m ? String(m.affiliateClicksThisWeek) : "—"} change={m ? pct(m.affiliateClicksThisWeek, m.affiliateClicksPrevWeek) : undefined} positive={(m?.affiliateClicksThisWeek ?? 0) >= (m?.affiliateClicksPrevWeek ?? 0)} loading={monet.isLoading} />
+                <KpiCard icon={<BarChart2 size={16} color="#3B82F6" />} label="AdSense" value={m ? `$${m.adsenseThisWeek}` : "—"} loading={monet.isLoading} />
               </div>
 
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 {/* Active sponsorships */}
                 <div style={{ flex: 1 }}>
-                  <SectionCard title="Active sponsorships" right={<a href="/admin/sponsorship" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Schedule \u2192</a>} loading={monet.isLoading} empty={!m?.activeSponsorships?.length} emptyMsg="No active sponsorships">
+                  <SectionCard title="Active sponsorships" right={<a href="/admin/sponsorship" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Schedule →</a>} loading={monet.isLoading} empty={!m?.activeSponsorships?.length} emptyMsg="No active sponsorships">
                     {(m?.activeSponsorships ?? []).map((sp: any) => (
                       <div key={sp.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
@@ -381,7 +381,7 @@ export default function TenantDashboardPage() {
 
                 {/* Monetization setup */}
                 <div style={{ flex: 1 }}>
-                  <SectionCard title="Monetization setup" right={<a href="/admin/amazon" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure \u2192</a>} loading={monet.isLoading}>
+                  <SectionCard title="Monetization setup" right={<a href="/admin/amazon" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure →</a>} loading={monet.isLoading}>
                     {m?.monetizationSetup && [
                       { label: "Sponsorships", ok: m.monetizationSetup.sponsorshipsActive },
                       { label: "Amazon affiliate", ok: m.monetizationSetup.amazonConnected },
@@ -418,7 +418,7 @@ export default function TenantDashboardPage() {
             <p style={{ fontSize: 13, color: "#E2E8F0", margin: "0 0 8px", lineHeight: 1.5 }}>
               {d?.aiTips?.[0] ?? "Generating insights for your publication..."}
             </p>
-            <a href="/admin/articles/create" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Create article \u2192</a>
+            <a href="/admin/articles/create" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Create article →</a>
           </div>
 
           {/* Action needed */}
@@ -431,7 +431,7 @@ export default function TenantDashboardPage() {
               <p style={{ fontSize: 13, color: "#E2E8F0", margin: "0 0 8px", lineHeight: 1.5 }}>
                 Candidate pool low ({f.candidatePoolDepth} remaining). Add more RSS feeds or enable additional sources.
               </p>
-              <a href="/admin/source-feeds" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure feeds \u2192</a>
+              <a href="/admin/source-feeds" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure feeds →</a>
             </div>
           )}
 
@@ -446,10 +446,10 @@ export default function TenantDashboardPage() {
               const h = d?.systemHealth;
               if (!h) return null;
               return [
-                { label: "Production loop", value: h.loopEnabled ? (h.loopRunning ? "Running\u2026" : "Active") : "Paused", color: h.loopEnabled ? "#10B981" : "#EF4444" },
-                { label: "LLM provider", value: h.llmProvider ?? "\u2014", color: "#94A3B8" },
+                { label: "Production loop", value: h.loopEnabled ? (h.loopRunning ? "Running…" : "Active") : "Paused", color: h.loopEnabled ? "#10B981" : "#EF4444" },
+                { label: "LLM provider", value: h.llmProvider ?? "—", color: "#94A3B8" },
                 { label: "Image provider", value: (!h.imageProvider || h.imageProvider === "none") ? "Not configured" : h.imageProvider, color: "#94A3B8" },
-                { label: "RSS feeds", value: `${h.rssFeedCount} active${h.rssFeedErrors > 0 ? ` \u00b7 ${h.rssFeedErrors} failing` : ""}`, color: h.rssFeedErrors > 0 ? "#EF4444" : "#10B981" },
+                { label: "RSS feeds", value: `${h.rssFeedCount} active${h.rssFeedErrors > 0 ? ` · ${h.rssFeedErrors} failing` : ""}`, color: h.rssFeedErrors > 0 ? "#EF4444" : "#10B981" },
                 { label: "Blotato", value: h.blatotatoEnabled ? "Connected" : "Not connected", color: h.blatotatoEnabled ? "#10B981" : "#64748B" },
                 { label: "Resend", value: h.emailEnabled ? "Connected" : "Not connected", color: h.emailEnabled ? "#10B981" : "#64748B" },
                 { label: "S3 storage", value: h.s3Enabled ? "Online" : "Not configured", color: h.s3Enabled ? "#10B981" : "#64748B" },
@@ -477,7 +477,7 @@ export default function TenantDashboardPage() {
                 cursor: loading ? "not-allowed" : "pointer", color: "#E2E8F0", fontSize: 13, textAlign: "left" as const, opacity: loading ? 0.7 : 1,
               }}>
                 <span style={{ color: "#2DD4BF", flexShrink: 0 }}>{icon}</span>
-                <span>{loading ? "Running\u2026" : label}</span>
+                <span>{loading ? "Running…" : label}</span>
               </button>
             ))}
           </div>
