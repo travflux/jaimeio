@@ -56,19 +56,25 @@ type EventData = {
   templateSlots: Array<{ templateId: number; templateName: string; date: string }>;
 };
 
+function toIso(dt: any): string {
+  if (!dt) return "";
+  const d = dt instanceof Date ? dt : new Date(String(dt));
+  return d.toISOString().substring(0, 10);
+}
+
 function getEventsForDate(dateStr: string, data: EventData) {
   const d = new Date(dateStr + "T12:00:00");
   const dow = d.getDay();
   return {
     articles: data.articles.filter(a => {
       const dt = a.publishedAt ?? a.createdAt;
-      return dt && String(dt).substring(0, 10) === dateStr;
+      return !!dt && toIso(dt) === dateStr;
     }),
     socialPosts: data.socialPosts.filter(s => {
       const dt = s.scheduledAt ?? s.sentAt;
-      return dt && String(dt).substring(0, 10) === dateStr;
+      return !!dt && toIso(dt) === dateStr;
     }),
-    newsletters: data.newsletters.filter(n => n.sentAt && String(n.sentAt).substring(0, 10) === dateStr),
+    newsletters: data.newsletters.filter(n => !!n.sentAt && toIso(n.sentAt) === dateStr),
     sponsorships: data.sponsorships.filter(sp => sp.dayOfWeek === dow && sp.isActive),
     templateSlots: data.templateSlots.filter(t => t.date === dateStr),
   };
@@ -149,7 +155,7 @@ export default function TenantCalendar() {
   const navBtnStyle: React.CSSProperties = { width: 28, height: 28, borderRadius: 6, border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 };
 
   return (
-    <TenantLayout pageTitle="Content Calendar" pageSubtitle={viewMode === "day" ? currentDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : `${MONTHS[month]} ${year}`} section="Content">
+    <TenantLayout pageTitle="Content Calendar" pageSubtitle="Track content production and distribution" section="Content">
       <div style={{ display: "flex", height: "calc(100vh - 220px)", overflow: "hidden", margin: "-20px", marginTop: -12 }}>
         {/* ═══ MAIN AREA ═══ */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
