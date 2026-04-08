@@ -1,230 +1,274 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
-import { useTenantContext } from "@/hooks/useTenantContext";
-import { ChevronLeft, ChevronRight, X, Zap, PenLine, Eye } from "lucide-react";
+import { toast } from "sonner";
+import { ChevronLeft, ChevronRight, X, Plus, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
 
-function getTemplateSlotsForMonth(templates: any[], year: number, month: number, articles: any[], skippedSlots: any[]): Array<{ date: number; template: any; isFilled: boolean; articleHeadline?: string; articleId?: number }> {
-  const slots: Array<{ date: number; template: any; isFilled: boolean; articleHeadline?: string; articleId?: number }> = [];
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  for (const t of templates) {
-    if (t.schedule_frequency === "manual" || !t.schedule_frequency) continue;
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dow = new Date(year, month, day).getDay();
-      let isDue = false;
-      if (t.schedule_frequency === "daily") isDue = true;
-      else if (t.schedule_frequency === "weekly") isDue = t.schedule_day_of_week === dow;
-      else if (t.schedule_frequency === "biweekly") { const occs: number[] = []; for (let d = 1; d <= daysInMonth; d++) if (new Date(year, month, d).getDay() === t.schedule_day_of_week) occs.push(d); isDue = occs[0] === day || occs[2] === day; }
-      else if (t.schedule_frequency === "monthly") isDue = day === 1;
-      if (!isDue) continue;
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const isSkipped = skippedSlots.some((s: any) => s.templateId === t.id && String(s.skipDate).startsWith(dateStr));
-      if (isSkipped) continue;
-      const fullDateStr = new Date(year, month, day).toISOString().split("T")[0];
-      const match = articles.find((a: any) => a.templateId === t.id && (a.publishedAt || a.createdAt) && new Date(a.publishedAt || a.createdAt).toISOString().split("T")[0] === fullDateStr);
-      slots.push({ date: day, template: t, isFilled: !!match, articleHeadline: match?.headline, articleId: match?.id });
-    }
-  }
-  return slots;
+const COLORS: Record<string, string> = {
+  published: "#1D9E75", pending: "#EF9F27", approved: "#3b82f6", draft: "#9ca3af", rejected: "#E53E3E",
+  social: "#7F77DD", email: "#378ADD", sms: "#D85A30", sponsorship: "#BA7517", templateSlot: "#534AB7",
+};
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function getMonthDays(year: number, month: number) {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const startPad = first.getDay();
+  const days: Date[] = [];
+  for (let i = startPad - 1; i >= 0; i--) days.push(new Date(year, month, -i));
+  for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d));
+  while (days.length % 7 !== 0) days.push(new Date(year, month + 1, days.length - startPad - last.getDate() + 1));
+  return days;
 }
 
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
+function relTime(iso: string) { const ms = Date.now() - new Date(iso).getTime(); const h = Math.floor(ms / 3600000); if (h < 1) return "just now"; if (h < 24) return h + "h ago"; return Math.floor(h / 24) + "d ago"; }
+
+type ViewMode = "month" | "week" | "list";
+
 export default function TenantCalendar() {
-  const { licenseId } = useTenantContext();
-  const [month, setMonth] = useState(new Date().getMonth());
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [selectedSlot, setSelectedSlot] = useState<{ template: any; date: Date } | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<any>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const articlesQuery = trpc.articles.list.useQuery({ limit: 200 });
-  const templatesQuery = trpc.templates?.list?.useQuery?.({ licenseId }, { enabled: !!licenseId });
-  const skippedQuery = trpc.templates?.getSkippedSlots?.useQuery?.({ licenseId, month: month + 1, year }, { enabled: !!licenseId });
-  const generateMut = trpc.workflow?.generateFromCandidate?.useMutation?.();
-  const skipMut = trpc.templates?.skipSlot?.useMutation?.({ onSuccess: () => skippedQuery?.refetch?.() });
-  const articles = articlesQuery.data?.articles || [];
-  const templates = (templatesQuery?.data as any[]) || [];
-  const skippedSlots = (skippedQuery?.data as any[]) || [];
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (typeof localStorage !== "undefined" ? localStorage.getItem("calendar_view_mode") as ViewMode : null) || "month");
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(["all"]));
+  const statusMut = trpc.articles.updateStatus.useMutation({ onSuccess: () => { toast.success("Updated"); eventsQuery.refetch(); } });
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
-  const monthName = new Date(year, month).toLocaleDateString("en", { month: "long", year: "numeric" });
-  const today = new Date();
-  const templateSlots = getTemplateSlotsForMonth(templates, year, month, articles, skippedSlots);
+  useEffect(() => { localStorage.setItem("calendar_view_mode", viewMode); }, [viewMode]);
 
-  const getArticlesForDay = (day: number) => {
-    const dateStr = new Date(year, month, day).toISOString().split("T")[0];
-    return articles.filter((a: any) => { const d = a.publishedAt || a.createdAt; return d && new Date(d).toISOString().split("T")[0] === dateStr; });
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const startDate = fmt(new Date(year, month, -7));
+  const endDate = fmt(new Date(year, month + 1, 7));
+
+  const eventsQuery = trpc.calendar.getLayeredEvents.useQuery({ startDate, endDate }, { staleTime: 300000 });
+  const data = eventsQuery.data;
+  const stats = data?.stats;
+
+  // Build day → events map
+  const dayEvents = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    const add = (date: string, type: string, item: any) => { if (!map[date]) map[date] = []; map[date].push({ type, ...item }); };
+    for (const a of (data?.articles ?? []) as any[]) { const d = fmt(new Date(a.publishedAt || a.createdAt)); add(d, "article", a); }
+    for (const s of (data?.socialPosts ?? []) as any[]) { const d = fmt(new Date(s.scheduledAt || s.sentAt || s.createdAt)); add(d, "social", s); }
+    for (const n of (data?.newsletters ?? []) as any[]) { if (n.sentAt) add(fmt(new Date(n.sentAt)), "email", n); }
+    for (const t of (data?.templateSlots ?? []) as any[]) { add(t.date, "template", t); }
+    return map;
+  }, [data]);
+
+  const isFiltered = (type: string) => activeFilters.has("all") || activeFilters.has(type);
+  const toggleFilter = (f: string) => {
+    if (f === "all") { setActiveFilters(new Set(["all"])); return; }
+    const next = new Set(activeFilters); next.delete("all");
+    if (next.has(f)) next.delete(f); else next.add(f);
+    if (next.size === 0) next.add("all");
+    setActiveFilters(next);
   };
-  const getSlotsForDay = (day: number) => templateSlots.filter(s => s.date === day);
 
-  const prev = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
-  const next = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
+  const monthDays = getMonthDays(year, month);
+  const today = fmt(new Date());
+  const selectedEvents = selectedDate ? (dayEvents[selectedDate] ?? []) : [];
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const goToday = () => { setCurrentDate(new Date()); setSelectedDate(fmt(new Date())); };
 
   return (
-    <TenantLayout pageTitle="Content Calendar" pageSubtitle={monthName} section="Content"
-      headerActions={<>
-        <button onClick={prev} style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}><ChevronLeft size={16} /></button>
-        <button onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()); }} style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer" }}>Today</button>
-        <button onClick={next} style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}><ChevronRight size={16} /></button>
-      </>}>
-      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid #e5e7eb" }}>
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-            <div key={d} style={{ padding: 8, textAlign: "center", fontSize: 11, fontWeight: 600, color: "#6b7280" }}>{d}</div>
-          ))}
+    <TenantLayout pageTitle="Content Calendar" pageSubtitle={`${MONTHS[month]} ${year}`} section="Content">
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={prevMonth} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={14} /></button>
+          <span style={{ fontSize: 15, fontWeight: 600, minWidth: 140, textAlign: "center" }}>{MONTHS[month]} {year}</span>
+          <button onClick={nextMonth} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={14} /></button>
+          <button onClick={goToday} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, cursor: "pointer" }}>Today</button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-          {Array.from({ length: firstDay }, (_, i) => <div key={"e" + i} style={{ minHeight: 90, borderRight: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6" }} />)}
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1;
-            const dayArticles = getArticlesForDay(day);
-            const daySlots = getSlotsForDay(day);
-            const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+        <div style={{ display: "flex", gap: 4 }}>
+          {(["month", "week", "list"] as ViewMode[]).map(v => (
+            <button key={v} onClick={() => setViewMode(v)} style={{ padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
+              borderColor: viewMode === v ? "#111827" : "#e5e7eb", background: viewMode === v ? "#111827" : "#fff", color: viewMode === v ? "#fff" : "#6b7280" }}>{v}</button>
+          ))}
+          <a href="/admin/articles/create" style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 6, background: "#2dd4bf", color: "#0f2d5e", fontSize: 12, fontWeight: 600, textDecoration: "none" }}><Plus size={12} /> Add</a>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+        {[
+          { label: "Published", count: stats?.articleCount, color: COLORS.published },
+          { label: "Social", count: stats?.socialCount, color: COLORS.social },
+          { label: "Newsletters", count: stats?.newsletterCount, color: COLORS.email },
+          { label: "Sponsorships", count: stats?.sponsorshipCount, color: COLORS.sponsorship },
+          { label: "Templates", count: stats?.templateSlotCount, color: COLORS.templateSlot },
+        ].map(s => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6b7280" }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color }} />
+            {s.label}: <strong style={{ color: "#111827" }}>{eventsQuery.isLoading ? "—" : s.count ?? 0}</strong>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
+        {["all", "articles", "social", "email", "sms", "sponsorship", "templates"].map(f => (
+          <button key={f} onClick={() => toggleFilter(f)} style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize",
+            borderColor: activeFilters.has(f) ? "#2dd4bf" : "#e5e7eb", background: activeFilters.has(f) ? "#f0fdfa" : "#fff", color: activeFilters.has(f) ? "#0f766e" : "#6b7280" }}>{f}</button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 16 }}>
+        {/* Calendar grid */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {viewMode === "month" && (
+            <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", overflow: "hidden" }}>
+              {/* Day headers */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid #e5e7eb" }}>
+                {DAYS.map(d => <div key={d} style={{ padding: "6px 4px", fontSize: 10, fontWeight: 600, color: "#9ca3af", textAlign: "center", textTransform: "uppercase" }}>{d}</div>)}
+              </div>
+              {/* Day cells */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+                {monthDays.map((day, i) => {
+                  const key = fmt(day);
+                  const isCurrentMonth = day.getMonth() === month;
+                  const isToday = key === today;
+                  const isSelected = key === selectedDate;
+                  const events = (dayEvents[key] ?? []).filter(e => {
+                    if (isFiltered("articles") && e.type === "article") return true;
+                    if (isFiltered("social") && e.type === "social") return true;
+                    if (isFiltered("email") && e.type === "email") return true;
+                    if (isFiltered("templates") && e.type === "template") return true;
+                    if (isFiltered("sponsorship") && e.type === "sponsorship") return true;
+                    return activeFilters.has("all");
+                  });
+                  return (
+                    <div key={i} onClick={() => setSelectedDate(key)}
+                      style={{ minHeight: 80, padding: 4, borderRight: (i + 1) % 7 !== 0 ? "1px solid #f3f4f6" : "none", borderBottom: "1px solid #f3f4f6", cursor: "pointer", opacity: isCurrentMonth ? 1 : 0.4,
+                        background: isSelected ? "#f0fdfa" : "transparent", outline: isToday ? "2px solid #2dd4bf" : isSelected ? "1px solid #2dd4bf" : "none", outlineOffset: -1 }}>
+                      <div style={{ textAlign: "right", fontSize: 11, fontWeight: isToday ? 700 : 400, color: isToday ? "#0f766e" : "#6b7280", marginBottom: 2 }}>{day.getDate()}</div>
+                      {events.slice(0, 3).map((e, j) => (
+                        <div key={j} style={{ fontSize: 10, padding: "1px 4px", marginBottom: 1, borderRadius: 3, borderLeft: `3px solid ${COLORS[e.status] || COLORS[e.type] || "#9ca3af"}`, background: "#f9fafb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {e.headline || e.subject || e.content?.substring(0, 30) || e.templateName || e.sponsorName || "Event"}
+                        </div>
+                      ))}
+                      {events.length > 3 && <div style={{ fontSize: 9, color: "#9ca3af", textAlign: "center" }}>+{events.length - 3} more</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {viewMode === "week" && (() => {
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(startOfWeek); d.setDate(d.getDate() + i); return d; });
             return (
-              <div key={day} style={{ minHeight: 90, padding: 4, borderRight: "1px solid #f3f4f6", borderBottom: "1px solid #f3f4f6", background: isToday ? "#f0fdfa" : "transparent" }}>
-                <div style={{ fontSize: 11, fontWeight: isToday ? 700 : 400, color: isToday ? "#2dd4bf" : "#374151", textAlign: "right", marginBottom: 2 }}>{day}</div>
-                {daySlots.map((s, si) => (
-                  <div key={"s" + si} onClick={() => s.isFilled && s.articleId ? setSelectedArticle(articles.find((a: any) => a.id === s.articleId)) : setSelectedSlot({ template: s.template, date: new Date(year, month, day) })}
-                    style={{ fontSize: 9, padding: "1px 4px", marginBottom: 1, borderRadius: 3, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", cursor: "pointer",
-                      background: s.isFilled ? s.template.schedule_color : "transparent",
-                      color: s.isFilled ? "#fff" : s.template.schedule_color,
-                      border: s.isFilled ? "none" : "1px dashed " + s.template.schedule_color }}>
-                    {s.isFilled ? s.template.name + ": " + (s.articleHeadline || "").substring(0, 15) : s.template.name}
-                  </div>
-                ))}
-                {dayArticles.filter(a => !daySlots.some(s => s.isFilled && s.articleId === a.id)).slice(0, 2).map((a: any) => (
-                  <div key={a.id} onClick={() => setSelectedArticle(a)}
-                    style={{ fontSize: 9, padding: "1px 4px", marginBottom: 1, borderRadius: 3, cursor: "pointer",
-                      background: a.status === "published" ? "#d1fae5" : a.status === "pending" ? "#fef3c7" : "#f3f4f6",
-                      color: a.status === "published" ? "#065f46" : a.status === "pending" ? "#92400e" : "#6b7280",
-                      overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                    {a.headline?.substring(0, 20)}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+                {weekDays.map(day => {
+                  const key = fmt(day);
+                  const events = dayEvents[key] ?? [];
+                  return (
+                    <div key={key} style={{ background: "#fff", borderRadius: 8, border: key === today ? "2px solid #2dd4bf" : "1px solid #e5e7eb", padding: 8, minHeight: 200 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 8 }}>{DAYS[day.getDay()]} {day.getDate()}</div>
+                      {events.map((e, j) => (
+                        <div key={j} style={{ fontSize: 11, padding: "4px 6px", marginBottom: 4, borderRadius: 4, borderLeft: `3px solid ${COLORS[e.status] || COLORS[e.type] || "#9ca3af"}`, background: "#f9fafb" }}>
+                          <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.headline || e.subject || e.content?.substring(0, 40) || e.templateName || "Event"}</div>
+                          {e.status && <span style={{ fontSize: 9, color: "#9ca3af" }}>{e.status}</span>}
+                        </div>
+                      ))}
+                      {events.length === 0 && <div style={{ fontSize: 11, color: "#d1d5db", textAlign: "center", marginTop: 40 }}>No events</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {viewMode === "list" && (() => {
+            const allDates = Object.keys(dayEvents).filter(d => d >= startDate && d <= endDate).sort();
+            return (
+              <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                {allDates.length === 0 && <div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>No events in this range</div>}
+                {allDates.map(date => (
+                  <div key={date}>
+                    <div style={{ padding: "8px 16px", background: "#f9fafb", fontSize: 12, fontWeight: 600, color: "#374151", borderBottom: "1px solid #f3f4f6" }}>
+                      {new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+                    </div>
+                    {dayEvents[date].map((e, j) => (
+                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderBottom: "1px solid #f3f4f6" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS[e.status] || COLORS[e.type] || "#9ca3af", flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, flex: 1 }}>{e.headline || e.subject || e.content?.substring(0, 60) || e.templateName || "Event"}</span>
+                        {e.status && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f3f4f6", color: "#6b7280" }}>{e.status}</span>}
+                        <span style={{ fontSize: 10, color: "#9ca3af", textTransform: "capitalize" }}>{e.type}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
             );
-          })}
+          })()}
         </div>
+
+        {/* Day detail panel */}
+        {selectedDate && (
+          <div style={{ width: 260, flexShrink: 0, background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", padding: 14, position: "sticky", top: 16, maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600 }}>{new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</h4>
+              <button onClick={() => setSelectedDate(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={14} /></button>
+            </div>
+
+            {selectedEvents.length === 0 && <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", padding: 16 }}>No events this day</p>}
+
+            {/* Articles */}
+            {selectedEvents.filter(e => e.type === "article").length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Articles</p>
+                {selectedEvents.filter(e => e.type === "article").map((a: any) => (
+                  <div key={a.id} style={{ padding: "6px 0", borderBottom: "1px solid #f3f4f6", fontSize: 12 }}>
+                    <div style={{ fontWeight: 500, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.headline}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ padding: "1px 6px", borderRadius: 3, fontSize: 10, background: COLORS[a.status] + "20", color: COLORS[a.status] }}>{a.status}</span>
+                      {a.status === "pending" && <>
+                        <button onClick={() => statusMut.mutate({ id: a.id, status: "approved" })} style={{ background: "none", border: "none", cursor: "pointer", color: "#22c55e", padding: 2 }} title="Approve"><CheckCircle2 size={13} /></button>
+                        <button onClick={() => statusMut.mutate({ id: a.id, status: "rejected" })} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }} title="Reject"><XCircle size={13} /></button>
+                      </>}
+                      {a.status === "published" && a.slug && <a href={`/article/${a.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: "#9ca3af" }}><ExternalLink size={11} /></a>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Social */}
+            {selectedEvents.filter(e => e.type === "social").length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Social</p>
+                {selectedEvents.filter(e => e.type === "social").map((s: any, i: number) => (
+                  <div key={i} style={{ padding: "4px 0", fontSize: 11, color: "#6b7280", borderBottom: "1px solid #f3f4f6" }}>
+                    <span style={{ fontWeight: 500, textTransform: "capitalize" }}>{s.platform}</span> — {s.content?.substring(0, 50)}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Templates */}
+            {selectedEvents.filter(e => e.type === "template").length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Template Slots</p>
+                {selectedEvents.filter(e => e.type === "template").map((t: any, i: number) => (
+                  <div key={i} style={{ padding: "4px 0", fontSize: 11, color: COLORS.templateSlot, borderLeft: "2px dashed " + COLORS.templateSlot, paddingLeft: 8 }}>{t.templateName}</div>
+                ))}
+              </div>
+            )}
+
+            {/* Quick actions */}
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+              <a href="/admin/articles/create" style={{ display: "block", textAlign: "center", padding: "6px 0", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, fontWeight: 600, textDecoration: "none", color: "#374151" }}>+ Create Article</a>
+              <a href="/admin/newsletter" style={{ display: "block", textAlign: "center", padding: "6px 0", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 11, fontWeight: 600, textDecoration: "none", color: "#374151" }}>Schedule Newsletter</a>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Template Legend */}
-      {templates.filter((t: any) => t.schedule_frequency && t.schedule_frequency !== "manual").length > 0 && (
-        <div style={{ marginTop: 12, padding: "12px 16px", background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 8 }}>Template Series</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {templates.filter((t: any) => t.schedule_frequency && t.schedule_frequency !== "manual").map((t: any) => {
-              const filled = templateSlots.filter(s => s.template.id === t.id && s.isFilled).length;
-              const total = templateSlots.filter(s => s.template.id === t.id).length;
-              return (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, border: "1px solid " + (t.schedule_color || "#6366f1"), fontSize: 11 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.schedule_color || "#6366f1" }} />
-                  <span style={{ fontWeight: 500 }}>{t.name}</span>
-                  <span style={{ color: "#6b7280" }}>{filled}/{total}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Article Detail Panel */}
-      {selectedArticle && (
-        <>
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 60 }} onClick={() => setSelectedArticle(null)} />
-          <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 440, maxWidth: "100vw", background: "#fff", zIndex: 70, display: "flex", flexDirection: "column", boxShadow: "-4px 0 20px rgba(0,0,0,0.1)" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>Article Detail</h2>
-              <button onClick={() => setSelectedArticle(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-              {selectedArticle.image_url && (
-                <img src={selectedArticle.image_url} alt="" style={{ width: "100%", borderRadius: 8, marginBottom: 16, objectFit: "cover", maxHeight: 200 }} />
-              )}
-              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
-                  background: selectedArticle.status === "published" ? "#d1fae5" : selectedArticle.status === "pending" ? "#fef3c7" : "#f3f4f6",
-                  color: selectedArticle.status === "published" ? "#065f46" : selectedArticle.status === "pending" ? "#92400e" : "#6b7280" }}>
-                  {selectedArticle.status}
-                </span>
-                {selectedArticle.categoryName && (
-                  <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: "#f3f4f6", color: "#374151" }}>
-                    {selectedArticle.categoryName}
-                  </span>
-                )}
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: "#111827", marginBottom: 8 }}>
-                {selectedArticle.headline || "Untitled"}
-              </h3>
-              <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
-                {(selectedArticle.publishedAt || selectedArticle.createdAt) ? new Date(selectedArticle.publishedAt || selectedArticle.createdAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : ""}
-              </p>
-              {selectedArticle.excerpt && (
-                <div style={{ padding: 12, background: "#f9fafb", borderRadius: 8, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
-                  {selectedArticle.excerpt}
-                </div>
-              )}
-            </div>
-            <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", gap: 8 }}>
-              <a href={"/tenant/articles?article=" + selectedArticle.id}
-                style={{ flex: 1, height: 40, border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff" }}>
-                <Eye size={14} /> View in Articles
-              </a>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Template Slot Panel */}
-      {selectedSlot && (
-        <>
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 60 }} onClick={() => setSelectedSlot(null)} />
-          <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 400, maxWidth: "100vw", background: "#fff", zIndex: 70, display: "flex", flexDirection: "column", boxShadow: "-4px 0 20px rgba(0,0,0,0.1)" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: selectedSlot.template.schedule_color || "#6366f1" }} />
-                  <h2 style={{ fontSize: 16, fontWeight: 700 }}>{selectedSlot.template.name}</h2>
-                </div>
-                <button onClick={() => setSelectedSlot(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={18} /></button>
-              </div>
-              <p style={{ fontSize: 13, color: "#6b7280" }}>
-                Scheduled for {selectedSlot.date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-              </p>
-            </div>
-            <div style={{ flex: 1, padding: 20 }}>
-              {selectedSlot.template.promptTemplate && (
-                <div style={{ padding: 12, background: "#f9fafb", borderRadius: 8, marginBottom: 16 }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", marginBottom: 4 }}>Editorial Formula</p>
-                  <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{selectedSlot.template.promptTemplate?.substring(0, 300)}{selectedSlot.template.promptTemplate?.length > 300 ? "..." : ""}</p>
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={async () => {
-                  setIsGenerating(true);
-                  try {
-                    await generateMut?.mutateAsync?.({ candidateId: 1, templateId: selectedSlot.template.id, categoryId: selectedSlot.template.category_id || selectedSlot.template.categoryId });
-                    setSelectedSlot(null);
-                    articlesQuery.refetch();
-                  } catch {} finally { setIsGenerating(false); }
-                }} disabled={isGenerating}
-                  style={{ width: "100%", height: 44, background: isGenerating ? "#9ca3af" : "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <Zap size={16} /> {isGenerating ? "Generating..." : "Generate Article Now"}
-                </button>
-                <a href={"/admin/articles/create?templateId=" + selectedSlot.template.id}
-                  style={{ width: "100%", height: 44, border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 14, fontWeight: 600, textDecoration: "none", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#fff" }}>
-                  <PenLine size={16} /> Write Manually
-                </a>
-                <button onClick={async () => {
-                  const skipDate = selectedSlot.date.toISOString().split("T")[0];
-                  await skipMut?.mutateAsync?.({ templateId: selectedSlot.template.id, skipDate, licenseId });
-                  setSelectedSlot(null);
-                }} style={{ width: "100%", height: 40, background: "none", border: "none", color: "#9ca3af", fontSize: 13, cursor: "pointer" }}>
-                  Skip This Slot
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </TenantLayout>
   );
 }
