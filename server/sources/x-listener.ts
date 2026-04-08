@@ -7,22 +7,22 @@
  * API tier required: Basic (search/recent endpoint)
  * Trending topics (woeid) requires Pro/Enterprise — not used here.
  *
- * White-label compatible: all config comes from DB settings.
+ * White-label compatible: all config comes from per-license DB settings.
  */
 
 import { TwitterApi } from "twitter-api-v2";
 import { writeRssCandidates, type NewsEventInput } from "./rss-bridge";
-import { getSetting } from "../db";
+import { getLicenseSettingOrGlobal } from "../db";
 
 /**
- * Fetch the user-configured X search queries from DB.
- * Stored as a newline-separated list in the "x_listener_queries" setting.
+ * Fetch the user-configured X search queries from per-license DB settings.
+ * Reads from "x_listening_keywords" (newline-separated list).
  * Returns an empty array if not configured.
  */
-export async function getConfiguredXQueries(): Promise<string[]> {
-  const setting = await getSetting("x_listener_queries");
-  if (!setting?.value?.trim()) return [];
-  return setting.value
+export async function getConfiguredXQueries(licenseId: number): Promise<string[]> {
+  const value = await getLicenseSettingOrGlobal(licenseId, "x_listening_keywords");
+  if (!value?.trim()) return [];
+  return value
     .split("\n")
     .map((q) => q.trim())
     .filter((q) => q.length > 0)
@@ -30,11 +30,26 @@ export async function getConfiguredXQueries(): Promise<string[]> {
 }
 
 /**
- * Check whether the X listener is enabled.
+ * Fetch the user-configured X accounts to monitor from per-license DB settings.
+ * Reads from "x_listening_accounts" (newline-separated list of @handles).
+ * Returns an empty array if not configured.
  */
-export async function isXListenerEnabled(): Promise<boolean> {
-  const setting = await getSetting("x_listener_enabled");
-  return setting?.value !== "false";
+export async function getConfiguredXAccounts(licenseId: number): Promise<string[]> {
+  const value = await getLicenseSettingOrGlobal(licenseId, "x_listening_accounts");
+  if (!value?.trim()) return [];
+  return value
+    .split("\n")
+    .map((a) => a.trim().replace(/^@/, ""))
+    .filter((a) => a.length > 0)
+    .slice(0, 10);
+}
+
+/**
+ * Check whether the X listener is enabled for a specific license.
+ */
+export async function isXListenerEnabled(licenseId: number): Promise<boolean> {
+  const value = await getLicenseSettingOrGlobal(licenseId, "x_listening_enabled");
+  return value === "true";
 }
 
 /** Build an authenticated X client from env vars */
@@ -53,19 +68,24 @@ function getXClient(): TwitterApi | null {
  * Fetch recent tweets matching configured query terms and write them as candidates.
  * Returns the number of new candidates inserted.
  */
-export async function fetchXCandidates(batchDate: string): Promise<number> {
-  // Check if X listener is enabled
-  const enabledSetting = await getSetting("x_listener_enabled");
-  if (enabledSetting?.value === "false") return 0;
+export async function fetchXCandidates(licenseId: number, batchDate: string): Promise<number> {
+  // Check if X listener is enabled for this license
+  const enabled = await isXListenerEnabled(licenseId);
+  if (!enabled) return 0;
 
-  // Get query terms from settings
-  const querySetting = await getSetting("x_listener_queries");
-  const rawQueries = querySetting?.value || "";
-  const queries = rawQueries
-    .split("\n")
-    .map((q) => q.trim())
-    .filter(Boolean);
-  if (queries.length === 0) return 0;
+  // Get keyword queries from per-license settings
+  const queries = await getConfiguredXQueries(licenseId);
+
+  // Get monitored accounts from per-license settings
+  const accounts = await getConfiguredXAccounts(licenseId);
+
+  // Build combined query list: keywords + account-specific searches
+  const allQueries: string[] = [...queries];
+  for (const account of accounts) {
+    allQueries.push(`from:${account}`);
+  }
+
+  if (allQueries.length === 0) return 0;
 
   const client = getXClient();
   if (!client) {
@@ -75,7 +95,7 @@ export async function fetchXCandidates(batchDate: string): Promise<number> {
 
   let totalInserted = 0;
 
-  for (const query of queries) {
+  for (const query of allQueries) {
     try {
       // Search recent tweets — filter out retweets, require English
       const searchQuery = `${query} -is:retweet lang:en`;

@@ -403,7 +403,7 @@ export async function loadEngineSettings(): Promise<XReplyEngineSettings> {
  * 3. Search X for matching tweets (with author filtering)
  * 4. Generate and post replies or quote tweets
  */
-export async function runReplyEngine(): Promise<ReplyResult> {
+export async function runReplyEngine(licenseId?: number): Promise<ReplyResult> {
   // Check if enabled
   const enabledSetting = await db.getSetting("x_reply_enabled");
   if (enabledSetting?.value !== "true") {
@@ -420,6 +420,19 @@ export async function runReplyEngine(): Promise<ReplyResult> {
   }
 
   const remaining = dailyLimit - postedToday;
+
+  // Per-license hourly rate limit (5 replies per hour per license)
+  if (licenseId) {
+    try {
+      const hourlyCount = await db.countXRepliesInLastHour(licenseId);
+      if (hourlyCount >= 5) {
+        console.log(`[X Reply] Rate limit reached for license ${licenseId} — ${hourlyCount} replies in last hour. Skipping.`);
+        return { success: true, repliesGenerated: 0, repliesPosted: 0, error: `Hourly rate limit reached (${hourlyCount}/5)` };
+      }
+    } catch (rateLimitErr: any) {
+      console.warn(`[X Reply] Rate limit check failed (non-fatal): ${rateLimitErr.message}`);
+    }
+  }
   const batchSize = Math.min(remaining, 3); // Post max 3 per cycle to stay safe
 
   // Load engine settings (mode, follower filters, verified-only)
@@ -522,6 +535,7 @@ export async function runReplyEngine(): Promise<ReplyResult> {
         articleHeadline: matchingArticle.headline,
         replyContent,
         replyMode: engineSettings.mode,
+        licenseId,
       });
 
       repliesGenerated++;
@@ -582,7 +596,7 @@ export async function runReplyEngine(): Promise<ReplyResult> {
  * 3. Generate a witty reply linking to a relevant article
  * 4. Post the reply (allowed on Free tier since we were mentioned)
  */
-export async function runMentionsReplyEngine(): Promise<ReplyResult> {
+export async function runMentionsReplyEngine(licenseId?: number): Promise<ReplyResult> {
   // Check if enabled
   const enabledSetting = await db.getSetting("x_reply_enabled");
   if (enabledSetting?.value !== "true") {
@@ -599,6 +613,19 @@ export async function runMentionsReplyEngine(): Promise<ReplyResult> {
   }
 
   const remaining = dailyLimit - postedToday;
+
+  // Per-license hourly rate limit (5 replies per hour per license)
+  if (licenseId) {
+    try {
+      const hourlyCount = await db.countXRepliesInLastHour(licenseId);
+      if (hourlyCount >= 5) {
+        console.log(`[X Reply] Rate limit reached for license ${licenseId} — ${hourlyCount} replies in last hour. Skipping.`);
+        return { success: true, repliesGenerated: 0, repliesPosted: 0, error: `Hourly rate limit reached (${hourlyCount}/5)` };
+      }
+    } catch (rateLimitErr: any) {
+      console.warn(`[X Reply] Rate limit check failed (non-fatal): ${rateLimitErr.message}`);
+    }
+  }
   const batchSize = Math.min(remaining, 5); // Up to 5 mention replies per cycle
 
   // Get X credentials
@@ -761,6 +788,7 @@ export async function runMentionsReplyEngine(): Promise<ReplyResult> {
       articleHeadline: article?.headline ?? undefined,
       replyContent,
       replyMode: "reply",
+      licenseId,
     });
 
     repliesGenerated++;

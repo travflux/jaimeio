@@ -2119,6 +2119,7 @@ export async function insertXReply(data: {
   articleHeadline?: string;
   replyContent?: string;
   replyMode?: string;
+  licenseId?: number;
 }) {
   const db = await getDb();
   if (!db) return null;
@@ -3729,4 +3730,21 @@ export async function updateArticleEnrichmentStatus(
   } catch (err) {
     console.error("[ArticleStatus] Failed to update:", err);
   }
+}
+
+/** Count X replies posted by a specific license in the last hour. Used for per-license rate limiting. */
+export async function countXRepliesInLastHour(licenseId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(xReplies)
+    .where(
+      and(
+        eq(xReplies.licenseId, licenseId),
+        gte(xReplies.createdAt, oneHourAgo)
+      )
+    );
+  return Number(result[0]?.count) || 0;
 }

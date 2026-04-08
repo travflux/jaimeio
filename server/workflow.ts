@@ -1107,7 +1107,7 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
   // v4.0 Phase 3: Fetch X/Twitter search candidates
   try {
     const { fetchXCandidates } = await import("./sources/x-listener");
-    const xInserted = await fetchXCandidates(date);
+    const xInserted = await fetchXCandidates(licenseId!, date);
     if (xInserted > 0) console.log(`  [v4/X] ${xInserted} new X candidates added`);
   } catch (err: any) {
     console.log(`  [v4/X] Warning: ${err.message}`);
@@ -1116,7 +1116,7 @@ export async function runFullPipeline(batchDate?: string, licenseId?: number): P
   // v4.0 Phase 3: Fetch Reddit hot post candidates
   try {
     const { fetchRedditCandidates } = await import("./sources/reddit-listener");
-    const rInserted = await fetchRedditCandidates(date);
+    const rInserted = await fetchRedditCandidates(licenseId!, date);
     if (rInserted > 0) console.log(`  [v4/Reddit] ${rInserted} new Reddit candidates added`);
   } catch (err: any) {
     console.log(`  [v4/Reddit] Warning: ${err.message}`);

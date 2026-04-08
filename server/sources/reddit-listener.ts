@@ -4,11 +4,11 @@
  * Fetches hot posts from configured subreddits via Reddit's public JSON API
  * (no OAuth required for read-only access to public subreddits).
  *
- * White-label compatible: all config comes from DB settings.
+ * White-label compatible: all config comes from per-license DB settings.
  */
 
 import { writeRssCandidates, type NewsEventInput } from "./rss-bridge";
-import { getSetting } from "../db";
+import { getLicenseSettingOrGlobal } from "../db";
 
 interface RedditPost {
   id: string;
@@ -27,18 +27,17 @@ interface RedditPost {
  * Fetch hot posts from configured subreddits and write them as candidates.
  * Returns the number of new candidates inserted.
  */
-export async function fetchRedditCandidates(batchDate: string): Promise<number> {
-  // Check if Reddit listener is enabled
-  const enabledSetting = await getSetting("reddit_listener_enabled");
-  console.log(`[reddit-listener] enabled setting: ${JSON.stringify(enabledSetting?.value)} (raw)`);
-  if (enabledSetting?.value === "false") {
+export async function fetchRedditCandidates(licenseId: number, batchDate: string): Promise<number> {
+  // Check if Reddit listener is enabled for this license
+  const enabledValue = await getLicenseSettingOrGlobal(licenseId, "reddit_listener_enabled");
+  console.log(`[reddit-listener] enabled setting for license ${licenseId}: ${JSON.stringify(enabledValue)} (raw)`);
+  if (enabledValue === "false") {
     console.log("[reddit-listener] disabled — skipping");
     return 0;
   }
 
-  // Get subreddit list from settings
-  const subredditSetting = await getSetting("reddit_listener_subreddits");
-  const rawSubreddits = subredditSetting?.value || "";
+  // Get subreddit list from per-license settings
+  const rawSubreddits = await getLicenseSettingOrGlobal(licenseId, "reddit_listener_subreddits") || "";
   console.log(`[reddit-listener] subreddits raw: ${JSON.stringify(rawSubreddits)}`);
   const subreddits = rawSubreddits
     .split("\n")
