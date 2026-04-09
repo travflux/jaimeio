@@ -434,7 +434,7 @@ export default function TenantDashboardPage() {
               : manyMissingImages ? `${f?.missingImages} published articles missing images. Run an image backfill.`
               : `${f?.pending} articles pending review. Clear the queue to stay on schedule.`;
             const link = poolLow || feedErrors ? "/admin/source-feeds" : "/admin/articles";
-            const linkLabel = poolLow || feedErrors ? "View feeds \u2192" : "Review now \u2192";
+            const linkLabel = poolLow || feedErrors ? "View feeds →" : "Review now →";
             return (
               <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
