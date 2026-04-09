@@ -408,7 +408,7 @@ export default function TenantDashboardPage() {
         </div>
 
         {/* ══════════ RIGHT SIDEBAR — DARK NAVY ══════════ */}
-        <div style={{ width: 280, flexShrink: 0, background: "#0F2D5E", borderRadius: "12px 12px 0 0", padding: "20px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ width: 280, flexShrink: 0, background: "#111827", borderRadius: "12px 12px 0 0", padding: "20px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
           {/* AI Insight */}
           <div style={{ background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.3)", borderRadius: 10, padding: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
@@ -422,18 +422,30 @@ export default function TenantDashboardPage() {
           </div>
 
           {/* Action needed */}
-          {f && f.candidatePoolDepth < 10 && (
-            <div style={{ background: "rgba(45,212,191,0.1)", border: "1px solid rgba(45,212,191,0.2)", borderRadius: 10, padding: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <AlertCircle size={14} color="#2DD4BF" />
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF" }}>Action needed</span>
+          {(() => {
+            const poolLow = (f?.candidatePoolDepth ?? 99) < 10;
+            const manyMissingImages = (f?.missingImages ?? 0) > 5;
+            const pendingPileup = (f?.pending ?? 0) > 10;
+            const feedErrors = (d?.systemHealth?.rssFeedErrors ?? 0) > 0;
+            const hasAlert = poolLow || manyMissingImages || pendingPileup || feedErrors;
+            if (!hasAlert) return null;
+            const msg = poolLow ? `Candidate pool critically low (${f?.candidatePoolDepth} remaining). Add more RSS feeds.`
+              : feedErrors ? `${d?.systemHealth?.rssFeedErrors} RSS feed(s) failing. This reduces your candidate pool.`
+              : manyMissingImages ? `${f?.missingImages} published articles missing images. Run an image backfill.`
+              : `${f?.pending} articles pending review. Clear the queue to stay on schedule.`;
+            const link = poolLow || feedErrors ? "/admin/source-feeds" : "/admin/articles";
+            const linkLabel = poolLow || feedErrors ? "View feeds \u2192" : "Review now \u2192";
+            return (
+              <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <AlertCircle size={14} color="#2DD4BF" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#2DD4BF" }}>Action needed</span>
+                </div>
+                <p style={{ fontSize: 13, color: "#E2E8F0", margin: "0 0 8px", lineHeight: 1.5 }}>{msg}</p>
+                <a href={link} style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>{linkLabel}</a>
               </div>
-              <p style={{ fontSize: 13, color: "#E2E8F0", margin: "0 0 8px", lineHeight: 1.5 }}>
-                Candidate pool low ({f.candidatePoolDepth} remaining). Add more RSS feeds or enable additional sources.
-              </p>
-              <a href="/admin/source-feeds" style={{ fontSize: 12, color: "#2DD4BF", textDecoration: "none" }}>Configure feeds →</a>
-            </div>
-          )}
+            );
+          })()}
 
           {/* System Health */}
           <div>

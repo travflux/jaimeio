@@ -4294,64 +4294,41 @@ export const appRouter = router({
         else socialMap[row.platform].pending += Number(row.count);
       }
 
-      // 7-day byDay with status breakdown
+      // 7-day data, source perf, tips, pending articles, system health — all in parallel
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const byDayRaw = await dbConn.select({ date: sql<string>`DATE(created_at)`, status: articles.status, count: sql<number>`COUNT(*)` })
-        .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo)))
-        .groupBy(sql`DATE(created_at)`, articles.status).catch(() => []);
+      const { selectorCandidates } = await import("../drizzle/schema");
+      const { rssFeedWeights, workflowBatches } = await import("../drizzle/schema");
+      const { getLicenseSettingOrGlobal } = await import("./db");
+
+      const [byDayRaw, sourcePerf, tipsRaw, pendingArticles, providerSettings, rssFeedStats, loopSettingFull, runningBatchResult, blatotatoKey] = await Promise.all([
+        dbConn.select({ date: sql<string>`DATE(created_at)`, status: articles.status, count: sql<number>`COUNT(*)` })
+          .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo)))
+          .groupBy(sql`DATE(created_at)`, articles.status).catch(() => []),
+        dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` })
+          .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), gte(selectorCandidates.createdAt, sevenDaysAgo)))
+          .groupBy(selectorCandidates.sourceType).catch(() => []),
+        (await import("./db")).getLicenseSetting(licenseId!, "ai_dashboard_tips"),
+        dbConn.select({ id: articles.id, headline: articles.headline, createdAt: articles.createdAt, categoryId: articles.categoryId })
+          .from(articles).where(and(eq(articles.licenseId, licenseId), eq(articles.status, "pending")))
+          .orderBy(desc(articles.createdAt)).limit(5),
+        Promise.all([getLicenseSettingOrGlobal(licenseId!, "llm_provider"), getLicenseSettingOrGlobal(licenseId!, "image_provider")]),
+        dbConn.select({ total: sql<number>`COUNT(*)`, failing: sql<number>`SUM(CASE WHEN ${rssFeedWeights.errorCount} > 0 THEN 1 ELSE 0 END)` })
+          .from(rssFeedWeights).where(and(eq(rssFeedWeights.licenseId, licenseId), eq(rssFeedWeights.enabled, true))).catch(() => [{ total: 0, failing: 0 }]),
+        (await import("./db")).getLicenseSetting(licenseId!, "workflow_enabled"),
+        dbConn.select({ id: workflowBatches.id }).from(workflowBatches)
+          .where(and(eq(workflowBatches.licenseId, licenseId), inArray(workflowBatches.status, ['gathering', 'generating'] as any)))
+          .limit(1).catch(() => []),
+        getLicenseSettingOrGlobal(licenseId!, 'blotato_api_key'),
+      ]);
+
+      const [llmProv, imgProv] = providerSettings;
       const byDayMap: Record<string, { published: number; pending: number; rejected: number }> = {};
       for (let i = 6; i >= 0; i--) { const d2 = new Date(Date.now() - i * 86400000); byDayMap[d2.toISOString().split("T")[0]] = { published: 0, pending: 0, rejected: 0 }; }
       for (const r of byDayRaw as any[]) { const key = String(r.date); if (byDayMap[key] && r.status in byDayMap[key]) (byDayMap[key] as any)[r.status] = Number(r.count); }
       const byDay = Object.entries(byDayMap).map(([date, counts]) => ({ date, ...counts }));
-
-      // Source performance
-      const { selectorCandidates } = await import("../drizzle/schema");
-      const sourcePerf = await dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` })
-        .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), gte(selectorCandidates.createdAt, sevenDaysAgo)))
-        .groupBy(selectorCandidates.sourceType).catch(() => []);
       const sourcePerformance = (sourcePerf as any[]).map(r => ({ sourceType: r.sourceType, candidateCount: Number(r.count) }));
-
-      // AI tips from license_settings
-      const tipsRaw = await (await import("./db")).getLicenseSetting(licenseId!, "ai_dashboard_tips");
       let aiTips: string[] = [];
       try { if (tipsRaw?.value) aiTips = JSON.parse(tipsRaw.value); } catch {}
-
-      // Pending articles for review card
-      const pendingArticles = await dbConn
-        .select({ id: articles.id, headline: articles.headline, createdAt: articles.createdAt, categoryId: articles.categoryId })
-        .from(articles)
-        .where(and(eq(articles.licenseId, licenseId), eq(articles.status, "pending")))
-        .orderBy(desc(articles.createdAt))
-        .limit(5);
-
-      // System health
-      const { getLicenseSettingOrGlobal } = await import("./db");
-      const [llmProv, imgProv] = await Promise.all([
-        getLicenseSettingOrGlobal(licenseId!, "llm_provider"),
-        getLicenseSettingOrGlobal(licenseId!, "image_provider"),
-      ]);
-      const { rssFeedWeights } = await import("../drizzle/schema");
-      const rssFeedStats = await dbConn
-        .select({ total: sql<number>`COUNT(*)`, failing: sql<number>`SUM(CASE WHEN ${rssFeedWeights.errorCount} > 0 THEN 1 ELSE 0 END)` })
-        .from(rssFeedWeights)
-        .where(and(eq(rssFeedWeights.licenseId, licenseId), eq(rssFeedWeights.enabled, true)))
-        .catch(() => [{ total: 0, failing: 0 }]);
-      const loopSettingFull = await (await import("./db")).getLicenseSetting(licenseId!, "workflow_enabled");
-
-      // Check if a batch is currently running (status is gathering or generating)
-      const { workflowBatches } = await import('../drizzle/schema');
-      const runningBatchResult = await dbConn
-        .select({ id: workflowBatches.id })
-        .from(workflowBatches)
-        .where(
-          and(
-            eq(workflowBatches.licenseId, licenseId),
-            inArray(workflowBatches.status, ['gathering', 'generating'] as any)
-          )
-        )
-        .limit(1)
-        .catch(() => []);
-      const blatotatoKey = await getLicenseSettingOrGlobal(licenseId!, 'blotato_api_key');
 
       const systemHealth = {
         loopEnabled: loopSettingFull?.value === "true",
