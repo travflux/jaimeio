@@ -4217,7 +4217,6 @@ export const appRouter = router({
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
     getFastSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
-      console.log('[Dashboard] getFastSnapshot licenseId:', ctx.licenseId);
       const { getDb } = await import("./db");
       const { articles, candidates } = await import("../drizzle/schema");
       const { eq, and, or, isNull, sql } = await import("drizzle-orm");
