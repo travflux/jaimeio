@@ -1132,7 +1132,14 @@ export const publicationPages = mysqlTable("publication_pages", {
   licenseId: int("license_id").notNull(),
   pageSlug: varchar("page_slug", { length: 100 }).notNull(),
   title: varchar("title", { length: 500 }),
-  content: text("content"),  // JSON content
+  content: text("content"),
+  status: mysqlEnum("status", ["draft", "published"]).default("published"),
+  template: varchar("template", { length: 50 }).default("custom"),
+  seoTitle: varchar("seo_title", { length: 255 }),
+  seoDescription: varchar("seo_description", { length: 500 }),
+  isSystemPage: boolean("is_system_page").default(false),
+  sortOrder: int("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   licensePageUnique: uniqueIndex("idx_license_page").on(table.licenseId, table.pageSlug),

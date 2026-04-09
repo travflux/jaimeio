@@ -152,13 +152,29 @@ export const pagesRouter = router({
       const db = await getDb();
       if (!db) return { pages: [] };
       const lid = ctx.licenseId!;
-      const rows = await db.select().from(publicationPages).where(eq(publicationPages.licenseId, lid));
-      return { pages: rows.map(r => ({ id: r.id, title: r.title || r.pageSlug, slug: r.pageSlug, content: r.content || "", isPublished: true })) };
+      const rows = await db.select().from(publicationPages).where(eq(publicationPages.licenseId, lid)).orderBy(publicationPages.sortOrder);
+      return { pages: rows.map(r => ({
+        id: r.id, title: r.title || r.pageSlug, slug: r.pageSlug,
+        content: r.content || "", status: r.status || "published",
+        template: r.template || "custom", isSystemPage: !!r.isSystemPage,
+        seoTitle: r.seoTitle || null, seoDescription: r.seoDescription || null,
+        sortOrder: r.sortOrder || 0,
+      }))};
     }),
 
   // Tenant-aware save (create or update)
   save: tenantOrAdminProcedure
-    .input(z.object({ id: z.number().optional(), title: z.string(), slug: z.string(), content: z.string(), isPublished: z.boolean().default(true) }))
+    .input(z.object({
+      id: z.number().optional(),
+      title: z.string(),
+      slug: z.string(),
+      content: z.string(),
+      status: z.enum(["draft", "published"]).default("published"),
+      template: z.string().default("custom"),
+      seoTitle: z.string().optional(),
+      seoDescription: z.string().optional(),
+      isPublished: z.boolean().default(true),
+    }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -166,12 +182,32 @@ export const pagesRouter = router({
       const [existing] = await db.select().from(publicationPages)
         .where(and(eq(publicationPages.licenseId, lid), eq(publicationPages.pageSlug, input.slug)))
         .limit(1);
+      const data = {
+        title: input.title,
+        content: input.content,
+        status: input.status as any,
+        template: input.template,
+        seoTitle: input.seoTitle ?? null,
+        seoDescription: input.seoDescription ?? null,
+      };
       if (existing) {
-        await db.update(publicationPages).set({ title: input.title, content: input.content }).where(eq(publicationPages.id, existing.id));
+        await db.update(publicationPages).set(data).where(eq(publicationPages.id, existing.id));
       } else {
-        await db.insert(publicationPages).values({ licenseId: lid, pageSlug: input.slug, title: input.title, content: input.content });
+        await db.insert(publicationPages).values({ ...data, licenseId: lid, pageSlug: input.slug });
       }
       return { success: true };
+    }),
+
+  checkSlug: tenantOrAdminProcedure
+    .input(z.object({ slug: z.string(), excludeId: z.number().optional() }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) return { available: false };
+      const lid = ctx.licenseId!;
+      const rows = await db.select({ id: publicationPages.id }).from(publicationPages)
+        .where(and(eq(publicationPages.licenseId, lid), eq(publicationPages.pageSlug, input.slug)));
+      const taken = rows.filter(r => input.excludeId ? r.id !== input.excludeId : true);
+      return { available: taken.length === 0 };
     }),
 
   // Delete (custom pages only)
