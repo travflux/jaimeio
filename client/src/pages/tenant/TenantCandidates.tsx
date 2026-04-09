@@ -41,6 +41,7 @@ export default function TenantCandidates() {
   });
 
   const rejectMut = trpc.selectorCandidates.ignore.useMutation({ onSuccess: () => refetch() });
+  const reactivateMut = trpc.selectorCandidates.reactivate.useMutation({ onSuccess: () => { refetch(); countsQuery.refetch(); toast.success("Candidate re-activated"); }, onError: (e: any) => toast.error(e.message) });
 
   const handleGen = (id: number) => { setGeneratingIds(p => new Set(p).add(id)); genMut.mutate({ candidateId: id }); };
 
@@ -166,6 +167,14 @@ export default function TenantCandidates() {
                       <button onClick={() => handleGen(c.id)} disabled={isGen}
                         style={{ width: 110, padding: "4px 12px", borderRadius: 6, border: "none", background: "#111827", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                         {isGen ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Generating</> : <><Sparkles size={11} /> Generate</>}
+                      </button>
+                    </div>
+                  )}
+                  {statusTab === "rejected" && (
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                      <button onClick={() => reactivateMut.mutate({ candidateId: c.id })} disabled={reactivateMut.isPending}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #2dd4bf", background: "#f0fdfa", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#0d9488", display: "flex", alignItems: "center", gap: 4 }}>
+                        <RefreshCw size={11} /> Re-evaluate
                       </button>
                     </div>
                   )}

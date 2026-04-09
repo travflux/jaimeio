@@ -422,37 +422,40 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a href={`/admin/articles/${article.id}`} style={{ padding: "8px 14px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, color: "#374151", textDecoration: "none", fontWeight: 500, display: "inline-flex", alignItems: "center" }}>Edit</a>
-          </div>
-          <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
-            style={{ width: "100%", height: 38, background: dirty ? "#2dd4bf" : "#f9fafb", color: dirty ? "#0f2d5e" : "#9ca3af", border: "1px solid", borderColor: dirty ? "#2dd4bf" : "#e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: dirty ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
-            {saveMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Changes"}
-          </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            {article.status === "published" ? (
-              <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
-                style={{ flex: 1, height: 44, background: "#111827", color: "#fff", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                {distributeMut.isPending ? <><Loader2 size={16} className="animate-spin" /> Distributing...</> : <><Share2 size={16} /> Distribute to Social</>}
+        {/* Footer — all buttons on one row */}
+        <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
+          {article.status === "published" ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
+              <a href={`/admin/articles/${article.id}`} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#374151", textDecoration: "none", fontWeight: 500, flexShrink: 0 }}>Edit</a>
+              <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: dirty ? "#374151" : "#9ca3af", background: "#fff", cursor: dirty ? "pointer" : "not-allowed", flexShrink: 0 }}>
+                {saveMut.isPending ? "Saving..." : "Save"}
               </button>
-            ) : (
-              <>
-                <button onClick={() => approveMut.mutate({ id: article.id, status: "published" })} disabled={approveMut.isPending}
-                  style={{ flex: 1, height: 44, background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-                  {approveMut.isPending ? "Publishing..." : "Approve & Publish"}
-                </button>
-                <button onClick={() => rejectMut.mutate({ id: article.id, status: "rejected" })} disabled={rejectMut.isPending}
-                  style={{ width: 90, height: 44, background: "#fff", color: "#ef4444", border: "1px solid #ef4444", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                  Reject
-                </button>
-              </>
-            )}
-          </div>
+              <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #7F77DD", borderRadius: 6, fontSize: 12, color: "#7F77DD", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                {distributeMut.isPending ? "..." : "Distribute"}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
+              <a href={`/admin/articles/${article.id}`} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#374151", textDecoration: "none", fontWeight: 500, flexShrink: 0 }}>Edit</a>
+              <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: dirty ? "#374151" : "#9ca3af", background: "#fff", cursor: dirty ? "pointer" : "not-allowed", flexShrink: 0 }}>
+                {saveMut.isPending ? "Saving..." : "Save"}
+              </button>
+              <button onClick={() => approveMut.mutate({ id: article.id, status: "published" })} disabled={approveMut.isPending}
+                style={{ padding: "5px 10px", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "#2dd4bf", color: "#0f2d5e", cursor: "pointer", flexShrink: 0 }}>
+                {approveMut.isPending ? "..." : "Approve"}
+              </button>
+              <button onClick={() => rejectMut.mutate({ id: article.id, status: "rejected" })} disabled={rejectMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #FCA5A5", borderRadius: 6, fontSize: 12, color: "#EF4444", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                Reject
+              </button>
+            </div>
+          )}
 
           <button onClick={() => { if (confirm("Permanently delete this article? This cannot be undone.")) deleteMut.mutate({ articleId: article.id }); }} disabled={deleteMut.isPending}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6 }}>
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6, marginTop: 8 }}>
             <TrashIcon size={11} /> {deleteMut.isPending ? "Deleting..." : "Permanently Delete Article"}
           </button>
         </div>

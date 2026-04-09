@@ -4,14 +4,13 @@ import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { Loader2, Sparkles, PenLine, Image as ImageIcon, X } from "lucide-react";
+import { Loader2, Image as ImageIcon, X } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
 export default function TenantCreateArticle() {
   const { licenseId, settings } = useTenantContext();
   const [, navigate] = useLocation();
-  const [tab, setTab] = useState<"write" | "generate">("write");
 
   // Shared data
   const catsQuery = trpc.categories.list.useQuery();
@@ -31,12 +30,6 @@ export default function TenantCreateArticle() {
   const [isEditorsPick, setIsEditorsPick] = useState(false);
   const [isTrending, setIsTrending] = useState(false);
 
-  // Generate tab state
-  const [topic, setTopic] = useState("");
-  const [genCategoryId, setGenCategoryId] = useState<number | undefined>();
-  const [genTemplateId, setGenTemplateId] = useState<number | undefined>();
-  const [generating, setGenerating] = useState(false);
-
   // Tiptap editor
   const editor = useEditor({
     extensions: [StarterKit],
@@ -50,11 +43,6 @@ export default function TenantCreateArticle() {
     onError: (e: any) => { toast.error("Failed: " + e.message); setSaving(false); },
   });
 
-  const generateMut = trpc.workflow.generateFromTopic.useMutation({
-    onSuccess: (data: any) => { toast.success("Article generated: " + (data.headline || "")); navigate("/admin/articles/" + data.articleId); },
-    onError: (e: any) => { toast.error("Generation failed: " + e.message); setGenerating(false); },
-  });
-
   const handleCreate = () => {
     if (!headline.trim()) { toast.error("Headline is required"); return; }
     setSaving(true);
@@ -62,28 +50,10 @@ export default function TenantCreateArticle() {
     createMut.mutate({ headline, subheadline, body, slug, status, categoryId, featuredImage: imageUrl || undefined, isEditorsPick: isEditorsPick || undefined, isTrending: isTrending || undefined });
   };
 
-  const handleGenerate = () => {
-    if (!topic.trim() || topic.length < 10) { toast.error("Please describe the topic in at least 10 characters"); return; }
-    setGenerating(true);
-    generateMut.mutate({ topic, categoryId: genCategoryId, templateId: genTemplateId });
-  };
-
   return (
-    <TenantLayout pageTitle="Create Article" pageSubtitle="Write or generate a new article" section="Content">
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
-        <button onClick={() => setTab("write")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: "1px solid", cursor: "pointer",
-          borderColor: tab === "write" ? "#111827" : "#e5e7eb", background: tab === "write" ? "#111827" : "#fff", color: tab === "write" ? "#fff" : "#6b7280" }}>
-          <PenLine size={14} /> Write
-        </button>
-        <button onClick={() => setTab("generate")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: "1px solid", cursor: "pointer",
-          borderColor: tab === "generate" ? "#111827" : "#e5e7eb", background: tab === "generate" ? "#111827" : "#fff", color: tab === "generate" ? "#fff" : "#6b7280" }}>
-          <Sparkles size={14} /> Generate
-        </button>
-      </div>
-
-      {/* ═══ WRITE TAB ═══ */}
-      {tab === "write" && (
+    <TenantLayout pageTitle="Create Article" pageSubtitle="Create a new article" section="Content">
+      {/* ═══ WRITE ═══ */}
+      {(() => { /* Write content */ return (
         <div style={{ display: "flex", gap: 20 }}>
           {/* Left column */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -192,50 +162,7 @@ export default function TenantCreateArticle() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* ═══ GENERATE TAB ═══ */}
-      {tab === "generate" && (
-        <div style={{ maxWidth: 640 }}>
-          <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 8 }}>What should this article be about?</label>
-            <textarea value={topic} onChange={e => setTopic(e.target.value)} rows={4}
-              placeholder="e.g. 'The rise of ultra-marathon racing in volcanic terrain — focus on gear selection and safety'"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, resize: "vertical" }} />
-            <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Be specific. The more context you give, the better the output.</p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Template</label>
-              <select value={genTemplateId ?? ""} onChange={e => setGenTemplateId(e.target.value ? Number(e.target.value) : undefined)}
-                style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}>
-                <option value="">Use publication defaults</option>
-                {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-            <div style={{ background: "#fff", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Category</label>
-              <select value={genCategoryId ?? ""} onChange={e => setGenCategoryId(e.target.value ? Number(e.target.value) : undefined)}
-                style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 12 }}>
-                <option value="">Let AI choose</option>
-                {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ background: "#f9fafb", borderRadius: 8, padding: 14, border: "1px solid #e5e7eb", marginBottom: 16, fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>
-            The AI will generate a full article using your publication's voice settings, brand vocabulary, and editorial stance.
-            SEO metadata, GEO optimization, and a featured image will be added automatically in the background.
-          </div>
-
-          <button onClick={handleGenerate} disabled={generating || topic.length < 10}
-            style={{ width: "100%", height: 44, borderRadius: 6, background: generating || topic.length < 10 ? "#9ca3af" : "#2dd4bf", color: "#0f2d5e", border: "none", fontSize: 14, fontWeight: 700, cursor: generating ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            {generating ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : <><Sparkles size={16} /> Generate Article →</>}
-          </button>
-          {generating && <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", marginTop: 8 }}>This may take 10-30 seconds...</p>}
-        </div>
-      )}
+      ); })()}
 
       <style>{`
         .tiptap-create .ProseMirror { min-height: 400px; padding: 16px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 6px 6px; font-size: 14px; line-height: 1.7; outline: none; }

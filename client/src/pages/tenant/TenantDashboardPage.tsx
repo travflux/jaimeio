@@ -101,6 +101,11 @@ export default function TenantDashboardPage() {
   const c = comms.data as any;
   const m = monet.data as any;
 
+  // Dashboard debug logging
+  if (typeof window !== 'undefined') {
+    console.log('[Dashboard] licenseId:', licenseId, 'fast:', fast.status, fast.data ? 'has data' : 'no data');
+  }
+
   const byDay = (d?.articles?.byDay ?? []).map((r: any) => ({
     day: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }),
     Published: r.published ?? 0, Pending: r.pending ?? 0, Rejected: r.rejected ?? 0,

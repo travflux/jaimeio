@@ -369,6 +369,15 @@ export const appRouter = router({
         await dbConn.execute(ctx.licenseId ? sqlFn`UPDATE selector_candidates SET status = 'rejected' WHERE id = ${input.candidateId} AND license_id = ${ctx.licenseId}` : sqlFn`UPDATE selector_candidates SET status = 'rejected' WHERE id = ${input.candidateId}`);
         return { success: true };
       }),
+    reactivate: tenantOrAdminProcedure
+      .input(z.object({ candidateId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { sql: sqlFn } = await import("drizzle-orm");
+        await dbConn.execute(ctx.licenseId ? sqlFn`UPDATE selector_candidates SET status = 'pending' WHERE id = ${input.candidateId} AND license_id = ${ctx.licenseId}` : sqlFn`UPDATE selector_candidates SET status = 'pending' WHERE id = ${input.candidateId}`);
+        return { success: true };
+      }),
   }),
   templates: router({
     list: tenantOrAdminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input, ctx }) => {

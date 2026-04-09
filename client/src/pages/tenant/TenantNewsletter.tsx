@@ -81,10 +81,17 @@ function buildEmailHtml(opts: {
     )
     : "";
 
+  // Normalize social URLs to avoid double-prefix issues
+  const normSocial = (raw: string, platform: string) => {
+    let url = raw.trim().replace(/^(https?:\/\/)+/gi, "").replace(/^\/+/, "");
+    if (url.includes(".")) return "https://" + url;
+    const domains: Record<string, string> = { instagram: "instagram.com", twitter: "x.com", x: "x.com", linkedin: "linkedin.com/in", facebook: "facebook.com" };
+    return "https://" + (domains[platform] || platform + ".com") + "/" + url.replace("@", "");
+  };
   const socialLinks = [
-    instagram ? '<a href="https://instagram.com/' + instagram.replace("@", "") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">Instagram</a>' : "",
-    twitterX ? '<a href="https://x.com/' + twitterX.replace("@", "") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">X</a>' : "",
-    linkedin ? '<a href="' + linkedin + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">LinkedIn</a>' : "",
+    instagram ? '<a href="' + normSocial(instagram, "instagram") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">Instagram</a>' : "",
+    twitterX ? '<a href="' + normSocial(twitterX, "x") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">X</a>' : "",
+    linkedin ? '<a href="' + normSocial(linkedin, "linkedin") + '" style="color:#9ca3af;text-decoration:none;margin:0 6px;font-size:12px;">LinkedIn</a>' : "",
   ].filter(Boolean).join(" &middot; ");
 
   const logoBlock = logoUrl
@@ -221,7 +228,7 @@ export default function TenantNewsletter() {
 
   const currentHtml = buildEmailHtml({
     siteName: settings?.brand_site_name || settings?.business_name || "Publication",
-    websiteUrl: settings?.website_url || "https://example.com",
+    websiteUrl: settings?.website_url || ("https://" + (typeof window !== "undefined" ? window.location.hostname : "example.com")),
     logoUrl: settings?.brand_logo_light_url || "",
     primaryColor: settings?.brand_color_primary || "#2dd4bf",
     businessName: settings?.business_name || "",
