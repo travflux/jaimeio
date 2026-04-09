@@ -246,7 +246,6 @@ function Router() {
           <Route path="/admin/design" component={TenantDesignTheme} />
           <Route path="/admin/publishing" component={TenantPublishing} />
           <Route path="/admin/image-settings" component={TenantImageSettings} />
-          <Route path="/admin/integrations" component={TenantIntegrations} />
           <Route path="/admin/articles/:id" component={AdminArticleEditor} />
           <Route path="/admin/branding" component={TenantBranding} />
           <Route path="/admin/billing" component={TenantBilling} />
@@ -277,7 +276,6 @@ function Router() {
           <Route path="/admin/distribution" component={TenantSocialQueue} />
           <Route path="/admin/post-queue" component={TenantPostQueue} />
           <Route path="/admin/social-performance" component={TenantSocialPerformance} />
-          <Route path="/admin/revenue" component={TenantRevenue} />
           <Route path="/admin/monetization" component={TenantMonetizationSettings} />
           <Route path="/admin/adsense" component={TenantAdSense} />
           <Route path="/admin/amazon" component={TenantAmazon} />
@@ -288,7 +286,6 @@ function Router() {
           <Route path="/admin/ticket" component={TenantTicket} />
           <Route path="/admin/white-label" component={TenantWhiteLabel} />
           <Route path="/admin/clients" component={ResellerMissionControl} />
-          <Route path="/admin/settings" component={TenantSettings} />
           <Route path="/admin/setup-wizard" component={TenantSetup} />
         </>
       )}

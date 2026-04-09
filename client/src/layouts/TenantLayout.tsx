@@ -50,9 +50,6 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: Sparkles, label: "Writing & Voice", href: "/admin/content-engine" },
     { icon: Image, label: "Image Generation", href: "/admin/image-settings" },
     { icon: TrendingUp, label: "Production Loop", href: "/admin/workflow" },
-  ]},
-  { label: "PUBLISHING", key: "publishing", icon: Send, items: [
-    { icon: Settings, label: "Workflow Settings", href: "/admin/publishing" },
     { icon: Share2, label: "Distribution", href: "/admin/distribution" },
     { icon: Search, label: "SEO & GEO", href: "/admin/seo" },
   ]},
@@ -67,7 +64,6 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: PieChart, label: "Tags & Categories", href: "/admin/categories" },
   ]},
   { label: "MONETIZATION", key: "monetization", icon: DollarSign, items: [
-    { icon: BarChart2, label: "Revenue", href: "/admin/revenue" },
     { icon: DollarSign, label: "Sponsorship", href: "/admin/sponsorship" },
     { icon: DollarSign, label: "AdSense", href: "/admin/adsense" },
     { icon: DollarSign, label: "Amazon", href: "/admin/amazon" },
@@ -76,7 +72,6 @@ const NAV_SECTIONS: NavSection[] = [
   { label: "ACCOUNT", key: "account", icon: Users, items: [
     { icon: Users, label: "Users", href: "/admin/users" },
     { icon: CreditCard, label: "Billing", href: "/admin/billing" },
-    { icon: Settings, label: "Integrations", href: "/admin/integrations" },
     { icon: Settings, label: "API Access", href: "/admin/api-access" },
     { icon: LifeBuoy, label: "Support", href: "/admin/ticket" },
   ]},
