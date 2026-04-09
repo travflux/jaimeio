@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MessageSquare, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
+import { useTenantContext } from "@/hooks/useTenantContext";
 
 type TemplateType = "newsletter_url" | "breaking_news" | "custom";
 
@@ -45,6 +46,20 @@ const TYPE_COLORS: Record<TemplateType, string> = {
 const VARIABLES = ["{site_name}", "{newsletter_url}", "{article_title}", "{site_url}"];
 
 export default function TenantSMS() {
+  const { licenseId, settings } = useTenantContext();
+  const [showSmsConfig, setShowSmsConfig] = useState(false);
+  const [smsConfig, setSmsConfig] = useState({ sms_enabled: '', twilio_account_sid: '', twilio_auth_token: '', twilio_from_number: '' });
+  const saveSmsConfigMut = trpc.licenseSettings.setBulk.useMutation({ onSuccess: () => toast.success("SMS settings saved") });
+
+  useEffect(() => {
+    if (settings) setSmsConfig({
+      sms_enabled: settings.sms_enabled || 'false',
+      twilio_account_sid: settings.twilio_account_sid || '',
+      twilio_auth_token: settings.twilio_auth_token || '',
+      twilio_from_number: settings.twilio_from_number || '',
+    });
+  }, [settings]);
+
   const [editor, setEditor] = useState<EditorState | null>(null);
   const utils = trpc.useUtils();
 
@@ -123,6 +138,44 @@ export default function TenantSMS() {
         {VARIABLES.map(v => (
           <code key={v} style={{ fontSize: 11, background: "#e2e8f0", color: "#0f172a", padding: "2px 8px", borderRadius: 4, fontFamily: "monospace" }}>{v}</code>
         ))}
+      </div>
+
+
+      {/* SMS Settings — collapsible */}
+      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: 16, overflow: "hidden" }}>
+        <button onClick={() => setShowSmsConfig(!showSmsConfig)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "none", border: "none", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>SMS Settings</span>
+          </div>
+          <span style={{ fontSize: 12, color: "#9ca3af" }}>{showSmsConfig ? "\u25be" : "\u25b8"} {smsConfig.sms_enabled === "true" ? "Enabled" : "Disabled"}</span>
+        </button>
+        {showSmsConfig && (
+          <div style={{ padding: "0 16px 16px", borderTop: "1px solid #f3f4f6" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+              <div><div style={{ fontSize: 13, fontWeight: 500 }}>Enable SMS</div></div>
+              <button onClick={() => setSmsConfig(p => ({ ...p, sms_enabled: p.sms_enabled === "true" ? "false" : "true" }))}
+                style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: smsConfig.sms_enabled === "true" ? "#2dd4bf" : "#d1d5db", position: "relative" }}>
+                <span style={{ position: "absolute", top: 2, left: smsConfig.sms_enabled === "true" ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.15s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+              </button>
+            </div>
+            {smsConfig.sms_enabled === "true" && [
+              { key: "twilio_account_sid", label: "Twilio Account SID", type: "text", placeholder: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+              { key: "twilio_auth_token", label: "Twilio Auth Token", type: "password", placeholder: "Your auth token" },
+              { key: "twilio_from_number", label: "From Number", type: "text", placeholder: "+1234567890" },
+            ].map(f => (
+              <div key={f.key} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>{f.label}</label>
+                <input type={f.type} value={(smsConfig as any)[f.key] || ""} onChange={e => setSmsConfig(p => ({ ...p, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: f.type === "password" ? "monospace" : "inherit" }} />
+              </div>
+            ))}
+            <button onClick={() => { if (licenseId) saveSmsConfigMut.mutate({ licenseId, settings: smsConfig }); }}
+              disabled={saveSmsConfigMut.isPending}
+              style={{ marginTop: 8, padding: "8px 16px", background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              {saveSmsConfigMut.isPending ? "Saving..." : "Save SMS Settings"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Inline editor */}

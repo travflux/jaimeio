@@ -243,7 +243,7 @@ function Router() {
           <Route path="/admin/articles/create" component={TenantCreateArticle} />
           <Route path="/admin/generator" component={TenantAIGenerator} />
           <Route path="/admin/content-engine" component={TenantContentEngine} />
-          <Route path="/admin/design" component={TenantDesignTheme} />
+          <Route path="/admin/design">{() => { window.location.href = "/admin/branding"; return null; }}</Route>
           <Route path="/admin/publishing" component={TenantPublishing} />
           <Route path="/admin/image-settings" component={TenantImageSettings} />
           <Route path="/admin/articles/:id" component={AdminArticleEditor} />

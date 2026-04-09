@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Mail, ArrowLeft, Send, Loader2, Users, Eye, MousePointerClick, CheckCircle2, AlertCircle } from "lucide-react";
+import { Mail, ArrowLeft, Send, Loader2, Users, Eye, MousePointerClick, CheckCircle2, AlertCircle, Settings } from "lucide-react";
 import { toast } from "sonner";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
@@ -143,9 +143,31 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function TenantNewsletter() {
-  const { settings } = useTenantContext();
+  const { licenseId, settings } = useTenantContext();
 
   const [view, setView] = useState<"list" | "builder">("list");
+
+  const [showEmailSettings, setShowEmailSettings] = useState(false);
+  const [emailSettings, setEmailSettings] = useState({
+    resend_api_key: settings?.resend_api_key || '',
+    resend_from_email: settings?.resend_from_email || '',
+    resend_from_name: settings?.resend_from_name || '',
+    resend_segment_id: settings?.resend_segment_id || '',
+  });
+  const saveEmailMut = trpc.licenseSettings.setBulk.useMutation({
+    onSuccess: () => toast.success("Email settings saved"),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  useEffect(() => {
+    if (settings) setEmailSettings({
+      resend_api_key: settings.resend_api_key || '',
+      resend_from_email: settings.resend_from_email || '',
+      resend_from_name: settings.resend_from_name || '',
+      resend_segment_id: settings.resend_segment_id || '',
+    });
+  }, [settings]);
+
 
   // Builder state
   const [subject, setSubject] = useState("");
@@ -260,6 +282,40 @@ export default function TenantNewsletter() {
             <Mail size={14} /> Compose Newsletter
           </button>
         }>
+
+
+        {/* Email Settings — collapsible */}
+        <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: 16, overflow: "hidden" }}>
+          <button onClick={() => setShowEmailSettings(!showEmailSettings)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "none", border: "none", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Settings size={14} color="#6b7280" />
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Email Settings</span>
+            </div>
+            <span style={{ fontSize: 12, color: "#9ca3af" }}>{showEmailSettings ? "\u25be" : "\u25b8"} {emailSettings.resend_from_email || "Not configured"}</span>
+          </button>
+          {showEmailSettings && (
+            <div style={{ padding: "0 16px 16px", borderTop: "1px solid #f3f4f6" }}>
+              {[
+                { key: "resend_api_key", label: "Resend API Key", type: "password", placeholder: "re_xxxxxxxxxx", help: "Get from resend.com/api-keys" },
+                { key: "resend_from_email", label: "From Email", type: "email", placeholder: "hello@yourpublication.com" },
+                { key: "resend_from_name", label: "From Name", type: "text", placeholder: "Your Publication Name" },
+                { key: "resend_segment_id", label: "Segment ID", type: "text", placeholder: "UUID from Resend Contacts", help: "Find in Resend → Contacts → Segments" },
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: 10, marginTop: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>{f.label}</label>
+                  <input type={f.type} value={(emailSettings as any)[f.key] || ""} onChange={e => setEmailSettings(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: f.type === "password" ? "monospace" : "inherit" }} />
+                  {f.help && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{f.help}</div>}
+                </div>
+              ))}
+              <button onClick={() => { if (licenseId) saveEmailMut.mutate({ licenseId, settings: emailSettings }); }}
+                disabled={saveEmailMut.isPending}
+                style={{ marginTop: 8, padding: "8px 16px", background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                {saveEmailMut.isPending ? "Saving..." : "Save Email Settings"}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Stats bar */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>

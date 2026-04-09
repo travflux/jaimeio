@@ -59,7 +59,6 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
   { label: "DESIGN", key: "design", icon: Settings, items: [
     { icon: Settings, label: "Branding", href: "/admin/branding" },
-    { icon: Settings, label: "Theme", href: "/admin/design" },
     { icon: FileText, label: "Pages", href: "/admin/pages" },
     { icon: PieChart, label: "Tags & Categories", href: "/admin/categories" },
   ]},

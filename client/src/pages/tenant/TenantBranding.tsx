@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
+import { HelpCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const HEADING_FONTS = ["Playfair Display","Cormorant Garamond","Merriweather","Lora","Libre Baskerville","EB Garamond","Crimson Text","DM Serif Display","Fraunces","Bodoni Moda","Spectral","Cinzel","Abril Fatface","Josefin Slab","Arvo"];
 const BODY_FONTS = ["Inter","DM Sans","Nunito","Open Sans","Lato","Poppins","Raleway","Source Sans Pro","Work Sans","Mulish","Outfit","Plus Jakarta Sans","Roboto","Montserrat","Jost"];
@@ -24,6 +26,33 @@ function loadFont(font: string) {
   link.rel = "stylesheet";
   link.href = `https://fonts.googleapis.com/css2?family=${font.replace(/\s/g, "+")}&display=swap`;
   document.head.appendChild(link);
+}
+
+
+function BrandingTip({ text }: { text: string }) {
+  const [v, setV] = useState(false);
+  return (
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <span style={{ color: "#9ca3af", cursor: "pointer", marginLeft: 4, fontSize: 13 }}
+        onMouseEnter={() => setV(true)} onMouseLeave={() => setV(false)} onClick={() => setV(x => !x)}>&#9432;</span>
+      {v && <span style={{ position: "absolute", left: 20, top: 0, zIndex: 50, width: 260, background: "#fff", color: "#374151", fontSize: 12, borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #e5e7eb", padding: 12, lineHeight: 1.5, pointerEvents: "auto" }}
+        onMouseEnter={() => setV(true)} onMouseLeave={() => setV(false)}>{text}</span>}
+    </span>
+  );
+}
+
+function BrandingToggle({ label, desc, tooltip, checked, onChange }: { label: string; desc: string; tooltip: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center" }}>{label}<BrandingTip text={tooltip} /></div>
+        <div style={{ fontSize: 11, color: "#9ca3af" }}>{desc}</div>
+      </div>
+      <button onClick={() => onChange(!checked)} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: checked ? "#2dd4bf" : "#d1d5db", position: "relative", flexShrink: 0 }}>
+        <span style={{ position: "absolute", top: 2, left: checked ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.15s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+      </button>
+    </div>
+  );
 }
 
 export default function TenantBranding() {
@@ -175,6 +204,34 @@ export default function TenantBranding() {
             {field.note && <p style={{ fontSize: 11, color: "#d97706", marginTop: 4 }}>&#9888; {field.note}</p>}
           </div>
         ))}
+      </div>
+
+
+      {/* Masthead Layout */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Masthead Layout</h3>
+        <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>Controls for the top navigation area</p>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center" }}>Logo Position</label>
+          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>{["left","center","right"].map(v => (
+            <button key={v} onClick={() => update("masthead_logo_position", v)} style={{ padding: "6px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "1px solid", cursor: "pointer", textTransform: "capitalize" as const, borderColor: (s.masthead_logo_position || "center") === v ? "#2dd4bf" : "#e5e7eb", background: (s.masthead_logo_position || "center") === v ? "#f0fdfa" : "#fff", color: (s.masthead_logo_position || "center") === v ? "#0d9488" : "#6b7280" }}>{v}</button>
+          ))}</div>
+        </div>
+        <BrandingToggle label="Show Tagline" desc="Tagline text below publication name" tooltip="Show or hide the tagline in the masthead." checked={s.masthead_show_tagline !== "false"} onChange={v => update("masthead_show_tagline", v ? "true" : "false")} />
+        <BrandingToggle label="Show Date" desc="Current date in the masthead" tooltip="Common in news publications." checked={s.masthead_show_date !== "false"} onChange={v => update("masthead_show_date", v ? "true" : "false")} />
+        <BrandingToggle label="Show Search" desc="Search icon in navigation" tooltip="Search icon in the masthead nav bar." checked={s.masthead_show_search !== "false"} onChange={v => update("masthead_show_search", v ? "true" : "false")} />
+        <BrandingToggle label="Breaking News Ticker" desc="Scrolling headline ticker" tooltip="Scrolling ticker with recent headlines. Disable for cleaner minimal designs." checked={s.breaking_ticker_enabled !== "false"} onChange={v => update("breaking_ticker_enabled", v ? "true" : "false")} />
+      </div>
+
+      {/* Homepage Sections */}
+      <div style={{ background: "#fff", borderRadius: 8, padding: 20, border: "1px solid #e5e7eb", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Homepage Sections</h3>
+        <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>Toggle which sections appear on your homepage</p>
+        <BrandingToggle label="Hero Article" desc="Large featured article at the top" tooltip="The large featured article at the top of the homepage." checked={s.homepage_show_hero !== "false"} onChange={v => update("homepage_show_hero", v ? "true" : "false")} />
+        <BrandingToggle label="Latest News Grid" desc="Grid of recent articles" tooltip="The grid of recent articles below the hero." checked={s.homepage_show_grid !== "false"} onChange={v => update("homepage_show_grid", v ? "true" : "false")} />
+        <BrandingToggle label="Sidebar" desc="Right sidebar with newsletter and most-read" tooltip="Disable for a full-width layout." checked={s.homepage_show_sidebar !== "false"} onChange={v => update("homepage_show_sidebar", v ? "true" : "false")} />
+        <BrandingToggle label="Newsletter Bar" desc="Email signup bar above footer" tooltip="Email signup bar above the footer." checked={s.homepage_show_newsletter_bar !== "false"} onChange={v => update("homepage_show_newsletter_bar", v ? "true" : "false")} />
+        <BrandingToggle label="Trending Section" desc="Currently trending articles" tooltip="Section showing trending articles." checked={s.homepage_show_trending !== "false"} onChange={v => update("homepage_show_trending", v ? "true" : "false")} />
       </div>
 
       {/* Social Media Links */}

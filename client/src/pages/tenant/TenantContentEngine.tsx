@@ -197,6 +197,26 @@ export default function TenantContentEngine() {
             </div>
           ))}
         </div>
+
+        {/* API Key for selected provider */}
+        {s.llm_provider && s.llm_provider !== "auto" && (
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>
+              {s.llm_provider === "anthropic" ? "Anthropic" : s.llm_provider === "openai" ? "OpenAI" : s.llm_provider === "gemini" ? "Google" : "Groq"} API Key
+            </label>
+            <input
+              type="password"
+              value={s[s.llm_provider + "_api_key"] || ""}
+              onChange={e => upd(s.llm_provider + "_api_key", e.target.value)}
+              placeholder={s.llm_provider === "anthropic" ? "sk-ant-..." : s.llm_provider === "openai" ? "sk-..." : s.llm_provider === "gemini" ? "AIza..." : "gsk_..."}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: "monospace" }}
+            />
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+              {s.llm_provider === "anthropic" ? "Get from console.anthropic.com" : s.llm_provider === "openai" ? "Get from platform.openai.com/api-keys" : s.llm_provider === "gemini" ? "Get from aistudio.google.com" : "Get from console.groq.com/keys"}
+            </div>
+          </div>
+        )}
+
         <KBLink url="https://knowledgebase.getjaime.io/knowledge-base/choosing-your-ai-model/" label="Read: Choosing Your AI Model" />
       </Section>
 
