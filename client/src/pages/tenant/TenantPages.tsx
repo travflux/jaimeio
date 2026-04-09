@@ -4,6 +4,8 @@ import { trpc } from "@/lib/trpc";
 import { useTenantContext } from "@/hooks/useTenantContext";
 import { toast } from "sonner";
 import { FileText, Plus, Lock, ExternalLink, Loader2, Trash2 } from "lucide-react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 const TEMPLATES: Record<string, { label: string; fields: Array<{ key: string; label: string; type: "text" | "textarea" | "toggle" | "date" | "html"; placeholder?: string }> }> = {
   custom: { label: "Custom Page", fields: [
@@ -63,6 +65,14 @@ export default function TenantPages() {
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
 
+  const bodyEditor = useEditor({
+    extensions: [StarterKit],
+    content: "",
+    onUpdate: ({ editor }) => {
+      updateField("body", editor.getHTML());
+    },
+  });
+
   const { data, refetch } = trpc.pages.list.useQuery();
   const saveMut = trpc.pages.save.useMutation({
     onSuccess: () => { toast.success("Page saved"); refetch(); },
@@ -70,6 +80,10 @@ export default function TenantPages() {
   });
   const delMut = trpc.pages.deletePage.useMutation({
     onSuccess: () => { toast.success("Deleted"); setSelectedId(null); refetch(); },
+  });
+  const createMut = trpc.pages.create.useMutation({
+    onSuccess: (data: any) => { toast.success("Page created"); setCreating(false); setNewTitle(""); setNewSlug(""); refetch(); if (data?.id) setSelectedId(data.id); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const pages = data?.pages || [];
@@ -92,6 +106,15 @@ export default function TenantPages() {
     }
   }, [selectedId, selectedPage?.content]);
 
+  useEffect(() => {
+    if (bodyEditor && formData.body !== undefined) {
+      const current = bodyEditor.getHTML();
+      if (current !== formData.body) {
+        bodyEditor.commands.setContent(formData.body || "");
+      }
+    }
+  }, [selectedId, formData.body, bodyEditor]);
+
   const handleSave = (status: "draft" | "published") => {
     if (!selectedPage) return;
     saveMut.mutate({
@@ -108,16 +131,8 @@ export default function TenantPages() {
 
   const handleCreate = () => {
     if (!newTitle.trim()) { toast.error("Title required"); return; }
-    const slug = newSlug || newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
-    saveMut.mutate({
-      title: newTitle,
-      slug,
-      content: JSON.stringify({}),
-      status: "draft",
-      template: newTemplate,
-    }, {
-      onSuccess: () => { setCreating(false); setNewTitle(""); setNewSlug(""); refetch(); },
-    });
+    const slug = newSlug || newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/g, "");
+    createMut.mutate({ title: newTitle, slug, template: newTemplate });
   };
 
   const updateField = (key: string, value: any) => {
@@ -172,8 +187,8 @@ export default function TenantPages() {
                 </select>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={handleCreate} disabled={saveMut.isPending} style={{ padding: "8px 16px", background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  {saveMut.isPending ? "Creating..." : "Create Page"}
+                <button onClick={handleCreate} disabled={createMut.isPending} style={{ padding: "8px 16px", background: "#2dd4bf", color: "#0f2d5e", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {createMut.isPending ? "Creating..." : "Create Page"}
                 </button>
                 <button onClick={() => setCreating(false)} style={{ padding: "8px 16px", background: "#fff", color: "#6b7280", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, cursor: "pointer" }}>Cancel</button>
               </div>
@@ -245,8 +260,35 @@ export default function TenantPages() {
                         <>
                           <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>{f.label}</label>
                           {f.type === "html" ? (
-                            <textarea value={formData[f.key] || ""} onChange={e => updateField(f.key, e.target.value)} rows={12}
-                              placeholder={f.placeholder} style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: "monospace", resize: "vertical" }} />
+                            f.key === "body" && bodyEditor ? (
+                              <div>
+                                <div style={{ display: "flex", gap: 2, padding: "6px 8px", borderBottom: "1px solid #e5e7eb", background: "#f9fafb", borderRadius: "6px 6px 0 0", flexWrap: "wrap" }}>
+                                  {[
+                                    { cmd: () => bodyEditor.chain().focus().toggleBold().run(), active: bodyEditor.isActive("bold"), label: "B", style: { fontWeight: 700 } as React.CSSProperties },
+                                    { cmd: () => bodyEditor.chain().focus().toggleItalic().run(), active: bodyEditor.isActive("italic"), label: "I", style: { fontStyle: "italic" } as React.CSSProperties },
+                                    { cmd: () => bodyEditor.chain().focus().toggleHeading({ level: 2 }).run(), active: bodyEditor.isActive("heading", { level: 2 }), label: "H2", style: {} },
+                                    { cmd: () => bodyEditor.chain().focus().toggleHeading({ level: 3 }).run(), active: bodyEditor.isActive("heading", { level: 3 }), label: "H3", style: {} },
+                                    { cmd: () => bodyEditor.chain().focus().toggleBulletList().run(), active: bodyEditor.isActive("bulletList"), label: "\u2022 \u2014", style: {} },
+                                    { cmd: () => bodyEditor.chain().focus().toggleBlockquote().run(), active: bodyEditor.isActive("blockquote"), label: "\"", style: {} },
+                                  ].map((btn, i) => (
+                                    <button key={i} onClick={btn.cmd} type="button"
+                                      style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #e5e7eb", background: btn.active ? "#e5e7eb" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", ...btn.style }}>
+                                      {btn.label}
+                                    </button>
+                                  ))}
+                                </div>
+                                <EditorContent editor={bodyEditor} className="tiptap-pages" />
+                                <style>{`.tiptap-pages .ProseMirror { min-height: 300px; padding: 16px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 6px 6px; font-size: 14px; line-height: 1.7; outline: none; }
+                                  .tiptap-pages .ProseMirror h2 { font-size: 1.4em; font-weight: 600; margin: 1em 0 0.5em; }
+                                  .tiptap-pages .ProseMirror h3 { font-size: 1.2em; font-weight: 600; margin: 1em 0 0.5em; }
+                                  .tiptap-pages .ProseMirror p { margin: 0 0 0.75em; }
+                                  .tiptap-pages .ProseMirror ul { padding-left: 1.5em; margin: 0 0 0.75em; }
+                                  .tiptap-pages .ProseMirror blockquote { border-left: 3px solid #e5e7eb; padding-left: 1em; color: #6b7280; }`}</style>
+                              </div>
+                            ) : (
+                              <textarea value={formData[f.key] || ""} onChange={e => updateField(f.key, e.target.value)} rows={12}
+                                placeholder={f.placeholder} style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: "monospace", resize: "vertical" }} />
+                            )
                           ) : f.type === "textarea" ? (
                             <textarea value={formData[f.key] || ""} onChange={e => updateField(f.key, e.target.value)} rows={3}
                               placeholder={f.placeholder} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, resize: "vertical" }} />

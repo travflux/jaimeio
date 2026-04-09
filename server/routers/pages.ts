@@ -223,4 +223,42 @@ export const pagesRouter = router({
       await db.delete(publicationPages).where(and(eq(publicationPages.id, input.id), eq(publicationPages.licenseId, lid)));
       return { success: true };
     }),
+
+  create: tenantOrAdminProcedure
+    .input(z.object({
+      title: z.string().min(1),
+      slug: z.string().min(1),
+      template: z.string().default("custom"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const lid = ctx.licenseId!;
+      const [existing] = await db.select({ id: publicationPages.id })
+        .from(publicationPages)
+        .where(and(eq(publicationPages.licenseId, lid), eq(publicationPages.pageSlug, input.slug)))
+        .limit(1);
+      if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "A page with this slug already exists" });
+      const result = await db.insert(publicationPages).values({
+        licenseId: lid,
+        pageSlug: input.slug,
+        title: input.title,
+        content: JSON.stringify({ body: "" }),
+      } as any);
+      return { id: Number((result as any)[0]?.insertId ?? 0), slug: input.slug };
+    }),
+
+  reorder: tenantOrAdminProcedure
+    .input(z.object({ pageIds: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const lid = ctx.licenseId!;
+      for (let i = 0; i < input.pageIds.length; i++) {
+        await db.update(publicationPages)
+          .set({ sortOrder: i } as any)
+          .where(and(eq(publicationPages.id, input.pageIds[i]), eq(publicationPages.licenseId, lid)));
+      }
+      return { success: true };
+    }),
 });
