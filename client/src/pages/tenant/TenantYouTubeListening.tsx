@@ -51,6 +51,20 @@ export default function TenantYouTubeListening() {
                 style={{ width: 120, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
               <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>1-20</div>
             </div>
+            {s["youtube_listening_enabled"] === "true" && (
+              <div style={{ marginTop: 16, padding: 16, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "#111827" }}>API Key</h4>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>YouTube Data API Key</label>
+                  <input type="password" value={s["youtube_api_key"] || ""} onChange={e => update("youtube_api_key", e.target.value)}
+                    placeholder="Enter your YouTube Data API v3 key"
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: "monospace" }} />
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                    Get your API key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf" }}>Google Cloud Console</a>. Enable the YouTube Data API v3 in your project.
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
     </TenantLayout>
   );

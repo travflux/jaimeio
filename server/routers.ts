@@ -1909,6 +1909,15 @@ export const appRouter = router({
     list: adminProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input, ctx }) => db.listWorkflowBatches(input?.limit, ctx.licenseId || undefined)),
     get: adminProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getWorkflowBatch(input.id)),
     getByDate: adminProcedure.input(z.object({ batchDate: z.string() })).query(({ input }) => db.getWorkflowBatchByDate(input.batchDate)),
+    getRecentRuns: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      if (!ctx.licenseId) return [];
+      const { getDb } = await import("./db");
+      const { workflowBatches } = await import("../drizzle/schema");
+      const { eq, desc } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return [];
+      return dbConn.select().from(workflowBatches).where(eq(workflowBatches.licenseId, ctx.licenseId)).orderBy(desc(workflowBatches.createdAt)).limit(10);
+    }),
     create: adminProcedure.input(z.object({
       batchDate: z.string(), status: z.enum(["gathering", "generating", "pending_approval", "approved", "publishing", "completed", "failed"]).optional(),
       totalEvents: z.number().optional(),
@@ -1969,7 +1978,7 @@ export const appRouter = router({
     runProductionLoop: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
       if (!ctx.licenseId) throw new TRPCError({ code: "BAD_REQUEST", message: "No license context" });
       const { runTenantProductionLoopTick } = await import("./tenantProductionLoop");
-      return runTenantProductionLoopTick(ctx.licenseId);
+      return runTenantProductionLoopTick(ctx.licenseId, true);
     }),
     generateFromCandidate: tenantOrAdminProcedure
       .input(z.object({ candidateId: z.number(), categoryId: z.number().optional(), tags: z.array(z.string()).optional(), imageUrl: z.string().optional(), templateId: z.number().optional() }))
@@ -4208,6 +4217,7 @@ export const appRouter = router({
   // ─── Dashboard ──────────────────────────────────────
   dashboard: router({
     getFastSnapshot: tenantOrAdminProcedure.query(async ({ ctx }) => {
+      console.log('[Dashboard] getFastSnapshot licenseId:', ctx.licenseId);
       const { getDb } = await import("./db");
       const { articles, candidates } = await import("../drizzle/schema");
       const { eq, and, or, isNull, sql } = await import("drizzle-orm");

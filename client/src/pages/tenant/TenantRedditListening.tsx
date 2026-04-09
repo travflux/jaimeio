@@ -33,6 +33,11 @@ export default function TenantRedditListening() {
               </button>
             </div>
 
+            {s["reddit_listener_enabled"] === "true" && (
+              <div style={{ background: "#d1fae5", border: "1px solid #a7f3d0", borderRadius: 8, padding: 12, marginTop: 8, marginBottom: 12, fontSize: 13, color: "#065f46" }}>
+                Reddit listening uses the public Reddit JSON API -- no API keys required.
+              </div>
+            )}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Subreddits to Monitor</label>
               <textarea value={s["reddit_listener_subreddits"] || ""} onChange={e => update("reddit_listener_subreddits", e.target.value)} rows={4}

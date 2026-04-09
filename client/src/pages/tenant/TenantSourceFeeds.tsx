@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import TenantLayout from "@/layouts/TenantLayout";
 import { trpc } from "@/lib/trpc";
 import { ExternalLink, Trash2, Pause, Play, RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 function relativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "Never";
@@ -19,7 +20,7 @@ export default function TenantSourceFeeds() {
   const [newUrl, setNewUrl] = useState("");
   const [fetchingId, setFetchingId] = useState<number | null>(null);
   const feedsQuery = trpc.sourceFeeds.list.useQuery();
-  const addMut = trpc.sourceFeeds.add.useMutation({ onSuccess: () => feedsQuery.refetch() });
+  const addMut = trpc.sourceFeeds.add.useMutation({ onSuccess: () => { feedsQuery.refetch(); toast.success("Feed added"); }, onError: (err: any) => toast.error("Failed to add feed: " + err.message) });
   const removeMut = trpc.sourceFeeds.remove.useMutation({ onSuccess: () => feedsQuery.refetch() });
   const toggleMut = trpc.sourceFeeds.toggle.useMutation({ onSuccess: () => feedsQuery.refetch() });
   const fetchNowMut = trpc.sourceFeeds.fetchNow.useMutation({

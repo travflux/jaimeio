@@ -30,6 +30,19 @@ interface NavItem { icon: any; label: string; href: string; external?: boolean; 
 interface NavSection { label: string; key: string; icon: any; items: NavItem[]; }
 
 const NAV_SECTIONS: NavSection[] = [
+  { label: "DESIGN", key: "design", icon: Settings, items: [
+    { icon: Settings, label: "Branding", href: "/admin/branding" },
+    { icon: FileText, label: "Pages", href: "/admin/pages" },
+  ]},
+  { label: "CONTENT ENGINE", key: "engine", icon: Sparkles, items: [
+    { icon: Sparkles, label: "Writing & Voice", href: "/admin/content-engine" },
+    { icon: Image, label: "Image Generation", href: "/admin/image-settings" },
+    { icon: TrendingUp, label: "Production Loop", href: "/admin/workflow" },
+    { icon: Share2, label: "Distribution", href: "/admin/distribution" },
+    { icon: Search, label: "SEO & GEO", href: "/admin/seo" },
+    { icon: PieChart, label: "Categories", href: "/admin/categories" },
+    { icon: PieChart, label: "Tags", href: "/admin/tags" },
+  ]},
   { label: "CONTENT", key: "content", icon: FileText, items: [
     { icon: FileText, label: "Articles", href: "/admin/articles" },
     { icon: PenLine, label: "Create Article", href: "/admin/articles/create" },
@@ -41,26 +54,14 @@ const NAV_SECTIONS: NavSection[] = [
     { icon: Rss, label: "Source Feeds", href: "/admin/source-feeds" },
     { icon: Inbox, label: "Candidates", href: "/admin/candidates" },
     { icon: Twitter, label: "X Listening", href: "/admin/x-listening" },
-    { icon: MessageCircle, label: "Reddit", href: "/admin/reddit-listening" },
-    { icon: Youtube, label: "YouTube", href: "/admin/youtube-listening" },
+    { icon: MessageCircle, label: "Reddit Listening", href: "/admin/reddit-listening" },
+    { icon: Youtube, label: "YouTube Listening", href: "/admin/youtube-listening" },
     { icon: BarChart2, label: "Feed Performance", href: "/admin/feed-performance" },
     { icon: PieChart, label: "Category Balance", href: "/admin/category-balance" },
-  ]},
-  { label: "CONTENT ENGINE", key: "engine", icon: Sparkles, items: [
-    { icon: Sparkles, label: "Writing & Voice", href: "/admin/content-engine" },
-    { icon: Image, label: "Image Generation", href: "/admin/image-settings" },
-    { icon: TrendingUp, label: "Production Loop", href: "/admin/workflow" },
-    { icon: Share2, label: "Distribution", href: "/admin/distribution" },
-    { icon: Search, label: "SEO & GEO", href: "/admin/seo" },
   ]},
   { label: "COMMUNICATIONS", key: "comms", icon: Mail, items: [
     { icon: Mail, label: "Newsletter", href: "/admin/newsletter" },
     { icon: MessageCircle, label: "SMS Templates", href: "/admin/sms-templates" },
-  ]},
-  { label: "DESIGN", key: "design", icon: Settings, items: [
-    { icon: Settings, label: "Branding", href: "/admin/branding" },
-    { icon: FileText, label: "Pages", href: "/admin/pages" },
-    { icon: PieChart, label: "Tags & Categories", href: "/admin/categories" },
   ]},
   { label: "MONETIZATION", key: "monetization", icon: DollarSign, items: [
     { icon: DollarSign, label: "Sponsorship", href: "/admin/sponsorship" },

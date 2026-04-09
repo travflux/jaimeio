@@ -50,6 +50,25 @@ export default function TenantXListening() {
                 style={{ width: 120, padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
               <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Only surface posts with X+ likes</div>
             </div>
+            {s["x_listening_enabled"] === "true" && (
+              <div style={{ marginTop: 16, padding: 16, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: "#111827" }}>API Credentials</h4>
+                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 12 }}>Required for X/Twitter API access. Get these from <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf" }}>developer.twitter.com</a></div>
+                {[
+                  ["x_api_key", "API Key"],
+                  ["x_api_secret", "API Secret"],
+                  ["x_access_token", "Access Token"],
+                  ["x_access_token_secret", "Access Token Secret"],
+                ].map(([key, label]) => (
+                  <div key={key} style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>{label}</label>
+                    <input type="password" value={s[key] || ""} onChange={e => update(key, e.target.value)}
+                      placeholder={"Enter " + label.toLowerCase()}
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: "monospace" }} />
+                  </div>
+                ))}
+              </div>
+            )}
         </div>
     </TenantLayout>
   );

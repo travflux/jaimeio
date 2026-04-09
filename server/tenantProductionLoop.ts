@@ -109,7 +109,7 @@ export function getTenantProductionLoopStatus(licenseId: number) {
   return loopState.get(licenseId) ?? { isRunning: false, lastRunAt: null, lastRunArticles: 0, totalToday: 0 };
 }
 
-export async function runTenantProductionLoopTick(licenseId: number): Promise<{
+export async function runTenantProductionLoopTick(licenseId: number, force?: boolean): Promise<{
   articlesGenerated: number;
   candidatesProcessed: number;
   stoppedReason: string;
@@ -123,10 +123,12 @@ export async function runTenantProductionLoopTick(licenseId: number): Promise<{
     return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "setup_not_complete" };
   }
 
-  // Check workflow_enabled — tenant can pause via portal
-  const workflowSetting = await getLicenseSetting(licenseId, "workflow_enabled");
-  if (workflowSetting?.value === "false") {
-    return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "workflow_paused" };
+  // Check workflow_enabled — tenant can pause via portal (bypassed by manual Run Now)
+  if (!force) {
+    const workflowSetting = await getLicenseSetting(licenseId, "workflow_enabled");
+    if (workflowSetting?.value === "false") {
+      return { articlesGenerated: 0, candidatesProcessed: 0, stoppedReason: "workflow_paused" };
+    }
   }
 
   // Check publish window

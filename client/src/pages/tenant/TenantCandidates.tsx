@@ -164,8 +164,8 @@ export default function TenantCandidates() {
                       <button onClick={() => rejectMut.mutate({ candidateId: c.id })} disabled={isGen}
                         style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #fecaca", background: "#fff", fontSize: 11, cursor: "pointer", color: "#ef4444" }}>Dismiss</button>
                       <button onClick={() => handleGen(c.id)} disabled={isGen}
-                        style={{ padding: "4px 12px", borderRadius: 6, border: "none", background: "#111827", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                        {isGen ? <Loader2 size={11} className="animate-spin" /> : <><Sparkles size={11} /> Generate</>}
+                        style={{ width: 110, padding: "4px 12px", borderRadius: 6, border: "none", background: "#111827", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        {isGen ? <><Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> Generating</> : <><Sparkles size={11} /> Generate</>}
                       </button>
                     </div>
                   )}
@@ -175,6 +175,7 @@ export default function TenantCandidates() {
           })}
         </div>
       )}
+    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </TenantLayout>
   );
 }
