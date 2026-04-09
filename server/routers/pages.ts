@@ -104,6 +104,27 @@ export const pagesRouter = router({
       return { success: true };
     }),
 
+  getPublic: publicProcedure
+    .input(z.object({ hostname: z.string(), slug: z.string() }))
+    .query(async ({ input }) => {
+      const { resolveLicense } = await import("../auth/licenseAuth");
+      let licenseId: number | null = null;
+      try {
+        const license = await resolveLicense(input.hostname);
+        if (license) licenseId = license.id;
+      } catch {}
+      if (!licenseId) return DEFAULT_CONTENT[input.slug] || {};
+      const db = await getDb();
+      if (!db) return DEFAULT_CONTENT[input.slug] || {};
+      const [row] = await db.select().from(publicationPages)
+        .where(and(eq(publicationPages.licenseId, licenseId), eq(publicationPages.pageSlug, input.slug)))
+        .limit(1);
+      if (row?.content) {
+        try { return JSON.parse(row.content); } catch {}
+      }
+      return DEFAULT_CONTENT[input.slug] || {};
+    }),
+
   get: publicProcedure
     .input(z.object({ licenseId: z.number(), slug: z.string() }))
     .query(async ({ input }) => {

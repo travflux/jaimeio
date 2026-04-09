@@ -7,7 +7,7 @@ import { PublicationMasthead } from "../shared/PublicationMasthead";
 
 
 // ═══ ADVERTISE PAGE ═══
-function AdvertisePage({ licenseSettings }: TemplateProps) {
+function AdvertisePage({ licenseSettings, pageContent }: TemplateProps & { pageContent: Record<string, any> }) {
   const siteName = licenseSettings.brand_site_name || "our publication";
   const email = licenseSettings.brand_contact_email || "";
   const [formData, setFormData] = useState({ name: "", email: "", company: "", message: "" });
@@ -16,18 +16,18 @@ function AdvertisePage({ licenseSettings }: TemplateProps) {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
       <h1 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 36, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 12 }}>
-        Advertise with {siteName}
+        {pageContent.hero_heading || ('Advertise with ' + siteName)}
       </h1>
       <p style={{ fontSize: 16, color: "var(--brand-text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>
-        Reach our engaged audience of readers who trust {siteName} for quality content.
+        {pageContent.hero_subtext || ('Reach our engaged audience of readers who trust ' + siteName + ' for quality content.')}
       </p>
 
       {/* Stats */}
       <div className="adv-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginBottom: 40 }}>
         {[
-          { label: "Growing Readership", value: "Quality Audience" },
-          { label: "Published Articles", value: "Fresh Content Daily" },
-          { label: "Newsletter Subscribers", value: "Direct Reach" },
+          { label: pageContent.stat_1_label || "Growing Readership", value: pageContent.stat_1_value || "Quality Audience" },
+          { label: pageContent.stat_2_label || "Published Articles", value: pageContent.stat_2_value || "Fresh Content Daily" },
+          { label: pageContent.stat_3_label || "Newsletter Subscribers", value: pageContent.stat_3_value || "Direct Reach" },
         ].map(s => (
           <div key={s.label} style={{ background: "var(--brand-surface)", padding: 20, borderRadius: 8, textAlign: "center", border: "1px solid var(--brand-border)" }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: "var(--brand-primary)", marginBottom: 4 }}>{s.value}</div>
@@ -38,13 +38,13 @@ function AdvertisePage({ licenseSettings }: TemplateProps) {
 
       {/* Why Advertise */}
       <h2 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 24, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 20 }}>
-        Why Advertise With Us
+        {pageContent.why_heading || 'Why Advertise With Us'}
       </h2>
       <div className="adv-cards" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 40 }}>
         {[
-          { title: "Engaged Audience", text: "Our readers are highly engaged and trust our content." },
-          { title: "Premium Placements", text: "Your brand appears alongside quality editorial content." },
-          { title: "Measurable Results", text: "Track performance with detailed analytics and reporting." },
+          { title: pageContent.why_1_title || "Engaged Audience", text: pageContent.why_1_text || "Our readers are highly engaged and trust our content." },
+          { title: pageContent.why_2_title || "Premium Placements", text: pageContent.why_2_text || "Your brand appears alongside quality editorial content." },
+          { title: pageContent.why_3_title || "Measurable Results", text: pageContent.why_3_text || "Track performance with detailed analytics and reporting." },
         ].map(c => (
           <div key={c.title} style={{ background: "var(--brand-background)", padding: 20, borderRadius: 8, border: "1px solid var(--brand-border)" }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 6 }}>{c.title}</h3>
@@ -54,8 +54,8 @@ function AdvertisePage({ licenseSettings }: TemplateProps) {
       </div>
 
       {/* Contact Form */}
-      <h2 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 24, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 8 }}>Get In Touch</h2>
-      <p style={{ fontSize: 14, color: "var(--brand-text-secondary)", marginBottom: 20 }}>Tell us about your advertising goals.</p>
+      <h2 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 24, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 8 }}>{pageContent.form_heading || 'Get In Touch'}</h2>
+      <p style={{ fontSize: 14, color: "var(--brand-text-secondary)", marginBottom: 20 }}>{pageContent.form_subtext || 'Tell us about your advertising goals.'}</p>
       {sent ? (
         <div style={{ background: "var(--brand-surface)", padding: 24, borderRadius: 8, textAlign: "center" }}>
           <p style={{ fontWeight: 600, color: "var(--brand-primary)" }}>Thanks! We'll be in touch soon.</p>
@@ -85,7 +85,7 @@ function AdvertisePage({ licenseSettings }: TemplateProps) {
 }
 
 // ═══ PRIVACY PAGE ═══
-function PrivacyPage({ licenseSettings }: TemplateProps) {
+function PrivacyPage({ licenseSettings, pageContent }: TemplateProps & { pageContent: Record<string, any> }) {
   const siteName = licenseSettings.brand_site_name || "this publication";
   const email = licenseSettings.brand_contact_email || "privacy@example.com";
   const business = licenseSettings.brand_business_name || siteName;
@@ -96,7 +96,8 @@ function PrivacyPage({ licenseSettings }: TemplateProps) {
         Privacy Policy & Terms of Use
       </h1>
       <div style={{ fontSize: 15, lineHeight: 1.8, color: "var(--brand-text-primary)" }}>
-        <p><strong>Effective Date:</strong> January 1, 2026</p>
+        <p><strong>Effective Date:</strong> {pageContent.effective_date || 'January 1, 2026'}</p>
+        {pageContent.custom_intro && <p style={{ marginBottom: 16 }}>{pageContent.custom_intro}</p>}
         <h2 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 22, marginTop: 32, marginBottom: 12 }}>Privacy Policy</h2>
         <p>{business} ("{siteName}") respects your privacy. This policy explains how we collect, use, and protect your information when you visit our website.</p>
         <h3 style={{ fontSize: 18, marginTop: 24, marginBottom: 8 }}>Information We Collect</h3>
@@ -126,7 +127,7 @@ function PrivacyPage({ licenseSettings }: TemplateProps) {
 }
 
 // ═══ CONTACT PAGE ═══
-function ContactPage({ licenseSettings }: TemplateProps) {
+function ContactPage({ licenseSettings, pageContent }: TemplateProps & { pageContent: Record<string, any> }) {
   const siteName = licenseSettings.brand_site_name || "us";
   const email = licenseSettings.brand_contact_email;
   const phone = licenseSettings.brand_phone;
@@ -137,26 +138,26 @@ function ContactPage({ licenseSettings }: TemplateProps) {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
       <h1 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 36, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 12 }}>
-        Get In Touch
+        {pageContent.hero_heading || 'Get In Touch'}
       </h1>
-      <p style={{ fontSize: 16, color: "var(--brand-text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>We'd love to hear from you.</p>
+      <p style={{ fontSize: 16, color: "var(--brand-text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>{pageContent.hero_subtext || "We'd love to hear from you."}</p>
 
       <div className="contact-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
         {/* Contact Info */}
         <div>
-          {email && (
+          {email && pageContent.show_email !== false && (
             <div style={{ marginBottom: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 4 }}>Email</h3>
               <a href={`mailto:${email}`} style={{ color: "var(--brand-link)", fontSize: 15 }}>{email}</a>
             </div>
           )}
-          {phone && (
+          {phone && pageContent.show_phone !== false && (
             <div style={{ marginBottom: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 4 }}>Phone</h3>
               <p style={{ color: "var(--brand-text-secondary)", fontSize: 15 }}>{phone}</p>
             </div>
           )}
-          {address && (
+          {address && pageContent.show_address !== false && (
             <div style={{ marginBottom: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 4 }}>Address</h3>
               <p style={{ color: "var(--brand-text-secondary)", fontSize: 15 }}>{address}</p>
@@ -265,7 +266,7 @@ function SitemapPage({ licenseSettings, categories, articles }: TemplateProps) {
 }
 
 // ═══ ABOUT PAGE ═══
-function AboutPage({ licenseSettings }: TemplateProps) {
+function AboutPage({ licenseSettings, pageContent }: TemplateProps & { pageContent: Record<string, any> }) {
   const siteName = licenseSettings.brand_site_name || "our publication";
   const business = licenseSettings.brand_business_name || siteName;
   const description = licenseSettings.brand_site_description || "";
@@ -273,7 +274,7 @@ function AboutPage({ licenseSettings }: TemplateProps) {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
       <h1 style={{ fontFamily: "var(--brand-font-heading)", fontSize: 36, fontWeight: 700, color: "var(--brand-text-primary)", marginBottom: 16 }}>
-        About {siteName}
+        {pageContent.hero_heading || ('About ' + siteName)}
       </h1>
       {licenseSettings.brand_tagline && (
         <p style={{ fontSize: 18, fontStyle: "italic", color: "var(--brand-text-secondary)", marginBottom: 24 }}>
@@ -281,7 +282,9 @@ function AboutPage({ licenseSettings }: TemplateProps) {
         </p>
       )}
       <div style={{ fontSize: 16, lineHeight: 1.8, color: "var(--brand-text-primary)" }}>
-        {description ? (
+        {pageContent.body ? (
+          <div dangerouslySetInnerHTML={{ __html: pageContent.body }} />
+        ) : description ? (
           <p>{description}</p>
         ) : (
           <p>{siteName} is a publication by {business}, delivering quality content to our readers.</p>
@@ -304,6 +307,12 @@ function AboutPage({ licenseSettings }: TemplateProps) {
 // ═══ MAIN EXPORT ═══
 export function EditorialStaticPage(props: TemplateProps) {
   const { page } = props;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const pageQuery = trpc.pages.getPublic.useQuery(
+    { hostname, slug: page },
+    { enabled: !!hostname && !!page, staleTime: 300000 }
+  );
+  const pc = (pageQuery.data ?? {}) as Record<string, any>;
 
   return (
     <>
@@ -312,11 +321,11 @@ export function EditorialStaticPage(props: TemplateProps) {
       
       
 
-      {page === "advertise" && <AdvertisePage {...props} />}
-      {page === "privacy" && <PrivacyPage {...props} />}
-      {page === "contact" && <ContactPage {...props} />}
+      {page === "advertise" && <AdvertisePage {...props} pageContent={pc} />}
+      {page === "privacy" && <PrivacyPage {...props} pageContent={pc} />}
+      {page === "contact" && <ContactPage {...props} pageContent={pc} />}
       {page === "sitemap" && <SitemapPage {...props} />}
-      {page === "about" && <AboutPage {...props} />}
+      {page === "about" && <AboutPage {...props} pageContent={pc} />}
 
       <NewsletterBar licenseSettings={props.licenseSettings} />
       <PublicationFooter licenseSettings={props.licenseSettings} categories={props.categories} />
