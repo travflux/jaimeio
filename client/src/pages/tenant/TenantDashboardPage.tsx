@@ -103,7 +103,6 @@ export default function TenantDashboardPage() {
 
   // Dashboard debug logging
   if (typeof window !== 'undefined') {
-    console.log('[Dashboard] licenseId:', licenseId, 'fast:', fast.status, fast.data ? 'has data' : 'no data');
   }
 
   const byDay = (d?.articles?.byDay ?? []).map((r: any) => ({
