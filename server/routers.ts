@@ -4135,6 +4135,35 @@ export const appRouter = router({
       }
       return { queued: true };
     }),
+    backfillSeoScores: tenantOrAdminProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { articles } = await import("../drizzle/schema");
+      const { eq, and, isNull } = await import("drizzle-orm");
+      const dbConn = await getDb();
+      if (!dbConn) return { updated: 0 };
+      const lid = ctx.licenseId!;
+      const rows = await dbConn.select({
+        id: articles.id, headline: articles.headline, body: articles.body,
+        focusKeyword: articles.focusKeyword, seoTitle: articles.seoTitle, seoDescription: articles.seoDescription,
+      }).from(articles).where(and(eq(articles.licenseId, lid), isNull(articles.seoScore)));
+      let updated = 0;
+      for (const a of rows) {
+        const kw = (a.focusKeyword || "").toLowerCase();
+        if (!kw) continue;
+        const bodyText = (a.body || "").replace(/<[^>]+>/g, "").toLowerCase();
+        const checks = [
+          kw.length > 0,
+          !!(a.seoTitle?.toLowerCase().includes(kw)),
+          !!(a.seoDescription?.toLowerCase().includes(kw)),
+          !!(a.headline?.toLowerCase().includes(kw)),
+          bodyText.includes(kw),
+        ];
+        const score = Math.round((checks.filter(Boolean).length / 5) * 100);
+        await dbConn.update(articles).set({ seoScore: score } as any).where(eq(articles.id, a.id));
+        updated++;
+      }
+      return { updated, message: `Backfilled SEO scores for ${updated} articles` };
+    }),
   }),
   // ─── Calendar ──────────────────────────────────────
   calendar: router({

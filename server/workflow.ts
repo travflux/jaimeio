@@ -828,8 +828,23 @@ export async function generateAndSaveSEO(articleId: number, licenseId: number | 
       return;
     }
 
-    await updateArticle(articleId, seoData as any);
-    console.log(`[SEO] Generated SEO for article ${articleId}: "${seoData.seoTitle}"`);
+    // Validate SEO checklist and compute score
+    const kwLower = (seoData.focusKeyword || "").toLowerCase();
+    const headlineLower = (article.headline || "").toLowerCase();
+    const bodyLower = plainBody.toLowerCase();
+    const titleLower = (seoData.seoTitle || "").toLowerCase();
+    const descLower = (seoData.seoDescription || "").toLowerCase();
+    const seoChecks = [
+      kwLower.length > 0,
+      kwLower.length > 0 && titleLower.includes(kwLower),
+      kwLower.length > 0 && descLower.includes(kwLower),
+      kwLower.length > 0 && headlineLower.includes(kwLower),
+      kwLower.length > 0 && bodyLower.includes(kwLower),
+    ];
+    const seoScore = Math.round((seoChecks.filter(Boolean).length / 5) * 100);
+
+    await updateArticle(articleId, { ...seoData, seoScore } as any);
+    console.log(`[SEO] Generated SEO for article ${articleId}: "${seoData.seoTitle}" (score: ${seoScore}/100)`);
   } catch (err: any) {
     console.error(`[SEO] generateAndSaveSEO failed for article ${articleId}:`, err?.message || err);
     throw err;

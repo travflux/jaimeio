@@ -299,6 +299,27 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
                 </button>
               </div>
 
+              {/* SEO Score Badge */}
+              {(() => {
+                const kw = (focusKeyword || "").toLowerCase();
+                const checks = [
+                  kw.length > 0,
+                  kw.length > 0 && seoTitle.toLowerCase().includes(kw),
+                  kw.length > 0 && seoDescription.toLowerCase().includes(kw),
+                  kw.length > 0 && (article.headline || "").toLowerCase().includes(kw),
+                ];
+                const score = kw ? Math.round((checks.filter(Boolean).length / checks.length) * 100) : 0;
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", background: score >= 75 ? "#F0FDF4" : score >= 50 ? "#FFFBEB" : "#FFF5F5", borderRadius: 8, border: `1px solid ${score >= 75 ? "#BBF7D0" : score >= 50 ? "#FDE68A" : "#FECACA"}` }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: score >= 75 ? "#1D9E75" : score >= 50 ? "#EF9F27" : "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 700 }}>{score}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>SEO Score: {score}/100</div>
+                      <div style={{ fontSize: 11, color: "#6B7280" }}>{score >= 75 ? "Good \u2014 well optimized" : score >= 50 ? "Fair \u2014 improvements needed" : focusKeyword ? "Poor \u2014 regenerate SEO" : "Set a focus keyword"}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* SEO Title */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

@@ -79,6 +79,7 @@ export const articles = mysqlTable("articles", {
   generationStyle: varchar("generation_style", { length: 100 }),
   geoStatus: mysqlEnum("geo_status", ["pending", "generated", "failed"]).default("pending"),
   seoStatus: mysqlEnum("seo_status", ["pending", "generated", "failed"]).default("pending"),
+  seoScore: int("seo_score"),
   imageStatus: mysqlEnum("image_status", ["pending", "generated", "failed", "skipped"]).default("pending"),
   qualityScore: int("quality_score"),
   amazonProducts: text("amazon_products"),
