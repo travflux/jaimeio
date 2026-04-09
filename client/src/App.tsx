@@ -267,22 +267,18 @@ function Router() {
           <Route path="/admin/pages" component={TenantPages} />
           <Route path="/admin/source-feeds" component={TenantSourceFeeds} />
           <Route path="/admin/feed-performance" component={TenantFeedPerformance} />
-          <Route path="/admin/source-manager" component={TenantSourceManager} />
           <Route path="/admin/x-listening" component={TenantXListening} />
           <Route path="/admin/reddit-listening" component={TenantRedditListening} />
           <Route path="/admin/youtube-listening" component={TenantYouTubeListening} />
           <Route path="/admin/candidates" component={TenantCandidates} />
           <Route path="/admin/media-library" component={TenantMediaLibrary} />
           <Route path="/admin/seo" component={TenantSEO} />
-          <Route path="/admin/index-settings" component={TenantIndexSettings} />
           <Route path="/admin/geo" component={TenantGEO} />
           <Route path="/admin/distribution" component={TenantSocialQueue} />
-          <Route path="/admin/distribution-settings" component={TenantDistribution} />
           <Route path="/admin/post-queue" component={TenantPostQueue} />
           <Route path="/admin/social-performance" component={TenantSocialPerformance} />
           <Route path="/admin/revenue" component={TenantRevenue} />
           <Route path="/admin/monetization" component={TenantMonetizationSettings} />
-          <Route path="/admin/monetization-settings" component={TenantMonetizationSettings} />
           <Route path="/admin/adsense" component={TenantAdSense} />
           <Route path="/admin/amazon" component={TenantAmazon} />
           <Route path="/admin/sponsorship" component={TenantSponsorship} />

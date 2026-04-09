@@ -78,22 +78,10 @@ export default function TenantContentEngine() {
 
   const handleSave = async () => {
     if (!licenseId) return;
-    await saveMut.mutateAsync({ licenseId, settings: {
-      production_loop_enabled: s.production_loop_enabled || "true",
-      max_daily_articles: s.max_daily_articles || "5",
-      min_score_to_publish: s.min_score_to_publish || "0.40",
-      writing_tone: s.writing_tone || "professional",
-      brand_genre: s.brand_genre || "general",
-      target_article_length: s.target_article_length || "800",
-      reading_level: s.reading_level || "intermediate",
-      headline_style: s.headline_style || "statement",
-      include_statistics: s.include_statistics || "true",
-      include_quotes: s.include_quotes || "true",
-      include_cta: s.include_cta || "true",
-      include_subheadings: s.include_subheadings || "true",
-      llm_provider: s.llm_provider || "auto",
-      ...(s.article_llm_system_prompt ? { article_llm_system_prompt: s.article_llm_system_prompt } : {}),
-    }});
+    const payload = { ...s };
+    if (!payload.production_loop_enabled) payload.production_loop_enabled = "true";
+    if (!payload.max_daily_articles) payload.max_daily_articles = "5";
+    await saveMut.mutateAsync({ licenseId, settings: payload });
   };
 
   const providers = providersQuery.data;

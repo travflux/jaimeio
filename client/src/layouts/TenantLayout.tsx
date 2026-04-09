@@ -252,20 +252,7 @@ export default function TenantLayout({ children, pageTitle, pageSubtitle, sectio
           );
         })()}
 
-        {/* Settings — single link */}
-        <div style={{ padding: "0 6px", marginTop: 4 }}>
-          <Link href="/admin/settings" style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, textDecoration: "none",
-            color: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "#ffffff" : "#9ca3af",
-            background: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "#1f2937" : "transparent",
-            borderLeft: location === "/admin/settings" || location.startsWith("/admin/workflow") || location.startsWith("/admin/branding") || location.startsWith("/admin/seo") || location.startsWith("/admin/geo") ? "2px solid #2dd4bf" : "2px solid transparent",
-            fontSize: 13, fontWeight: 500,
-          }}
-            onMouseEnter={e => { if (location !== "/admin/settings") e.currentTarget.style.background = "#1f2937"; }}
-            onMouseLeave={e => { if (location !== "/admin/settings") e.currentTarget.style.background = "transparent"; }}>
-            <Settings size={15} /> Settings
-          </Link>
-        </div>
+
 
         {/* View Publication */}
         <div style={{ padding: "0 6px", marginTop: 4 }}>

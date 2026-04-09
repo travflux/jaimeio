@@ -6,6 +6,7 @@ import { X, Loader2, Share2, RefreshCw, Trash2 as TrashIcon, Search } from "luci
 import { toast } from "sonner";
 
 function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { article: any; categories: any[]; onClose: () => void; onAction: () => void; onRefresh: () => void }) {
+  const { licenseId: panelLicenseId } = useTenantContext();
   const approveMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const rejectMut = trpc.articles.updateStatus.useMutation({ onSuccess: onAction });
   const updateMut = trpc.articles.update.useMutation();
@@ -52,7 +53,7 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
       }
     },
   });
-  const templatesQuery = trpc.templates?.list?.useQuery?.({ licenseId: 7 });
+  const templatesQuery = trpc.templates?.list?.useQuery?.({ licenseId: panelLicenseId! }, { enabled: !!panelLicenseId });
   const templates = (templatesQuery?.data as any[]) || [];
   const articleTemplate = templates.find((t: any) => t.id === article.templateId);
   const [selectedCat, setSelectedCat] = useState(article.categoryId);
@@ -359,7 +360,7 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
                     {checks.map(check => (
                       <div key={check.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", fontSize: 12 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ color: check.present ? "#22c55e" : "#d1d5db" }}>{check.present ? "\u2713" : "\u25cb"}</span>
+                          <span style={{ color: check.present ? "#22c55e" : "#d1d5db" }}>{check.present ? "✓" : "○"}</span>
                           <span style={{ color: check.present ? "#15803d" : "#9ca3af" }}>{check.label}</span>
                         </div>
                         {"count" in check && check.count !== undefined && check.count > 0 && (
@@ -402,6 +403,9 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
 
         {/* Footer */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <a href={`/admin/articles/${article.id}`} style={{ padding: "8px 14px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, color: "#374151", textDecoration: "none", fontWeight: 500, display: "inline-flex", alignItems: "center" }}>Edit</a>
+          </div>
           <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
             style={{ width: "100%", height: 38, background: dirty ? "#2dd4bf" : "#f9fafb", color: dirty ? "#0f2d5e" : "#9ca3af", border: "1px solid", borderColor: dirty ? "#2dd4bf" : "#e5e7eb", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: dirty ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
             {saveMut.isPending ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Changes"}
@@ -425,7 +429,7 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
               </>
             )}
           </div>
-          <a href={"/admin/articles/" + article.id} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, color: "#9ca3af", textDecoration: "none", padding: "4px 0" }}>Edit full article body \u2192</a>
+
           <button onClick={() => { if (confirm("Permanently delete this article? This cannot be undone.")) deleteMut.mutate({ articleId: article.id }); }} disabled={deleteMut.isPending}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6 }}>
             <TrashIcon size={11} /> {deleteMut.isPending ? "Deleting..." : "Permanently Delete Article"}
