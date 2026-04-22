@@ -115,6 +115,20 @@ async function runImageBackfillJob(articles: Array<{ id: number; headline: strin
   console.log(`[Backfill] Done. Succeeded: ${imageBackfillState.succeeded}, Failed: ${imageBackfillState.failed}`);
 }
 
+// ─── Staff Access Check for Super Admin ─────────────────────────────────────
+async function requireStaffAccess(userId: string | undefined) {
+  if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+  const dbConn = await db.getDb();
+  if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const { staffAccounts } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+  const staff = await dbConn.select().from(staffAccounts)
+    .where(and(eq(staffAccounts.clerkUserId, userId), eq(staffAccounts.isActive, true)))
+    .limit(1);
+  if (staff.length === 0) throw new TRPCError({ code: "FORBIDDEN", message: "Staff access required" });
+  return staff[0];
+}
+
 export const appRouter = router({
   system: systemRouter,
   merch: merchRouter,
@@ -4653,9 +4667,11 @@ export const appRouter = router({
     }),
   }),
 
+
   // ═══ SUPER ADMIN ROUTER ═══
   superAdmin: router({
-    getPlatformStats: adminProcedure.query(async () => {
+    getPlatformStats: protectedProcedure.query(async ({ ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
       const dbConn = await db.getDb();
       if (!dbConn) return { totalLicenses: 0, activeLicenses: 0, totalArticles: 0, articlesThisWeek: 0, totalCandidates: 0 };
       const { licenses, articles, selectorCandidates } = await import("../drizzle/schema");
@@ -4676,7 +4692,8 @@ export const appRouter = router({
       };
     }),
 
-    getLicenses: adminProcedure.query(async () => {
+    getLicenses: protectedProcedure.query(async ({ ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { licenses, articles, licenseSettings } = await import("../drizzle/schema");
@@ -4700,7 +4717,8 @@ export const appRouter = router({
       return enriched;
     }),
 
-    getLicense: adminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input }) => {
+    getLicense: protectedProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input, ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
       const dbConn = await db.getDb();
       if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { licenses, articles, licenseSettings, workflowBatches } = await import("../drizzle/schema");
@@ -4715,8 +4733,9 @@ export const appRouter = router({
       return { license: lic, settings: Object.fromEntries((settings as any[]).map(s => [s.key, s.value])), articleStats: artStats, recentBatches: batches };
     }),
 
-    updateLicense: adminProcedure.input(z.object({ licenseId: z.number(), status: z.enum(["active", "expired", "suspended", "cancelled"]).optional(), tier: z.enum(["starter", "professional", "enterprise"]).optional() }))
-      .mutation(async ({ input }) => {
+    updateLicense: protectedProcedure.input(z.object({ licenseId: z.number(), status: z.enum(["active", "expired", "suspended", "cancelled"]).optional(), tier: z.enum(["starter", "professional", "enterprise"]).optional() }))
+      .mutation(async ({ input, ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { licenses } = await import("../drizzle/schema");
@@ -4728,8 +4747,9 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    startImpersonation: adminProcedure.input(z.object({ targetLicenseId: z.number(), targetSubdomain: z.string() }))
+    startImpersonation: protectedProcedure.input(z.object({ targetLicenseId: z.number(), targetSubdomain: z.string() }))
       .mutation(async ({ input, ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
         const dbConn = await db.getDb();
         if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { impersonationLog } = await import("../drizzle/schema");
@@ -4743,7 +4763,8 @@ export const appRouter = router({
         return { loginUrl: "https://" + input.targetSubdomain + ".getjaime.io/admin/dashboard" };
       }),
 
-    getImpersonationLog: adminProcedure.query(async () => {
+    getImpersonationLog: protectedProcedure.query(async ({ ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { impersonationLog } = await import("../drizzle/schema");
@@ -4751,7 +4772,8 @@ export const appRouter = router({
       return dbConn.select().from(impersonationLog).orderBy(desc(impersonationLog.startedAt)).limit(50);
     }),
 
-    getStaff: adminProcedure.query(async () => {
+    getStaff: protectedProcedure.query(async ({ ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
       const dbConn = await db.getDb();
       if (!dbConn) return [];
       const { staffAccounts } = await import("../drizzle/schema");
