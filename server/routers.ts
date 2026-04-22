@@ -4234,7 +4234,7 @@ export const appRouter = router({
       const lid = ctx.licenseId!;
       const [statusCounts, todayResult, poolResult, loopSetting, healthResult] = await Promise.all([
         dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` }).from(articles).where(eq(articles.licenseId, lid)).groupBy(articles.status),
-        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(and(eq(articles.licenseId, lid), sql`DATE(created_at) = CURDATE()`)),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(and(eq(articles.licenseId, lid), sql`DATE(createdAt) = CURDATE()`)),
         dbConn.select({ count: sql<number>`COUNT(*)` }).from(candidates).where(and(eq(candidates.licenseId, lid), eq(candidates.status, "pending"))).catch(() => [{ count: 0 }]),
         (await import("./db")).getLicenseSetting(lid, "workflow_enabled"),
         dbConn.select({
@@ -4303,9 +4303,9 @@ export const appRouter = router({
         dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles)
           .where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, startOfMonth))),
 
-        dbConn.select({ date: sql<string>`DATE(created_at)`, count: sql<number>`COUNT(*)` })
+        dbConn.select({ date: sql<string>`DATE(createdAt)`, count: sql<number>`COUNT(*)` })
           .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, thirtyDaysAgo)))
-          .groupBy(sql`DATE(created_at)`).orderBy(sql`DATE(created_at)`),
+          .groupBy(sql`DATE(createdAt)`).orderBy(sql`DATE(createdAt)`),
 
         // distributionQueue has no licenseId column — join through articles to scope by license
         dbConn.select({ platform: distributionQueue.platform, status: distributionQueue.status,
@@ -4348,9 +4348,9 @@ export const appRouter = router({
       const { getLicenseSettingOrGlobal } = await import("./db");
 
       const [byDayRaw, sourcePerf, tipsRaw, pendingArticles, providerSettings, rssFeedStats, loopSettingFull, runningBatchResult, blatotatoKey] = await Promise.all([
-        dbConn.select({ date: sql<string>`DATE(created_at)`, status: articles.status, count: sql<number>`COUNT(*)` })
+        dbConn.select({ date: sql<string>`DATE(createdAt)`, status: articles.status, count: sql<number>`COUNT(*)` })
           .from(articles).where(and(eq(articles.licenseId, licenseId), gte(articles.createdAt, sevenDaysAgo)))
-          .groupBy(sql`DATE(created_at)`, articles.status).catch(() => []),
+          .groupBy(sql`DATE(createdAt)`, articles.status).catch(() => []),
         dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` })
           .from(selectorCandidates).where(and(eq(selectorCandidates.licenseId, licenseId), gte(selectorCandidates.createdAt, sevenDaysAgo)))
           .groupBy(selectorCandidates.sourceType).catch(() => []),
