@@ -71,6 +71,14 @@ export async function createContext(
     } catch {}
   }
 
+  // Warn if a tenant subdomain request has no licenseId (data isolation risk)
+  if (!licenseId) {
+    const h = opts.req.hostname || (opts.req.headers.host || '').split(':')[0] || '';
+    if (h && !['app', 'staging', 'www', 'localhost', '127.0.0.1'].some(s => h.startsWith(s)) && h.includes('.')) {
+      console.warn('[Context] WARNING: No licenseId resolved for host:', h);
+    }
+  }
+
   return {
     req: opts.req,
     res: opts.res,
