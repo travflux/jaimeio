@@ -158,6 +158,8 @@ import SuperAdminLicenseDetail from "./pages/superadmin/LicenseDetail";
 import SuperAdminStaffAccounts from "./pages/superadmin/StaffAccounts";
 import SuperAdminImpersonationLog from "./pages/superadmin/ImpersonationLog";
 import SuperAdminGuard from "./components/SuperAdminGuard";
+import SuperAdminPerformance from "./pages/superadmin/PerformanceDashboard";
+import SuperAdminGenerationLog from "./pages/superadmin/GenerationLog";
 
 // Detect if we're on app.getjaime.io or a tenant subdomain
 function useIsAppDomain() {
@@ -358,6 +360,8 @@ function Router() {
           <Route path="/superadmin/licenses/:id">{(params) => <SuperAdminGuard><SuperAdminLicenseDetail licenseId={Number(params.id)} /></SuperAdminGuard>}</Route>
           <Route path="/superadmin/staff">{() => <SuperAdminGuard><SuperAdminStaffAccounts /></SuperAdminGuard>}</Route>
           <Route path="/superadmin/impersonation-log">{() => <SuperAdminGuard><SuperAdminImpersonationLog /></SuperAdminGuard>}</Route>
+          <Route path="/superadmin/performance">{() => <SuperAdminGuard><SuperAdminPerformance /></SuperAdminGuard>}</Route>
+          <Route path="/superadmin/generation-log">{() => <SuperAdminGuard><SuperAdminGenerationLog /></SuperAdminGuard>}</Route>
         </>
       )}
       <Route path="/404" component={NotFound} />

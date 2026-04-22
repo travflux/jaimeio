@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Shield, Users, ScrollText, FileText,
-  ChevronRight, Menu, X
+  BarChart3, ClipboardList, ChevronRight, Menu, X
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Mission Control", href: "/superadmin" },
   { icon: FileText, label: "Licenses", href: "/superadmin/licenses" },
   { icon: Users, label: "Staff Accounts", href: "/superadmin/staff" },
+  { icon: BarChart3, label: "Performance", href: "/superadmin/performance" },
+  { icon: ClipboardList, label: "Generation Log", href: "/superadmin/generation-log" },
   { icon: ScrollText, label: "Impersonation Log", href: "/superadmin/impersonation-log" },
 ];
 

@@ -4767,8 +4767,109 @@ export const appRouter = router({
       const { staffAccounts } = await import("../drizzle/schema");
       return dbConn.select().from(staffAccounts);
     }),
+
+    createLicense: protectedProcedure.input(z.object({
+      subdomain: z.string().min(2),
+      tier: z.enum(["starter", "professional", "enterprise"]),
+      ownerEmail: z.string().email(),
+      ownerName: z.string().min(1),
+      siteName: z.string().min(1),
+    })).mutation(async ({ ctx, input }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenses, licenseSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const [existing] = await dbConn.select({ id: licenses.id }).from(licenses).where(eq(licenses.subdomain, input.subdomain)).limit(1);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "Subdomain already taken" });
+      const licenseKey = "lic_" + input.subdomain + "_" + Date.now().toString(36);
+      const result = await dbConn.insert(licenses).values({
+        licenseKey,
+        clientName: input.ownerName,
+        email: input.ownerEmail,
+        domain: input.subdomain + ".getjaime.io",
+        subdomain: input.subdomain,
+        tier: input.tier as any,
+        status: "active",
+      } as any);
+      const newId = Number((result as any)[0]?.insertId ?? 0);
+      if (newId) {
+        await dbConn.insert(licenseSettings).values([
+          { licenseId: newId, key: "brand_site_name", value: input.siteName },
+          { licenseId: newId, key: "owner_email", value: input.ownerEmail },
+          { licenseId: newId, key: "production_loop_enabled", value: "false" },
+          { licenseId: newId, key: "brand_template", value: "magazine" },
+        ] as any[]);
+      }
+      return { licenseId: newId, subdomain: input.subdomain };
+    }),
+
+    addStaff: protectedProcedure.input(z.object({
+      clerkUserId: z.string().min(1),
+      email: z.string().email(),
+      name: z.string().min(1),
+      role: z.enum(["owner", "admin"]),
+    })).mutation(async ({ ctx, input }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { staffAccounts } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const [existing] = await dbConn.select({ id: staffAccounts.id }).from(staffAccounts).where(eq(staffAccounts.clerkUserId, input.clerkUserId)).limit(1);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "Staff member already exists" });
+      await dbConn.insert(staffAccounts).values({ ...input, isActive: true } as any);
+      return { success: true };
+    }),
+
+    updateStaff: protectedProcedure.input(z.object({
+      id: z.number(),
+      isActive: z.boolean().optional(),
+      role: z.enum(["owner", "admin"]).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { staffAccounts } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { id, ...updates } = input;
+      await dbConn.update(staffAccounts).set(updates as any).where(eq(staffAccounts.id, id));
+      return { success: true };
+    }),
+
+    getGenerationStats: protectedProcedure.query(async ({ ctx }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
+      const dbConn = await db.getDb();
+      if (!dbConn) return { articlesByDay: [], articlesByLicense: [], articlesByStatus: [], recentBatches: [], topCandidateSources: [] };
+      const { articles, workflowBatches, selectorCandidates } = await import("../drizzle/schema");
+      const { sql, gte, desc } = await import("drizzle-orm");
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+      const [abd, abl, abs2, rb, tcs] = await Promise.all([
+        dbConn.select({ date: sql<string>`DATE(createdAt)`, count: sql<number>`COUNT(*)` }).from(articles).where(gte(articles.createdAt, sevenDaysAgo)).groupBy(sql`DATE(createdAt)`).orderBy(sql`DATE(createdAt)`).catch(() => []),
+        dbConn.select({ licenseId: articles.licenseId, count: sql<number>`COUNT(*)` }).from(articles).where(gte(articles.createdAt, sevenDaysAgo)).groupBy(articles.licenseId).catch(() => []),
+        dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` }).from(articles).groupBy(articles.status).catch(() => []),
+        dbConn.select().from(workflowBatches).orderBy(desc(workflowBatches.createdAt)).limit(20).catch(() => []),
+        dbConn.select({ sourceType: selectorCandidates.sourceType, count: sql<number>`COUNT(*)` }).from(selectorCandidates).groupBy(selectorCandidates.sourceType).catch(() => []),
+      ]);
+      return { articlesByDay: abd, articlesByLicense: abl, articlesByStatus: abs2, recentBatches: rb, topCandidateSources: tcs };
+    }),
+
+    getGenerationLog: protectedProcedure.input(z.object({
+      licenseId: z.number().optional(),
+      step: z.string().optional(),
+      status: z.string().optional(),
+      limit: z.number().default(100),
+    }).optional()).query(async ({ ctx, input }) => {
+      const staff = await requireStaffAccess(ctx.user?.id);
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { generationLog } = await import("../drizzle/schema");
+      const { eq, and, desc } = await import("drizzle-orm");
+      const conditions: any[] = [];
+      if (input?.licenseId) conditions.push(eq(generationLog.licenseId, input.licenseId));
+      if (input?.step) conditions.push(eq(generationLog.step, input.step as any));
+      if (input?.status) conditions.push(eq(generationLog.status, input.status as any));
+      return dbConn.select().from(generationLog).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(generationLog.attemptedAt)).limit(input?.limit ?? 100);
+    }),
   }),
 
 });
-
-export type AppRouter = typeof appRouter;
