@@ -65,7 +65,7 @@ export function generateLicenseKey(
     .substring(0, 16);
 
   const keyData = Buffer.from(payloadStr).toString("base64");
-  const licenseKey = `HAMBRY-${tier.toUpperCase().substring(0, 3)}-${signature}-${keyData}`;
+  const licenseKey = `JAIME-${tier.toUpperCase().substring(0, 3)}-${signature}-${keyData}`;
 
   const features = getTierFeatures(tier);
 
@@ -86,9 +86,9 @@ export function generateLicenseKey(
  */
 export function validateLicenseKey(licenseKey: string): LicenseValidationResult {
   try {
-    // Parse license key format: HAMBRY-{TIER}-{SIGNATURE}-{PAYLOAD}
+    // Parse license key format: JAIME-{TIER}-{SIGNATURE}-{PAYLOAD}
     const parts = licenseKey.split("-");
-    if (parts.length < 4 || parts[0] !== "HAMBRY") {
+    if (parts.length < 4 || (parts[0] !== "JAIME" && parts[0] !== "HAMBRY")) {
       return { valid: false, error: "Invalid license key format" };
     }
 

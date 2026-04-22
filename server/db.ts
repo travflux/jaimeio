@@ -957,10 +957,10 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
   { key: "auto_generate_images", value: "true", label: "Auto-Generate Images", description: "Automatically generate featured images for each article.", category: "generation", type: "boolean" },
 
   // Image Generation Providers
-  { key: "image_provider", value: "none", label: "Image Provider", description: "Primary image generation provider (none, manus, openai, replicate, custom). Defaults to none — must be explicitly configured before image generation will work.", category: "image_providers", type: "string" },
+  { key: "image_provider", value: "none", label: "Image Provider", description: "Primary image generation provider (none, openai, replicate, gemini, grok, custom). Defaults to none — must be explicitly configured before image generation will work.", category: "image_providers", type: "string" },
   { key: "image_style_prompt", value: "Professional editorial illustration, clean modern style", label: "Image Style Prompt", description: "Base style description for image generation (e.g., 'Editorial cartoon illustration, satirical style' or 'Photorealistic, high detail, professional photography').", category: "image_providers", type: "text" },
   { key: "image_style_keywords", value: "High quality, sharp detail, professional photography aesthetic. No text or words in the image.", label: "Image Style Keywords", description: "Additional style keywords appended to the prompt (e.g., 'Bold colors, exaggerated proportions' or '8k resolution, cinematic lighting, sharp focus').", category: "image_providers", type: "text" },
-  { key: "image_provider_fallback_enabled", value: "true", label: "Enable Fallback to Manus", description: "If the primary provider fails, automatically fall back to the built-in Manus provider.", category: "image_providers", type: "boolean" },
+  { key: "image_provider_fallback_enabled", value: "true", label: "Enable Provider Fallback", description: "If the primary provider fails, automatically try the next available configured provider.", category: "image_providers", type: "boolean" },
   { key: "image_provider_openai_api_key", value: "", label: "OpenAI API Key", description: "API key for OpenAI DALL-E image generation.", category: "image_providers", type: "string" },
   { key: "image_provider_replicate_api_key", value: "", label: "Replicate API Key", description: "API key for Replicate image generation.", category: "image_providers", type: "string" },
   { key: "image_provider_replicate_model", value: "black-forest-labs/flux-schnell", label: "Replicate Model", description: "Replicate model version ID or name (e.g., black-forest-labs/flux-schnell).", category: "image_providers", type: "string" },
@@ -994,11 +994,11 @@ export const DEFAULT_SETTINGS: InsertWorkflowSetting[] = [
 
   // Video Generation Providers
   { key: "auto_generate_videos", value: "false", label: "Auto-Generate Videos", description: "Automatically generate videos for each article during the workflow.", category: "video_providers", type: "boolean" },
-  { key: "video_provider", value: "manus", label: "Video Provider", description: "Primary video generation provider (manus, openai, replicate, custom).", category: "video_providers", type: "string" },
+  { key: "video_provider", value: "none", label: "Video Provider", description: "Primary video generation provider (openai, replicate, custom).", category: "video_providers", type: "string" },
   { key: "video_duration", value: "5", label: "Video Duration (seconds)", description: "Default duration for generated videos (5-60 seconds).", category: "video_providers", type: "number" },
   { key: "video_aspect_ratio", value: "16:9", label: "Video Aspect Ratio", description: "Aspect ratio for generated videos (16:9, 9:16, or 1:1).", category: "video_providers", type: "string" },
   { key: "video_style_prompt", value: "Professional news broadcast style, high production quality, cinematic lighting", label: "Video Style Prompt", description: "Base style description for video generation.", category: "video_providers", type: "text" },
-  { key: "video_provider_fallback_enabled", value: "true", label: "Enable Fallback to Manus", description: "If the primary video provider fails, automatically fall back to the built-in Manus provider.", category: "video_providers", type: "boolean" },
+  { key: "video_provider_fallback_enabled", value: "true", label: "Enable Video Provider Fallback", description: "If the primary video provider fails, automatically try the next available configured provider.", category: "video_providers", type: "boolean" },
   { key: "video_provider_openai_api_key", value: "", label: "OpenAI API Key", description: "API key for OpenAI video generation (future support).", category: "video_providers", type: "string" },
   { key: "video_provider_replicate_api_key", value: "", label: "Replicate API Key", description: "API key for Replicate video generation (Runway, Kling, etc.).", category: "video_providers", type: "string" },
   { key: "video_provider_replicate_model", value: "runway/gen-3-lite", label: "Replicate Model", description: "Replicate model version ID or name for video generation (e.g., runway/gen-3-lite, kling-ai/kling-v1).", category: "video_providers", type: "string" },

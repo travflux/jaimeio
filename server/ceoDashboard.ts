@@ -123,7 +123,6 @@ interface SeoData {
 
 interface FinancialData {
   ceoCost: number;
-  manusCost: number;
   xApiCost: number;
   totalMonthly: number;
   monthlyRevenue: number;
@@ -579,7 +578,6 @@ async function getSeoStatus(): Promise<SeoData> {
 function getFinancialSummary(): FinancialData {
   return {
     ceoCost: 200,
-    manusCost: 300,
     xApiCost: 0,
     totalMonthly: 500,
     monthlyRevenue: 0,
@@ -1035,9 +1033,8 @@ ${inventory.dailyCounts.map(d => {
   <table style="margin-bottom:24px;">
     <tr><th>Item</th><th>Monthly Cost</th></tr>
     <tr><td>CEO Cost (Claude Max)</td><td>$${financial.ceoCost}/mo</td></tr>
-    <tr><td>Manus (Build + Hosting)</td><td>$${financial.manusCost}/mo</td></tr>
+    <tr><td>Hetzner VPS (CPX21)</td><td>$15/mo</td></tr>
     <tr><td>X API (Free Tier)</td><td>$${financial.xApiCost}/mo</td></tr>
-    <tr><td>Hosting / Infrastructure</td><td>Included in Manus</td></tr>
     <tr><td><strong>Total Monthly Burn</strong></td><td><strong>$${financial.totalMonthly}/mo</strong></td></tr>
     <tr><td>Monthly Revenue (Actual)</td><td><strong style="color:${financial.monthlyRevenue > 0 ? '#16a34a' : '#6b7280'};">$${financial.monthlyRevenue.toFixed(2)}</strong>${financial.monthlyRevenue === 0 ? ' <span style="color:#6b7280;font-size:12px;">(pre-revenue)</span>' : ''}</td></tr>
     <tr><td>Net Monthly P&amp;L</td><td><strong style="color:${financial.monthlyRevenue - financial.totalMonthly >= 0 ? '#16a34a' : '#dc2626'};">$${(financial.monthlyRevenue - financial.totalMonthly).toFixed(2)}</strong></td></tr>

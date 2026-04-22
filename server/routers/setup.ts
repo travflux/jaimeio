@@ -96,9 +96,8 @@ export const setupRouter = router({
 
   /** Return which env vars are set (true/false only — never expose values) */
   getEnvStatus: adminProcedure.query(() => ({
-    BUILT_IN_FORGE_API_KEY: !!process.env.BUILT_IN_FORGE_API_KEY,
-    BUILT_IN_FORGE_API_URL: !!process.env.BUILT_IN_FORGE_API_URL,
     SITE_URL: !!process.env.SITE_URL,
+    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
     SITE_URL_VALUE: process.env.SITE_URL ?? "",
     RESEND_API_KEY: !!process.env.RESEND_API_KEY,
     INDEXNOW_KEY: !!process.env.INDEXNOW_KEY,

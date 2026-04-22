@@ -1,9 +1,8 @@
 /**
  * Multi-provider image generation system
- * Supports internal (Manus) and external (OpenAI, Replicate, custom) providers
+ * Multi-provider image generation (OpenAI, Replicate, Gemini, Grok, custom)
  */
 import { storagePut } from "server/storage";
-import { ENV } from "./env";
 import * as db from "../db";
 import { addWatermark } from "../watermark";
 
@@ -37,73 +36,6 @@ function tenantImageKey(licenseId?: number): string {
 interface ImageProvider {
   name: string;
   generate(options: ImageGenerationOptions): Promise<{ url: string }>;
-}
-
-// ─── Built-in Manus Provider ────────────────────────────────────────────────
-
-class ManusImageProvider implements ImageProvider {
-  name = "manus";
-
-  async generate(options: ImageGenerationOptions): Promise<{ url: string }> {
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      throw new Error("BUILT_IN_FORGE_API_URL or BUILT_IN_FORGE_API_KEY is not configured");
-    }
-
-    const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
-    const fullUrl = new URL("images.v1.ImageService/GenerateImage", baseUrl).toString();
-
-    const originalImages = options.originalImages || [];
-
-    const response = await fetch(fullUrl, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        "connect-protocol-version": "1",
-        authorization: `Bearer ${ENV.forgeApiKey}`,
-      },
-      body: JSON.stringify({
-        prompt: options.prompt,
-        original_images: originalImages,
-      }),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      throw new Error(`Manus image generation failed (${response.status})${detail ? `: ${detail}` : ""}`);
-    }
-
-    const result = (await response.json()) as { image: { b64Json: string; mimeType: string } };
-    let buffer = Buffer.from(result.image.b64Json, "base64");
-    
-    // Add watermark if enabled
-    // Per-tenant watermark check
-    if (options.licenseId) {
-      const { getLicenseSetting } = await import("../db");
-      const wmEnabled = await getLicenseSetting(options.licenseId, "image_watermark_enabled");
-      if (wmEnabled?.value === "true") {
-        try {
-          const { getWatermarkSettings } = await import("../watermark");
-          const watermarkOptions = await getWatermarkSettings();
-          const wmText = await getLicenseSetting(options.licenseId, "image_watermark_text");
-          if (wmText?.value) watermarkOptions.text = wmText.value;
-          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
-        } catch { /* watermark optional */ }
-      }
-    } else {
-      const watermarkEnabled = await db.getSetting("watermark_enabled");
-      if (watermarkEnabled?.value === "true") {
-        try {
-          const { getWatermarkSettings } = await import("../watermark");
-          const watermarkOptions = await getWatermarkSettings();
-          buffer = Buffer.from(await addWatermark(buffer, watermarkOptions));
-        } catch { /* watermark optional */ }
-      }
-    }
-    
-    const { url } = await storagePut(tenantImageKey(options.licenseId), buffer, result.image.mimeType);
-    return { url };
-  }
 }
 
 // ─── OpenAI DALL-E Provider ─────────────────────────────────────────────────
@@ -457,7 +389,6 @@ class GrokImageProvider implements ImageProvider {
 }
 
 const providers: Record<string, ImageProvider> = {
-  manus: new ManusImageProvider(),
   openai: new OpenAIImageProvider(),
   replicate: new ReplicateImageProvider(),
   custom: new CustomAPIImageProvider(),
@@ -471,9 +402,8 @@ export async function generateImageWithProvider(
   options: ImageGenerationOptions
 ): Promise<ImageGenerationResponse> {
   // Get configured provider.
-  // IMPORTANT: The default is intentionally "none" — NOT "manus".
-  // This prevents white-label deployments from accidentally consuming the
-  // engine operator's Manus credits. Every deployment must explicitly choose
+  // IMPORTANT: The default is intentionally "none".
+  // Every deployment must explicitly choose
   // and configure its own image provider in Admin → Settings → Images.
   const providerSetting = await db.getSetting("image_provider");
   const primaryProvider = providerSetting?.value || "none";
@@ -486,6 +416,10 @@ export async function generateImageWithProvider(
 
   const fallbackEnabled = await db.getSetting("image_provider_fallback_enabled");
   const useFallback = fallbackEnabled?.value === "true";
+
+  if (primaryProvider === "manus") {
+    throw new Error("Manus image provider is no longer supported. Please configure a different provider in Image Settings (OpenAI, Replicate, Gemini, Grok, or Custom).");
+  }
 
   const provider = providers[primaryProvider];
   if (!provider) {
@@ -500,8 +434,6 @@ export async function generateImageWithProvider(
     console.error(`[ImageGen] ${provider.name} failed:`, err.message);
 
     // Fallback to a secondary provider if enabled.
-    // NOTE: The fallback will NOT automatically use the Manus provider unless
-    // the admin has explicitly set image_provider_fallback to "manus".
     const fallbackProviderSetting = await db.getSetting("image_provider_fallback");
     const fallbackProvider = fallbackProviderSetting?.value;
     if (useFallback && fallbackProvider && fallbackProvider !== primaryProvider && providers[fallbackProvider]) {
