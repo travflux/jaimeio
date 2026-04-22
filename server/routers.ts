@@ -2032,7 +2032,7 @@ export const appRouter = router({
         const slug = slugify(article.headline || "untitled", { lower: true, strict: true }).slice(0, 80) + "-" + Math.random().toString(36).slice(2, 7);
         let body = article.body || "";
         if (!body.trim().startsWith("<")) body = body.split("\n\n").filter((p: string) => p.trim()).map((p: string) => "<p>" + p.trim() + "</p>").join("");
-        const articleId = await db.createArticle({ headline: article.headline || "Untitled", subheadline: article.subheadline || "", body, slug, status: "pending", categoryId: input.categoryId, featuredImage: input.imageUrl || "", sourceEvent: candidate.title, sourceUrl: candidate.source_url, licenseId: 7, templateId: input.templateId || undefined } as any);
+        const articleId = await db.createArticle({ headline: article.headline || "Untitled", subheadline: article.subheadline || "", body, slug, status: "pending", categoryId: input.categoryId, featuredImage: input.imageUrl || "", sourceEvent: candidate.title, sourceUrl: candidate.source_url, licenseId: ctx.licenseId!, templateId: input.templateId || undefined } as any);
         await dbConn.execute(sqlFn`UPDATE selector_candidates SET status = 'selected', article_id = ${articleId} WHERE id = ${input.candidateId}`);
         return { success: true, articleId, slug };
       }),

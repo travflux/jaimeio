@@ -348,6 +348,10 @@ export async function getArticleById(id: number) {
 }
 
 export async function createArticle(data: InsertArticle) {
+  if (!(data as any).licenseId) {
+    console.error("[Article Create] BLOCKED: No licenseId provided");
+    throw new Error("licenseId is required for article creation");
+  }
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const result = await db.insert(articles).values(data);
@@ -882,6 +886,10 @@ export async function createArticleFromWorkflow(data: {
   generationStyle?: string;
   licenseId?: number;
 }): Promise<number | null> {
+    if (!data.licenseId) {
+    console.error("[ArticleFromWorkflow] BLOCKED: No licenseId");
+    throw new Error("licenseId is required for article creation");
+  }
   const db = await getDb();
   if (!db) return null;
   // Skip duplicates

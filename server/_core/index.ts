@@ -546,7 +546,9 @@ async function startServer() {
     initSearchPerformanceSync();
     initNewsletterDigestScheduler();
     initDistributionScheduler();
-    initProductionLoop();
+    // DISABLED 2026-04-22: Global loop replaced by per-tenant scheduler
+    // Was generating orphan articles (license_id=NULL) every 15 minutes
+    // initProductionLoop();
     // v4.9.0: Hourly rollup of js_page_views into daily_analytics
     // Runs 5 minutes past each hour to ensure the previous hour's data is complete
     cron.schedule('0 5 * * * *', () => {

@@ -246,6 +246,9 @@ async function generateArticleFromCandidate(
  * Pool-drain model: drain high pool first, then medium. Safety cap is the only brake.
  */
 export async function runProductionLoopTick(): Promise<{ articlesGenerated: number; message: string }> {
+  // SAFETY GUARD: Global loop is disabled. All generation handled by per-tenant scheduler.
+  console.error("[ProductionLoop] BLOCKED: Global loop attempted to run. This loop is disabled.");
+  return { articlesGenerated: 0, message: "Global production loop is disabled. Use per-tenant scheduler." };
   // Guard: don't run if another tick is already in progress
   if (_isRunning) {
     return { articlesGenerated: 0, message: "Loop tick skipped: already running" };
