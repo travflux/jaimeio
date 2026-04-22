@@ -741,21 +741,21 @@ export const appRouter = router({
       return { articles, total: result.total, hasMore, nextCursor };
     }),
     mostRead: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(({ input, ctx }) => db.getMostReadArticles(input?.limit ?? 5, ctx.licenseId)),
-    fromArchive: publicProcedure.input(z.object({ limit: z.number().optional(), minDaysOld: z.number().optional() }).optional()).query(async ({ input }) => {
+    fromArchive: publicProcedure.input(z.object({ limit: z.number().optional(), minDaysOld: z.number().optional() }).optional()).query(async ({ input, ctx }) => {
       const limit = input?.limit ?? 5;
       const minDaysOld = input?.minDaysOld ?? 30;
       const cutoff = new Date(Date.now() - minDaysOld * 24 * 60 * 60 * 1000);
-      const result = await db.listArticles({ status: 'published', limit: limit * 8 });
+      const result = await db.listArticles({ status: 'published', limit: limit * 8, licenseId: ctx.licenseId ?? undefined });
       const older = result.articles.filter(a => {
         const pub = a.publishedAt ? new Date(a.publishedAt) : null;
         return pub && pub < cutoff;
       });
       return older.sort(() => Math.random() - 0.5).slice(0, limit);
     }),
-    trending: publicProcedure.input(z.object({ hoursAgo: z.number().optional(), limit: z.number().optional() }).optional()).query(async ({ input }) => {
+    trending: publicProcedure.input(z.object({ hoursAgo: z.number().optional(), limit: z.number().optional() }).optional()).query(async ({ input, ctx }) => {
       const hoursAgo = input?.hoursAgo ?? 24;
       const limit = input?.limit ?? 5;
-      return db.getTrendingArticles(hoursAgo, limit);
+      return db.getTrendingArticles(hoursAgo, limit, ctx.licenseId ?? undefined);
     }),
     editorsPicks: publicProcedure.input(z.object({ limit: z.number().optional() }).optional()).query(async ({ input, ctx }) => {
       const dbConn = await db.getDb();
