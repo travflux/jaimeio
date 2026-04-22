@@ -4653,6 +4653,112 @@ export const appRouter = router({
     }),
   }),
 
+  // ═══ SUPER ADMIN ROUTER ═══
+  superAdmin: router({
+    getPlatformStats: adminProcedure.query(async () => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return { totalLicenses: 0, activeLicenses: 0, totalArticles: 0, articlesThisWeek: 0, totalCandidates: 0 };
+      const { licenses, articles, selectorCandidates } = await import("../drizzle/schema");
+      const { sql, eq, gte } = await import("drizzle-orm");
+      const [tl, al, ta, tw, tc] = await Promise.all([
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(licenses),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(licenses).where(eq(licenses.status, "active")),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(gte(articles.createdAt, new Date(Date.now() - 7 * 86400000))),
+        dbConn.select({ count: sql<number>`COUNT(*)` }).from(selectorCandidates),
+      ]);
+      return {
+        totalLicenses: Number(tl[0]?.count ?? 0),
+        activeLicenses: Number(al[0]?.count ?? 0),
+        totalArticles: Number(ta[0]?.count ?? 0),
+        articlesThisWeek: Number(tw[0]?.count ?? 0),
+        totalCandidates: Number(tc[0]?.count ?? 0),
+      };
+    }),
+
+    getLicenses: adminProcedure.query(async () => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { licenses, articles, licenseSettings } = await import("../drizzle/schema");
+      const { sql, eq } = await import("drizzle-orm");
+      const allLicenses = await dbConn.select().from(licenses).orderBy(licenses.id);
+      const enriched = await Promise.all(allLicenses.map(async (lic) => {
+        const [artCount, settings] = await Promise.all([
+          dbConn.select({ count: sql<number>`COUNT(*)` }).from(articles).where(eq(articles.licenseId, lic.id)),
+          dbConn.select({ key: licenseSettings.key, value: licenseSettings.value }).from(licenseSettings)
+            .where(eq(licenseSettings.licenseId, lic.id)).catch(() => []),
+        ]);
+        const sm = Object.fromEntries((settings as any[]).map(s => [s.key, s.value]));
+        return {
+          id: lic.id, subdomain: lic.subdomain, clientName: lic.clientName, email: lic.email,
+          tier: lic.tier, status: lic.status, createdAt: lic.createdAt,
+          articleCount: Number(artCount[0]?.count ?? 0),
+          siteName: sm.brand_site_name || lic.subdomain || lic.clientName,
+          loopEnabled: sm.production_loop_enabled === "true" || sm.workflow_enabled === "true",
+        };
+      }));
+      return enriched;
+    }),
+
+    getLicense: adminProcedure.input(z.object({ licenseId: z.number() })).query(async ({ input }) => {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { licenses, articles, licenseSettings, workflowBatches } = await import("../drizzle/schema");
+      const { eq, desc, sql } = await import("drizzle-orm");
+      const [lic] = await dbConn.select().from(licenses).where(eq(licenses.id, input.licenseId)).limit(1);
+      if (!lic) throw new TRPCError({ code: "NOT_FOUND" });
+      const [settings, artStats, batches] = await Promise.all([
+        dbConn.select().from(licenseSettings).where(eq(licenseSettings.licenseId, input.licenseId)),
+        dbConn.select({ status: articles.status, count: sql<number>`COUNT(*)` }).from(articles).where(eq(articles.licenseId, input.licenseId)).groupBy(articles.status),
+        dbConn.select().from(workflowBatches).where(eq(workflowBatches.licenseId, input.licenseId)).orderBy(desc(workflowBatches.createdAt)).limit(5),
+      ]);
+      return { license: lic, settings: Object.fromEntries((settings as any[]).map(s => [s.key, s.value])), articleStats: artStats, recentBatches: batches };
+    }),
+
+    updateLicense: adminProcedure.input(z.object({ licenseId: z.number(), status: z.enum(["active", "expired", "suspended", "cancelled"]).optional(), tier: z.enum(["starter", "professional", "enterprise"]).optional() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { licenses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const updates: any = { updatedAt: new Date() };
+        if (input.status) updates.status = input.status;
+        if (input.tier) updates.tier = input.tier;
+        await dbConn.update(licenses).set(updates).where(eq(licenses.id, input.licenseId));
+        return { success: true };
+      }),
+
+    startImpersonation: adminProcedure.input(z.object({ targetLicenseId: z.number(), targetSubdomain: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { impersonationLog } = await import("../drizzle/schema");
+        await dbConn.insert(impersonationLog).values({
+          impersonatorUserId: ctx.user?.id ?? "unknown",
+          impersonatorEmail: (ctx.user as any)?.email ?? "unknown",
+          targetLicenseId: input.targetLicenseId,
+          targetSubdomain: input.targetSubdomain,
+          startedAt: new Date(),
+        } as any);
+        return { loginUrl: "https://" + input.targetSubdomain + ".getjaime.io/admin/dashboard" };
+      }),
+
+    getImpersonationLog: adminProcedure.query(async () => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { impersonationLog } = await import("../drizzle/schema");
+      const { desc } = await import("drizzle-orm");
+      return dbConn.select().from(impersonationLog).orderBy(desc(impersonationLog.startedAt)).limit(50);
+    }),
+
+    getStaff: adminProcedure.query(async () => {
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const { staffAccounts } = await import("../drizzle/schema");
+      return dbConn.select().from(staffAccounts);
+    }),
+  }),
+
 });
 
 export type AppRouter = typeof appRouter;

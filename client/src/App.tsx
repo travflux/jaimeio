@@ -151,6 +151,13 @@ import TenantWhiteLabel from "./pages/tenant/TenantWhiteLabel";
 import ResetPassword from "./pages/ResetPassword";
 import ResellerMissionControl from "./pages/tenant/ResellerMissionControl";
 
+// ═══ Super Admin Portal Pages ═══
+import SuperAdminMissionControl from "./pages/superadmin/MissionControl";
+import SuperAdminLicenseList from "./pages/superadmin/LicenseList";
+import SuperAdminLicenseDetail from "./pages/superadmin/LicenseDetail";
+import SuperAdminStaffAccounts from "./pages/superadmin/StaffAccounts";
+import SuperAdminImpersonationLog from "./pages/superadmin/ImpersonationLog";
+
 // Detect if we're on app.getjaime.io or a tenant subdomain
 function useIsAppDomain() {
   const hostname = window.location.hostname;
@@ -343,6 +350,13 @@ function Router() {
           <Route path="/admin/sponsor-attribution" component={AdminSponsorAttribution} />
           <Route path="/admin/image-sources" component={AdminImageSources} />
           <Route path="/admin/pages" component={AdminPages} />
+
+          {/* ═══ SUPER ADMIN PORTAL ═══ */}
+          <Route path="/superadmin" component={SuperAdminMissionControl} />
+          <Route path="/superadmin/licenses" component={SuperAdminLicenseList} />
+          <Route path="/superadmin/licenses/:id">{(params) => <SuperAdminLicenseDetail licenseId={Number(params.id)} />}</Route>
+          <Route path="/superadmin/staff" component={SuperAdminStaffAccounts} />
+          <Route path="/superadmin/impersonation-log" component={SuperAdminImpersonationLog} />
         </>
       )}
       <Route path="/404" component={NotFound} />
