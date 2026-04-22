@@ -18,7 +18,7 @@ import { Loader2, TrendingUp, ArrowRight, Flame, Sparkles, Mail, Newspaper, Arch
 import { Button } from "@/components/ui/button";
 import { SiteLoader, SiteInlineLoader } from "@/components/SiteLoader";
 import { setOGTags } from "@/lib/og-tags";
-import { setOrganizationSchema, HAMBRY_ORGANIZATION as DEFAULT_ORGANIZATION } from "@/lib/organization-schema";
+import { setOrganizationSchema, DEFAULT_ORGANIZATION } from "@/lib/organization-schema";
 import { setCanonicalURL } from "@/lib/canonical-url";
 import { useScrollAnimations } from "@/hooks/useScrollAnimation";
 import { usePageView } from "@/hooks/usePageView";

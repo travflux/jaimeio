@@ -103,7 +103,7 @@ export function setOrganizationSchema(config: OrganizationSchemaConfig): void {
  * Default organization schema — all brand-specific values are empty.
  * Callers must spread this and override name/description/logo from branding settings.
  */
-export const HAMBRY_ORGANIZATION: OrganizationSchemaConfig = {
+export const DEFAULT_ORGANIZATION: OrganizationSchemaConfig = {
   name: "",
   url: typeof window !== 'undefined' ? window.location.origin : '',
   logo: typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '',
@@ -111,3 +111,6 @@ export const HAMBRY_ORGANIZATION: OrganizationSchemaConfig = {
   email: "",
   socialProfiles: [],
 };
+
+/** @deprecated Use DEFAULT_ORGANIZATION instead */
+export const HAMBRY_ORGANIZATION = DEFAULT_ORGANIZATION;

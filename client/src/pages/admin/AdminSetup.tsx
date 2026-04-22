@@ -2226,7 +2226,6 @@ export default function AdminSetup() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">None (disabled)</SelectItem>
-                              <SelectItem value="manus">Built-in (Manus)</SelectItem>
                               <SelectItem value="openai">OpenAI DALL-E</SelectItem>
                               <SelectItem value="replicate">Replicate (FLUX)</SelectItem>
                               <SelectItem value="custom">Custom API</SelectItem>
@@ -2261,8 +2260,8 @@ export default function AdminSetup() {
                           </>
                         )}
 
-                        {/* Image Aspect Ratio — hidden for manus */}
-                        {settings["image_provider"] !== "manus" && settings["image_provider"] !== "none" && settings["image_provider"] && (
+                        {/* Image Aspect Ratio */}
+                        {settings["image_provider"] && settings["image_provider"] !== "none" && (
                           <FieldRow label="Image Aspect Ratio" helpText="Shape of generated images. Google recommends square (1:1) or landscape (16:9) for best display in search results and Google Discover." status={fieldStatus("image_aspect_ratio", false)}>
                             <Select value={settings["image_aspect_ratio"] ?? "1:1"} onValueChange={v => set("image_aspect_ratio", v)}>
                               <SelectTrigger className="w-full h-9"><SelectValue /></SelectTrigger>
@@ -2313,7 +2312,7 @@ export default function AdminSetup() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1 relative">
                             <Label className="text-xs font-medium">Enable Fallback to Built-in</Label>
-                            <HelpTip text="If the primary image provider fails, automatically try the built-in Manus provider." />
+                            <HelpTip text="If the primary provider fails, automatically try the next available provider." />
                           </div>
                           <Switch checked={isOn("image_provider_fallback_enabled", "true")} onCheckedChange={() => toggle("image_provider_fallback_enabled")} />
                         </div>
@@ -2371,16 +2370,15 @@ export default function AdminSetup() {
                           label="Video Provider"
                           helpText="Which AI service to use for video generation. Built-in uses platform credits."
                           status={(() => {
-                            const v = settings["video_provider"] ?? "manus";
+                            const v = settings["video_provider"] ?? "none";
                             return v ? "green" : "red";
                           })()}
                         >
-                          <Select value={settings["video_provider"] ?? "manus"} onValueChange={v => set("video_provider", v)}>
+                          <Select value={settings["video_provider"] ?? "none"} onValueChange={v => set("video_provider", v)}>
                             <SelectTrigger className="w-full h-9">
                               <SelectValue placeholder="Select provider" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="manus">Built-in (Manus)</SelectItem>
                               <SelectItem value="openai">OpenAI</SelectItem>
                               <SelectItem value="replicate">Replicate (Runway, Kling)</SelectItem>
                               <SelectItem value="custom">Custom API</SelectItem>
@@ -2447,7 +2445,7 @@ export default function AdminSetup() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1 relative">
                             <Label className="text-xs font-medium">Enable Fallback to Built-in</Label>
-                            <HelpTip text="If the primary video provider fails, automatically try the built-in Manus provider." />
+                            <HelpTip text="If the primary video provider fails, automatically try the next available provider." />
                           </div>
                           <Switch checked={isOn("video_provider_fallback_enabled", "true")} onCheckedChange={() => toggle("video_provider_fallback_enabled")} />
                         </div>
@@ -3094,7 +3092,7 @@ export default function AdminSetup() {
                     detail: (() => {
                       const imgProvider = settings["image_provider"] ?? "none";
                       const vidEnabled = isOn("auto_generate_videos");
-                      const imgLabel = imgProvider === "none" ? "Images off" : imgProvider === "manus" ? "Built-in images" : `Images: ${imgProvider}`;
+                      const imgLabel = imgProvider === "none" ? "Images off" : `Images: ${imgProvider}`;
                       return vidEnabled ? `${imgLabel} · Video on` : imgLabel;
                     })(),
                     status: screenCompletionStatus("media"),

@@ -155,7 +155,7 @@ export function setCanonicalURL(preferredDomain: 'www' | 'non-www' = 'www') {
   linkTag.href = canonicalURL;
 
   // Redirect if needed (only for production, not localhost)
-  if (shouldRedirect && !hostname.includes('localhost') && !hostname.includes('127.0.0.1') && !hostname.includes('manus.computer')) {
+  if (shouldRedirect && !hostname.includes('localhost') && !hostname.includes('127.0.0.1')) {
     window.location.href = `${currentURL.protocol}//${newHostname}${currentURL.pathname}${currentURL.search}${currentURL.hash}`;
   }
 }

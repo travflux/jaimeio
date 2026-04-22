@@ -34,9 +34,7 @@ export function trackPageView(): void {
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
-      hostname.includes('.manus.computer') ||
-      hostname.includes('.run.app') ||
-      hostname.includes('manus.space')
+      hostname.includes('.run.app')
     ) {
       return;
     }

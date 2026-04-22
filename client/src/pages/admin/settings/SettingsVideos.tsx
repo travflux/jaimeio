@@ -46,20 +46,18 @@ export default function SettingsVideos() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Video Generation Provider</CardTitle>
-              <CardDescription>Choose between built-in Manus video generation or external providers.</CardDescription>
+              <CardDescription>Configure video generation provider.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
                 <label className="text-sm font-medium mb-2 block">Primary Provider</label>
-                <select value={edits.video_provider || "manus"} onChange={(e) => updateEdit("video_provider", e.target.value)}
+                <select value={edits.video_provider || "none"} onChange={(e) => updateEdit("video_provider", e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-background">
-                  <option value="manus">Manus (Built-in)</option>
                   <option value="replicate">Replicate</option>
                   <option value="openai">OpenAI</option>
                   <option value="custom">Custom API</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  {edits.video_provider === "manus" && "Uses the built-in Manus video generation service (no setup required)."}
                   {edits.video_provider === "replicate" && "Flexible provider with many video models. Requires API key."}
                   {edits.video_provider === "openai" && "OpenAI video generation. Requires API key."}
                   {edits.video_provider === "custom" && "Connect to any custom video generation API endpoint."}
@@ -67,17 +65,15 @@ export default function SettingsVideos() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-sm font-medium">Fallback to Manus</label>
+                  <label className="text-sm font-medium">Enable Provider Fallback</label>
                   <p className="text-xs text-muted-foreground">
-                    {(edits.video_provider || "manus") === "manus" 
-                      ? "Fallback is not applicable when Manus is the primary provider."
-                      : "If the primary provider fails, automatically use Manus as backup."}
+                    "If the primary provider fails, automatically try the next available provider."
                   </p>
                 </div>
                 <Switch
                   checked={edits.video_provider_fallback_enabled === "true"}
                   onCheckedChange={(checked) => updateEdit("video_provider_fallback_enabled", checked ? "true" : "false")}
-                  disabled={(edits.video_provider || "manus") === "manus"}
+                  disabled={!edits.video_provider || edits.video_provider === "none"}
                 />
               </div>
             </CardContent>
@@ -126,11 +122,7 @@ export default function SettingsVideos() {
                   </div>
                 </>
               )}
-              {edits.video_provider === "manus" && (
-                <div className="text-sm text-muted-foreground">
-                  <p>The built-in Manus video generation service is pre-configured and requires no additional setup.</p>
-                </div>
-              )}
+
             </CardContent>
           </Card>
 

@@ -219,18 +219,6 @@ export default function SettingsImages() {
                 </div>
               )}
 
-              {/* Warning when Manus provider is selected */}
-              {edits.image_provider === "manus" && (
-                <div className="flex gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm text-blue-800 dark:text-blue-200">
-                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-semibold">Using Manus built-in image generation</p>
-                    <p className="text-xs mt-0.5 leading-relaxed">
-                      This uses the <strong>Manus credits tied to this deployment's Manus account</strong>. Each image generated will consume credits from this project's Manus balance. If you are a licensed white-label client, these are your own Manus credits — not the engine operator's.
-                    </p>
-                  </div>
-                </div>
-              )}
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Primary Provider</label>
@@ -240,14 +228,12 @@ export default function SettingsImages() {
                   <option value="openai">OpenAI DALL-E 3</option>
                   <option value="replicate">Replicate (Flux, SDXL, etc.)</option>
                   <option value="custom">Custom API</option>
-                  <option value="manus">Manus (Built-in — uses this deployment's Manus credits)</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1.5">
                   {(!edits.image_provider || edits.image_provider === "none") && "Select a provider to enable image generation."}
                   {edits.image_provider === "openai" && "High-quality images from OpenAI DALL-E 3. Requires your own OpenAI API key."}
                   {edits.image_provider === "replicate" && "Flexible provider with many models (Flux, SDXL, etc.). Requires your own Replicate API key."}
                   {edits.image_provider === "custom" && "Connect to any custom image generation API endpoint."}
-                  {edits.image_provider === "manus" && "Uses the Manus built-in image generation service. Consumes this deployment's Manus credits."}
                 </p>
               </div>
 
@@ -274,7 +260,6 @@ export default function SettingsImages() {
                     {edits.image_provider !== "openai" && <option value="openai">OpenAI DALL-E 3</option>}
                     {edits.image_provider !== "replicate" && <option value="replicate">Replicate</option>}
                     {edits.image_provider !== "custom" && <option value="custom">Custom API</option>}
-                    {edits.image_provider !== "manus" && <option value="manus">Manus (Built-in)</option>}
                   </select>
                 </div>
               )}
@@ -325,12 +310,9 @@ export default function SettingsImages() {
                   </div>
                 </>
               )}
-              {(edits.image_provider === "manus" || !edits.image_provider || edits.image_provider === "none") && (
+              {(!edits.image_provider || edits.image_provider === "none") && (
                 <div className="text-sm text-muted-foreground">
-                  {edits.image_provider === "manus"
-                    ? <p>The Manus built-in service uses this deployment's Manus project credits. No additional API key is needed — it is pre-configured from the platform environment.</p>
-                    : <p className="text-amber-600 dark:text-amber-400">No provider selected. Choose a provider above to enable image generation.</p>
-                  }
+                  <p className="text-amber-600 dark:text-amber-400">No provider selected. Choose a provider above to enable image generation.</p>
                 </div>
               )}
             </CardContent>
