@@ -14,6 +14,10 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
     onSuccess: (r: any) => toast.success("Queued to " + r.platformCount + " platform(s)"),
     onError: (e: any) => toast.error("Distribution failed", { description: e.message }),
   });
+  const publishMut = trpc.articles.publish.useMutation({
+    onSuccess: () => { toast.success("Article published"); onAction(); },
+    onError: (e: any) => toast.error("Publish failed: " + e.message),
+  });
   const updateImageMut = trpc.articles.updateImage.useMutation();
   const toggleTagMut = trpc.articles.toggleTag.useMutation({
     onSuccess: (result) => {
@@ -422,28 +426,17 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
           )}
         </div>
 
-        {/* Footer — all buttons on one row */}
+        {/* Footer — buttons per status */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
-          {article.status === "published" ? (
-            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
-              <a href={`/admin/articles/${article.id}`} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#374151", textDecoration: "none", fontWeight: 500, flexShrink: 0 }}>Edit</a>
-              <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
-                style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: dirty ? "#374151" : "#9ca3af", background: "#fff", cursor: dirty ? "pointer" : "not-allowed", flexShrink: 0 }}>
-                {saveMut.isPending ? "Saving..." : "Save"}
-              </button>
-              <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
-                style={{ padding: "5px 10px", border: "1px solid #7F77DD", borderRadius: 6, fontSize: 12, color: "#7F77DD", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
-                {distributeMut.isPending ? "..." : "Distribute"}
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
-              <a href={`/admin/articles/${article.id}`} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#374151", textDecoration: "none", fontWeight: 500, flexShrink: 0 }}>Edit</a>
-              <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
-                style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: dirty ? "#374151" : "#9ca3af", background: "#fff", cursor: dirty ? "pointer" : "not-allowed", flexShrink: 0 }}>
-                {saveMut.isPending ? "Saving..." : "Save"}
-              </button>
-              <button onClick={() => approveMut.mutate({ id: article.id, status: "published" })} disabled={approveMut.isPending}
+          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}>
+            <a href={`/admin/articles/${article.id}`} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#374151", textDecoration: "none", fontWeight: 500, flexShrink: 0 }}>Edit</a>
+            <button onClick={() => { if (dirty) saveMut.mutate({ id: article.id, headline: editedHeadline, subheadline: editedSubheadline, body: editedBody }); }} disabled={!dirty || saveMut.isPending}
+              style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: dirty ? "#374151" : "#9ca3af", background: "#fff", cursor: dirty ? "pointer" : "not-allowed", flexShrink: 0 }}>
+              {saveMut.isPending ? "Saving..." : "Save"}
+            </button>
+
+            {article.status === "pending" && <>
+              <button onClick={() => approveMut.mutate({ id: article.id, status: "approved" })} disabled={approveMut.isPending}
                 style={{ padding: "5px 10px", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "#2dd4bf", color: "#0f2d5e", cursor: "pointer", flexShrink: 0 }}>
                 {approveMut.isPending ? "..." : "Approve"}
               </button>
@@ -451,8 +444,33 @@ function ReviewPanel({ article, categories, onClose, onAction, onRefresh }: { ar
                 style={{ padding: "5px 10px", border: "1px solid #FCA5A5", borderRadius: 6, fontSize: 12, color: "#EF4444", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
                 Reject
               </button>
-            </div>
-          )}
+            </>}
+
+            {article.status === "approved" && <>
+              <button onClick={() => publishMut.mutate({ id: article.id })} disabled={publishMut.isPending}
+                style={{ padding: "5px 10px", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "#1D9E75", color: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                {publishMut.isPending ? "..." : "Publish"}
+              </button>
+              <button onClick={() => rejectMut.mutate({ id: article.id, status: "rejected" })} disabled={rejectMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #FCA5A5", borderRadius: 6, fontSize: 12, color: "#EF4444", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                Reject
+              </button>
+            </>}
+
+            {article.status === "published" && (
+              <button onClick={() => distributeMut.mutate({ articleId: article.id })} disabled={distributeMut.isPending}
+                style={{ padding: "5px 10px", border: "1px solid #7F77DD", borderRadius: 6, fontSize: 12, color: "#7F77DD", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                {distributeMut.isPending ? "..." : "Distribute"}
+              </button>
+            )}
+
+            {article.status === "rejected" && (
+              <button onClick={() => approveMut.mutate({ id: article.id, status: "pending" })}
+                style={{ padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#6B7280", background: "#fff", cursor: "pointer", flexShrink: 0 }}>
+                Re-evaluate
+              </button>
+            )}
+          </div>
 
           <button onClick={() => { if (confirm("Permanently delete this article? This cannot be undone.")) deleteMut.mutate({ articleId: article.id }); }} disabled={deleteMut.isPending}
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: 0.6, marginTop: 8 }}>
@@ -489,6 +507,10 @@ export default function TenantArticles() {
   if (dateTo) queryParams.dateTo = dateTo;
   if (tagFilter) queryParams.tagFilter = tagFilter;
   const { data, isLoading, refetch } = trpc.articles.list.useQuery(queryParams);
+  const publishMut = trpc.articles.publish.useMutation({
+    onSuccess: () => { toast.success("Published"); refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const catsQuery = trpc.categories.list.useQuery();
   const { data: articleCounts } = trpc.articles.getCounts.useQuery(undefined, { refetchInterval: 30000 });
   const articles = data?.articles || [];
@@ -594,6 +616,12 @@ export default function TenantArticles() {
                   <td style={{ padding: "10px 16px", textAlign: "right" }}>
                     <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                       <a href={`/admin/articles/${a.id}`} style={{ padding: "4px 12px", borderRadius: 4, border: "1px solid #2dd4bf", background: "#f0fdfa", fontSize: 12, fontWeight: 500, cursor: "pointer", textDecoration: "none", color: "#0f766e" }}>Edit</a>
+                      {a.status === "approved" && (
+                        <button onClick={(e) => { e.stopPropagation(); publishMut.mutate({ id: a.id }); }}
+                          style={{ padding: "4px 10px", borderRadius: 4, border: "none", background: "#1D9E75", color: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                          Publish
+                        </button>
+                      )}
                       <button onClick={() => setReviewArticle(a)} style={{ padding: "4px 12px", borderRadius: 4, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>Review</button>
                     </div>
                   </td>

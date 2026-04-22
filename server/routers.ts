@@ -1340,6 +1340,19 @@ export const appRouter = router({
       await db.updateArticleStatus(input.id, "rejected");
       return { success: true };
     }),
+    publish: tenantOrAdminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      const article = await db.getArticleById(input.id);
+      if (!article) throw new TRPCError({ code: "NOT_FOUND" });
+      if (ctx.licenseId && article.licenseId !== ctx.licenseId) throw new TRPCError({ code: "FORBIDDEN" });
+      await db.updateArticle(input.id, { status: "published", publishedAt: new Date() } as any);
+      // Trigger social distribution if enabled
+      try {
+        const siteUrl = (await db.getLicenseSetting(ctx.licenseId!, "website_url"))?.value || "https://" + (await db.getLicenseBySubdomain("nikijames"))?.subdomain + ".getjaime.io";
+        const { queueArticleToBlotato } = await import("./blotato");
+        await queueArticleToBlotato(ctx.licenseId!, article, siteUrl).catch(() => {});
+      } catch {}
+      return { success: true };
+    }),
     regenerateMissingImages: adminProcedure.mutation(async () => {
       const dbConn = await db.getDb();
       if (!dbConn) return { total: 0, succeeded: 0, failed: 0 };
