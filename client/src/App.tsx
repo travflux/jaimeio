@@ -354,14 +354,16 @@ function Router() {
           <Route path="/admin/image-sources" component={AdminImageSources} />
           <Route path="/admin/pages" component={AdminPages} />
 
-          {/* ═══ SUPER ADMIN PORTAL ═══ */}
-          <Route path="/superadmin">{() => <SuperAdminGuard><SuperAdminMissionControl /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/licenses">{() => <SuperAdminGuard><SuperAdminLicenseList /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/licenses/:id">{(params) => <SuperAdminGuard><SuperAdminLicenseDetail licenseId={Number(params.id)} /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/staff">{() => <SuperAdminGuard><SuperAdminStaffAccounts /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/impersonation-log">{() => <SuperAdminGuard><SuperAdminImpersonationLog /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/performance">{() => <SuperAdminGuard><SuperAdminPerformance /></SuperAdminGuard>}</Route>
-          <Route path="/superadmin/generation-log">{() => <SuperAdminGuard><SuperAdminGenerationLog /></SuperAdminGuard>}</Route>
+          {/* ═══ SUPER ADMIN PORTAL (app.getjaime.io only) ═══ */}
+          {isApp && <>
+            <Route path="/superadmin">{() => <SuperAdminGuard><SuperAdminMissionControl /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/licenses">{() => <SuperAdminGuard><SuperAdminLicenseList /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/licenses/:id">{(params) => <SuperAdminGuard><SuperAdminLicenseDetail licenseId={Number(params.id)} /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/staff">{() => <SuperAdminGuard><SuperAdminStaffAccounts /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/impersonation-log">{() => <SuperAdminGuard><SuperAdminImpersonationLog /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/performance">{() => <SuperAdminGuard><SuperAdminPerformance /></SuperAdminGuard>}</Route>
+            <Route path="/superadmin/generation-log">{() => <SuperAdminGuard><SuperAdminGenerationLog /></SuperAdminGuard>}</Route>
+          </>}
         </>
       )}
       <Route path="/404" component={NotFound} />
