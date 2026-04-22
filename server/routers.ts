@@ -2168,21 +2168,15 @@ export const appRouter = router({
     get: publicProcedure
       .input(z.object({ hostname: z.string().optional() }).optional())
       .query(async ({ input }) => {
-      const settings = await db.getSettingsByCategory("branding");
-      const map: Record<string, string> = {};
-      for (const s of settings) { map[s.key] = s.value; }
-      // Also include site_url (stored in 'social' category) so the client can
-      // derive www vs non-www canonical preference without a separate query.
-      const siteUrlSetting = await db.getSetting("site_url");
-      if (siteUrlSetting?.value) map["site_url"] = siteUrlSetting.value;
-      // Include additional settings the frontend needs for theming & navigation
-      for (const key of ["printify_enabled", "shop_external_url", "brand_heading_font", "brand_body_font", "brand_palette"]) {
-        const s = await db.getSetting(key);
-        if (s?.value) map[key] = s.value;
-      }
-      // If hostname provided, resolve license and merge tenant-specific settings
       const hostname = input?.hostname;
-      if (hostname && hostname !== "app.getjaime.io" && hostname !== "localhost") {
+      const isTenantSubdomain = hostname && hostname !== "app.getjaime.io" && hostname !== "localhost" && hostname.includes(".");
+
+      // For tenant subdomains: start with EMPTY map, populate ONLY from license_settings
+      // For app.getjaime.io or no hostname: use global workflow_settings
+      let map: Record<string, string> = {};
+
+      if (isTenantSubdomain) {
+        // Tenant request — use ONLY tenant's license_settings, no global fallback
         try {
           const license = await resolveLicense(hostname);
           if (license) {
@@ -2190,32 +2184,26 @@ export const appRouter = router({
             const { licenseSettings: lsTable } = await import("../drizzle/schema");
             const { eq: eqOp } = await import("drizzle-orm");
             const licenseRows = await dbConn.select().from(lsTable).where(eqOp(lsTable.licenseId, license.id));
-            const MERGE_KEYS = ["brand_heading_font", "brand_body_font", "brand_palette", "printify_enabled",
-              "printify_api_token", "printify_shop_id", "shop_external_url", "brand_tagline",
-              "brand_name", "brand_site_name", "brand_description", "brand_primary_color", "brand_secondary_color",
-              "brand_logo_url", "brand_logo_light_url", "brand_logo_dark_url", "brand_favicon_url",
-              "brand_contact_email", "brand_business_name", "brand_phone", "brand_address",
-              "brand_template", "brand_disclaimer", "categories", "blotato_platforms", "brand_website_url",
-              "social_x_url", "social_instagram_url", "social_linkedin_url", "social_facebook_url",
-              "social_tiktok_url", "social_pinterest_url"];
             for (const row of licenseRows) {
-              if (MERGE_KEYS.includes(row.key)) map[row.key] = row.value;
+              map[row.key] = row.value;
             }
             // Map wizard field names to branding field names
-            if (map["brand_logo_light_url"]) {
-              map["brand_logo_url"] = map["brand_logo_light_url"];
-            }
-            if (map["brand_name"] && !map["brand_site_name"]) {
-              map["brand_site_name"] = map["brand_name"];
-            }
-            if (map["brand_primary_color"]) {
-              map["brand_color_primary"] = map["brand_primary_color"];
-            }
-            if (map["brand_secondary_color"]) {
-              map["brand_color_secondary"] = map["brand_secondary_color"];
-            }
+            if (map["brand_logo_light_url"]) map["brand_logo_url"] = map["brand_logo_light_url"];
+            if (map["brand_name"] && !map["brand_site_name"]) map["brand_site_name"] = map["brand_name"];
+            if (map["brand_primary_color"]) map["brand_color_primary"] = map["brand_primary_color"];
+            if (map["brand_secondary_color"]) map["brand_color_secondary"] = map["brand_secondary_color"];
           }
-        } catch { /* ignore — fall back to workflow_settings */ }
+        } catch { /* tenant resolution failed — return empty map */ }
+      } else {
+        // Platform request (app.getjaime.io) — use global settings
+        const settings = await db.getSettingsByCategory("branding");
+        for (const s of settings) { map[s.key] = s.value; }
+        const siteUrlSetting = await db.getSetting("site_url");
+        if (siteUrlSetting?.value) map["site_url"] = siteUrlSetting.value;
+        for (const key of ["printify_enabled", "shop_external_url", "brand_heading_font", "brand_body_font", "brand_palette"]) {
+          const s = await db.getSetting(key);
+          if (s?.value) map[key] = s.value;
+        }
       }
       return map;
     }),
