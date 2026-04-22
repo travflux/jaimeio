@@ -36,6 +36,20 @@ const PRESETS = [
   ["Minimalist","Clean minimalist photography, white space, simple composition, neutral tones"],
 ];
 
+function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <input type={show ? "text" : "password"} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width: "100%", padding: "8px 40px 8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13, fontFamily: show ? "inherit" : "monospace", background: "#fff", boxSizing: "border-box" }} />
+      <button onClick={() => setShow(s => !s)} type="button"
+        style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 12, padding: "2px 4px" }}>
+        {show ? "hide" : "show"}
+      </button>
+    </div>
+  );
+}
+
 export default function TenantImageSettings() {
   const { licenseId, settings: init } = useTenantContext();
   const [s, setS] = useState<Record<string, string>>({});
@@ -53,6 +67,50 @@ export default function TenantImageSettings() {
             {[["replicate","Replicate (FLUX)"],["openai","DALL-E 3 (OpenAI)"],["gemini","Gemini Imagen"],["grok","Grok Aurora"],["none","None"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
+
+        {/* Provider API Credentials */}
+        {(s.image_provider === "replicate" || (!s.image_provider)) && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 14, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Replicate API Token</label>
+            <PasswordInput value={s.image_provider_replicate_api_key || ""} onChange={v => upd("image_provider_replicate_api_key", v)} placeholder="r8_..." />
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Get your token at <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf" }}>replicate.com → Account → API Tokens</a></div>
+          </div>
+        )}
+        {s.image_provider === "openai" && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 14, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>OpenAI API Key</label>
+            <PasswordInput value={s.image_provider_openai_api_key || ""} onChange={v => upd("image_provider_openai_api_key", v)} placeholder="sk-..." />
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "#2dd4bf" }}>platform.openai.com → API Keys</a></div>
+          </div>
+        )}
+        {s.image_provider === "gemini" && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 12, background: "#E1F5EE", borderRadius: 8, border: "1px solid #9FE1CB", fontSize: 12, color: "#085041", lineHeight: 1.5 }}>
+            Gemini uses the GEMINI_API_KEY environment variable configured on the server. No additional key entry needed here.
+          </div>
+        )}
+        {s.image_provider === "grok" && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 12, background: "#E1F5EE", borderRadius: 8, border: "1px solid #9FE1CB", fontSize: 12, color: "#085041", lineHeight: 1.5 }}>
+            Grok uses the XAI_API_KEY environment variable configured on the server. No additional key entry needed here.
+          </div>
+        )}
+        {s.image_provider === "custom" && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 14, background: "#f9fafb", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Custom API URL</label>
+              <input value={s.image_provider_custom_api_url || ""} onChange={e => upd("image_provider_custom_api_url", e.target.value)} placeholder="https://your-api.com/generate" style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #e5e7eb", fontSize: 13 }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 4 }}>Custom API Key</label>
+              <PasswordInput value={s.image_provider_custom_api_key || ""} onChange={v => upd("image_provider_custom_api_key", v)} placeholder="your-api-key" />
+            </div>
+          </div>
+        )}
+        {s.image_provider === "none" && (
+          <div style={{ marginBottom: 12, marginTop: 12, padding: 12, background: "#FAEEDA", borderRadius: 8, border: "1px solid #F5D89A", fontSize: 12, color: "#78590A", lineHeight: 1.5 }}>
+            Image generation is disabled. Select a provider above to enable it.
+          </div>
+        )}
+
         <Toggle label="Auto-Generate Images" desc="Every article gets an image automatically" tooltip="When enabled, every generated article automatically gets a featured image." checked={s.auto_generate_images !== "false"} onChange={v => upd("auto_generate_images", v ? "true" : "false")} />
         <KBLink url="https://knowledgebase.getjaime.io/knowledge-base/how-image-generation-works/" label="Read: How Image Generation Works" />
       </Section>
